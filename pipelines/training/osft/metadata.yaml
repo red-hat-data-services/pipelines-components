@@ -1,0 +1,28 @@
+name: osft_pipeline
+tier: core
+stability: alpha
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+    - name: Trainer
+      version: '>=0.1.0'
+  external_services:
+    - name: HuggingFace Datasets
+      version: ">=2.14.0"
+    - name: Kubernetes
+      version: ">=1.28.0"
+    - name: Model Registry
+      version: ">=0.3.4"
+tags:
+  - training
+  - fine_tuning
+  - osft
+  - orthogonal_subspace
+  - continual_learning
+  - llm
+  - language_model
+  - pipeline
+lastVerified: 2026-01-09T00:00:00Z
+links:
+  documentation: https://github.com/kubeflow/trainer
