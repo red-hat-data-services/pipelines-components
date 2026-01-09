@@ -164,7 +164,11 @@ def model_registry(
                 best_metric = max(eval_summary.items(), key=lambda x: x[1] if isinstance(x[1], (int, float)) else 0)
                 version_metadata["eval_best_metric"] = best_metric[0]
                 version_metadata["eval_best_score"] = str(best_metric[1])
-                print(f"\n  Best Eval Score: {best_metric[0]} = {best_metric[1]:.4f}" if isinstance(best_metric[1], float) else f"\n  Best: {best_metric}")
+                print(
+                    f"\n  Best Eval Score: {best_metric[0]} = {best_metric[1]:.4f}"
+                    if isinstance(best_metric[1], float)
+                    else f"\n  Best: {best_metric}"
+                )
 
             print(f"\n  Total metadata keys: {len(version_metadata)}")
         except Exception as e:
@@ -215,6 +219,7 @@ def model_registry(
 
 if __name__ == "__main__":
     from kfp import compiler
+
     compiler.Compiler().compile(
         model_registry,
         package_path=__file__.replace(".py", "_component.yaml"),

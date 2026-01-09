@@ -12,9 +12,9 @@ import kfp
     base_image="registry.access.redhat.com/ubi9/python-311:latest",
     packages_to_install=[
         "lm-eval[vllm]",  # The core harness with vLLM backend
-        "unitxt",         # For IBM/generic dataset recipes
-        "sacrebleu",      # For translation/BLEU metrics
-        "rouge-score",    # For ROUGE metrics (summarization)
+        "unitxt",  # For IBM/generic dataset recipes
+        "sacrebleu",  # For translation/BLEU metrics
+        "rouge-score",  # For ROUGE metrics (summarization)
         "datasets",
         "accelerate",
         "torch",
@@ -109,28 +109,28 @@ def universal_llm_evaluator(
         valid_count = 0
         errors = []
 
-        for i, doc in enumerate(data[:min(10, len(data))]):
+        for i, doc in enumerate(data[: min(10, len(data))]):
             if "messages" not in doc:
-                errors.append(f"Line {i+1}: Missing 'messages' field")
+                errors.append(f"Line {i + 1}: Missing 'messages' field")
                 continue
 
             messages = doc["messages"]
             if not isinstance(messages, list):
-                errors.append(f"Line {i+1}: 'messages' is not an array")
+                errors.append(f"Line {i + 1}: 'messages' is not an array")
                 continue
 
             if len(messages) < 2:
-                errors.append(f"Line {i+1}: 'messages' must have at least 2 messages (user + assistant)")
+                errors.append(f"Line {i + 1}: 'messages' must have at least 2 messages (user + assistant)")
                 continue
 
             system_content, user_content, assistant_content = extract_chat_parts(messages)
 
             if not user_content:
-                errors.append(f"Line {i+1}: No message with role='user' found")
+                errors.append(f"Line {i + 1}: No message with role='user' found")
                 continue
 
             if not assistant_content:
-                errors.append(f"Line {i+1}: No message with role='assistant' found")
+                errors.append(f"Line {i + 1}: No message with role='assistant' found")
                 continue
 
             valid_count += 1
@@ -154,8 +154,14 @@ def universal_llm_evaluator(
 
         VERSION = 0
 
-        def __init__(self, dataset_path: str, task_name: str = "custom_holdout_eval",
-                     max_gen_toks: int = 256, log_prompts: bool = False, prompts_log: list = None):
+        def __init__(
+            self,
+            dataset_path: str,
+            task_name: str = "custom_holdout_eval",
+            max_gen_toks: int = 256,
+            log_prompts: bool = False,
+            prompts_log: list = None,
+        ):
             self.dataset_path = dataset_path
             self.task_name = task_name
             self.max_gen_toks = max_gen_toks
@@ -170,7 +176,7 @@ def universal_llm_evaluator(
         def download(self, data_dir=None, cache_dir=None, download_mode=None, **kwargs) -> None:
             """Load the chat JSONL dataset."""
             data = []
-            with open(self.dataset_path, 'r') as f:
+            with open(self.dataset_path, "r") as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -224,8 +230,13 @@ def universal_llm_evaluator(
                 Instance(
                     request_type="generate_until",
                     doc=doc,
-                    arguments=(ctx, {"until": ["<|im_end|>", "<|endoftext|>", "</s>", "<|end|>", "\n\nUser:", "\n\nHuman:"],
-                                     "max_gen_toks": self.max_gen_toks}),
+                    arguments=(
+                        ctx,
+                        {
+                            "until": ["<|im_end|>", "<|endoftext|>", "</s>", "<|end|>", "\n\nUser:", "\n\nHuman:"],
+                            "max_gen_toks": self.max_gen_toks,
+                        },
+                    ),
                     idx=0,
                     **kwargs,
                 ),
@@ -263,11 +274,13 @@ def universal_llm_evaluator(
 
             if self.log_prompts:
                 try:
-                    self.prompts_log.append({
-                        "prompt": self.doc_to_text(doc),
-                        "target": target,
-                        "prediction": prediction,
-                    })
+                    self.prompts_log.append(
+                        {
+                            "prompt": self.doc_to_text(doc),
+                            "target": target,
+                            "prediction": prediction,
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -282,11 +295,11 @@ def universal_llm_evaluator(
                 bleu = 0.0
 
             try:
-                scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
+                scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeL"], use_stemmer=True)
                 rouge_scores = scorer.score(target, prediction)
-                rouge1 = rouge_scores['rouge1'].fmeasure
-                rouge2 = rouge_scores['rouge2'].fmeasure
-                rougeL = rouge_scores['rougeL'].fmeasure
+                rouge1 = rouge_scores["rouge1"].fmeasure
+                rouge2 = rouge_scores["rouge2"].fmeasure
+                rougeL = rouge_scores["rougeL"].fmeasure
             except Exception:
                 rouge1 = 0.0
                 rouge2 = 0.0
@@ -378,7 +391,9 @@ def universal_llm_evaluator(
     config_path = os.path.join(final_model_path, "config.json")
     if not os.path.exists(config_path):
         logger.error(f"Model directory missing config.json: {final_model_path}")
-        logger.error(f"Directory contents: {os.listdir(final_model_path) if os.path.isdir(final_model_path) else 'NOT A DIRECTORY'}")
+        logger.error(
+            f"Directory contents: {os.listdir(final_model_path) if os.path.isdir(final_model_path) else 'NOT A DIRECTORY'}"
+        )
         raise ValueError(f"Invalid model directory - no config.json found at {final_model_path}")
 
     # --- 3. Prepare eval dataset info and custom task ---
@@ -394,11 +409,13 @@ def universal_llm_evaluator(
             "split": eval_meta.get("split", "eval"),
             "pvc_path": eval_meta.get("pvc_path", eval_dataset.path),
         }
-        logger.info(f"Eval dataset: {eval_dataset_info['num_examples']} examples from {eval_dataset_info['split']} split")
+        logger.info(
+            f"Eval dataset: {eval_dataset_info['num_examples']} examples from {eval_dataset_info['split']} split"
+        )
         logger.info(f"Eval dataset path: {eval_dataset_info['pvc_path']}")
 
         candidate_paths = [
-            eval_dataset_info['pvc_path'],
+            eval_dataset_info["pvc_path"],
             eval_dataset.path,
         ]
 
@@ -409,7 +426,7 @@ def universal_llm_evaluator(
                     break
                 elif os.path.isdir(candidate):
                     for f in os.listdir(candidate):
-                        if f.endswith('.jsonl') or f.endswith('.json'):
+                        if f.endswith(".jsonl") or f.endswith(".json"):
                             eval_jsonl_path = os.path.join(candidate, f)
                             break
                     if eval_jsonl_path:
@@ -419,7 +436,7 @@ def universal_llm_evaluator(
             logger.info(f"Found eval JSONL for custom evaluation: {eval_jsonl_path}")
 
             try:
-                with open(eval_jsonl_path, 'r') as f:
+                with open(eval_jsonl_path, "r") as f:
                     sample_data = []
                     for i, line in enumerate(f):
                         if i >= 10:
@@ -618,7 +635,4 @@ def universal_llm_evaluator(
 
 
 if __name__ == "__main__":
-    kfp.compiler.Compiler().compile(
-        universal_llm_evaluator,
-        package_path="universal_llm_evaluator.yaml"
-    )
+    kfp.compiler.Compiler().compile(universal_llm_evaluator, package_path="universal_llm_evaluator.yaml")
