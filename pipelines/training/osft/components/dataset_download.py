@@ -105,7 +105,7 @@ def dataset_download(
         if len(dataset) == 0:
             raise ValueError("Dataset is empty")
 
-        valid_roles = {'system', 'user', 'assistant', 'function', 'tool'}
+        valid_roles = {"system", "user", "assistant", "function", "tool"}
 
         # Check first 100 examples (or fewer if dataset is smaller)
         num_to_check = min(100, len(dataset))
@@ -114,14 +114,13 @@ def dataset_download(
             item = dataset[i]
 
             # Check for common chat format fields
-            if 'messages' in item:
-                messages = item['messages']
-            elif 'conversations' in item:
-                messages = item['conversations']
+            if "messages" in item:
+                messages = item["messages"]
+            elif "conversations" in item:
+                messages = item["conversations"]
             else:
                 raise ValueError(
-                    f"Item {i} missing 'messages' or 'conversations' field. "
-                    f"Found keys: {list(item.keys())}"
+                    f"Item {i} missing 'messages' or 'conversations' field. Found keys: {list(item.keys())}"
                 )
 
             if not isinstance(messages, list):
@@ -131,15 +130,12 @@ def dataset_download(
                 if not isinstance(msg, dict):
                     raise ValueError(f"Item {i}, message {j}: must be a dict")
 
-                if 'role' not in msg or 'content' not in msg:
-                    raise ValueError(
-                        f"Item {i}, message {j}: must have 'role' and 'content' fields"
-                    )
+                if "role" not in msg or "content" not in msg:
+                    raise ValueError(f"Item {i}, message {j}: must have 'role' and 'content' fields")
 
-                if msg['role'] not in valid_roles:
+                if msg["role"] not in valid_roles:
                     raise ValueError(
-                        f"Item {i}, message {j}: invalid role '{msg['role']}'. "
-                        f"Must be one of {valid_roles}"
+                        f"Item {i}, message {j}: invalid role '{msg['role']}'. Must be one of {valid_roles}"
                     )
 
         log_message(f"Dataset validated: {len(dataset)} examples in chat format")
@@ -218,27 +214,22 @@ def dataset_download(
         log_message(f"Loading from AWS S3: s3://{s3_path}")
 
         # Get credentials from Kubernetes secret (environment variables)
-        access_key = os.environ.get('AWS_ACCESS_KEY_ID')
-        secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+        access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
         # Build storage_options for datasets library
         storage_options = {}
 
         # Add credentials if available (otherwise uses default AWS credential chain)
         if access_key and secret_key:
-            storage_options['key'] = access_key
-            storage_options['secret'] = secret_key
+            storage_options["key"] = access_key
+            storage_options["secret"] = secret_key
             log_message("Using S3 credentials from Kubernetes secret")
         else:
             log_message("No credentials found, using default AWS credential chain (IAM role, etc.)")
 
         # Load dataset directly from S3 (no temp file needed)
-        dataset = load_dataset(
-            'json',
-            data_files=f's3://{s3_path}',
-            storage_options=storage_options,
-            split='train'
-        )
+        dataset = load_dataset("json", data_files=f"s3://{s3_path}", storage_options=storage_options, split="train")
 
         log_message(f"Loaded {len(dataset)} examples from AWS S3")
         return dataset
@@ -249,7 +240,7 @@ def dataset_download(
         log_message(f"Loading from HTTP: {http_url}")
 
         # Load dataset directly from HTTP URL using datasets library
-        dataset = load_dataset('json', data_files=http_url, split='train')
+        dataset = load_dataset("json", data_files=http_url, split="train")
 
         log_message(f"Loaded {len(dataset)} examples from HTTP")
         return dataset
@@ -266,8 +257,8 @@ def dataset_download(
             raise FileNotFoundError(f"Dataset file not found: {file_path}")
 
         # Load using datasets library (supports .json and .jsonl)
-        if file_path.endswith('.jsonl') or file_path.endswith('.json'):
-            dataset = load_dataset('json', data_files=file_path, split='train')
+        if file_path.endswith(".jsonl") or file_path.endswith(".json"):
+            dataset = load_dataset("json", data_files=file_path, split="train")
             log_message(f"Loaded {len(dataset)} examples from local file")
             return dataset
         else:
@@ -277,11 +268,11 @@ def dataset_download(
     # Main execution
     # =========================================================================
 
-    log_message("="*60)
+    log_message("=" * 60)
     log_message("Dataset Download Component Started")
-    log_message("="*60)
+    log_message("=" * 60)
     log_message(f"Dataset URI: {dataset_uri}")
-    log_message(f"Train/Eval split: {train_split_ratio:.0%}/{1-train_split_ratio:.0%}")
+    log_message(f"Train/Eval split: {train_split_ratio:.0%}/{1 - train_split_ratio:.0%}")
     log_message(f"Subset count: {subset_count if subset_count > 0 else 'all (no limit)'}")
 
     try:
@@ -305,6 +296,7 @@ def dataset_download(
         # Apply subset if specified
         if subset_count and subset_count > 0:
             import random
+
             original_size = len(dataset)
             if subset_count < original_size:
                 log_message(f"Applying subset: {subset_count} of {original_size} examples")
@@ -321,10 +313,7 @@ def dataset_download(
 
         # Split dataset using built-in method
         log_message(f"Splitting dataset with {len(dataset)} examples...")
-        split_dataset = dataset.train_test_split(
-            test_size=1 - train_split_ratio,
-            seed=42
-        )
+        split_dataset = dataset.train_test_split(test_size=1 - train_split_ratio, seed=42)
 
         train_ds = split_dataset["train"]
         eval_ds = split_dataset["test"]
@@ -333,10 +322,10 @@ def dataset_download(
 
         # Save datasets as JSONL files to KFP artifacts
         log_message(f"Saving train dataset to {train_dataset.path}")
-        train_ds.to_json(train_dataset.path, orient='records', lines=True)
+        train_ds.to_json(train_dataset.path, orient="records", lines=True)
 
         log_message(f"Saving eval dataset to {eval_dataset.path}")
-        eval_ds.to_json(eval_dataset.path, orient='records', lines=True)
+        eval_ds.to_json(eval_dataset.path, orient="records", lines=True)
 
         # Also save to shared PVC for next pipeline step
         pvc_dataset_dir = os.path.join(pvc_mount_path, "datasets")
@@ -346,10 +335,10 @@ def dataset_download(
         pvc_eval_path = os.path.join(pvc_dataset_dir, "eval.jsonl")
 
         log_message(f"Saving train dataset to PVC: {pvc_train_path}")
-        train_ds.to_json(pvc_train_path, orient='records', lines=True)
+        train_ds.to_json(pvc_train_path, orient="records", lines=True)
 
         log_message(f"Saving eval dataset to PVC: {pvc_eval_path}")
-        eval_ds.to_json(pvc_eval_path, orient='records', lines=True)
+        eval_ds.to_json(pvc_eval_path, orient="records", lines=True)
 
         # Save metadata
         train_dataset.metadata = {
@@ -370,7 +359,7 @@ def dataset_download(
             "pvc_path": pvc_eval_path,
         }
 
-        log_message("="*60)
+        log_message("=" * 60)
         log_message("Dataset Download Component Completed Successfully")
         log_message(f"  Train: {len(train_ds)} examples")
         log_message(f"    - KFP Artifact: {train_dataset.path}")
@@ -378,7 +367,7 @@ def dataset_download(
         log_message(f"  Eval: {len(eval_ds)} examples")
         log_message(f"    - KFP Artifact: {eval_dataset.path}")
         log_message(f"    - PVC: {pvc_eval_path}")
-        log_message("="*60)
+        log_message("=" * 60)
 
     except Exception as e:
         error_msg = f"ERROR in dataset download: {str(e)}"

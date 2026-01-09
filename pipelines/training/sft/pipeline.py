@@ -43,9 +43,9 @@ PIPELINE_NAME = "sft-pipeline"
                     "accessModes": PVC_ACCESS_MODES,
                     "storageClassName": PVC_STORAGE_CLASS,
                 }
-            )
+            ),
         ),
-    )
+    ),
 )
 def sft_pipeline(
     # =========================================================================
@@ -138,10 +138,10 @@ def sft_pipeline(
 
     kfp.kubernetes.use_secret_as_env(
         dataset_download_task,
-        secret_name='minio-secret',
+        secret_name="minio-secret",
         secret_key_to_env={
-            'AWS_ACCESS_KEY_ID': 'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY': 'AWS_SECRET_ACCESS_KEY',
+            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
         },
         optional=True,
     )

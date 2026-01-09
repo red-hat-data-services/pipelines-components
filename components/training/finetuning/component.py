@@ -157,6 +157,7 @@ def train_model(
         """Initialize and return a Kubernetes client from env (server/token) or in-cluster/kubeconfig."""
         try:
             from kubernetes import client as k8s_client, config as k8s_config
+
             env_server = os.environ.get("KUBERNETES_SERVER_URL", "").strip()
             env_token = os.environ.get("KUBERNETES_AUTH_TOKEN", "").strip()
             if env_server and env_token:
@@ -269,7 +270,9 @@ def train_model(
         rp = ""
         try:
             if input_dataset and hasattr(input_dataset, "metadata") and isinstance(input_dataset.metadata, dict):
-                pvc_path_meta = (input_dataset.metadata.get("pvc_path") or input_dataset.metadata.get("pvc_dir") or "").strip()
+                pvc_path_meta = (
+                    input_dataset.metadata.get("pvc_path") or input_dataset.metadata.get("pvc_dir") or ""
+                ).strip()
                 if pvc_path_meta and os.path.exists(pvc_path_meta):
                     if os.path.isdir(pvc_path_meta) and any(os.scandir(pvc_path_meta)):
                         logger.info(f"Using pre-staged PVC dataset directory at {pvc_path_meta}")
@@ -331,6 +334,7 @@ def train_model(
         except AttributeError:
             # Manual JSONL write
             import json as _json
+
             with open(jsonl_path, "w") as _f:
                 for _rec in train_split:
                     _f.write(_json.dumps(_rec, ensure_ascii=False) + "\n")
@@ -365,8 +369,10 @@ def train_model(
             stderr = (res.stderr or "").strip()
             logger.error(f"skopeo copy failed (exit={res.returncode}): {stderr}")
             if "unauthorized" in stderr.lower() or "authentication required" in stderr.lower():
-                logger.error("Authentication error detected pulling from registry. "
-                             "Provide credentials via --authfile or mounted Docker config.")
+                logger.error(
+                    "Authentication error detected pulling from registry. "
+                    "Provide credentials via --authfile or mounted Docker config."
+                )
             res.check_returncode()
         else:
             out_preview = "\n".join((res.stdout or "").splitlines()[-20:])
@@ -376,6 +382,7 @@ def train_model(
     def _extract_models_from_dir_image(image_dir: str, out_dir: str) -> List[str]:
         """Extract 'models/' subtree from skopeo dir transport output into out_dir."""
         import tarfile
+
         os.makedirs(out_dir, exist_ok=True)
         extracted: List[str] = []
         logger.info(f"Extracting 'models/' from dir image {image_dir} to {out_dir}")
@@ -470,8 +477,10 @@ def train_model(
             logger.info(f"Detected HuggingFace model directory: {hf_dir}")
             resolved_model_path = hf_dir
         else:
-            logger.warning("Failed to detect a HuggingFace model directory after extraction; "
-                           "continuing with model_out_dir (may fail downstream).")
+            logger.warning(
+                "Failed to detect a HuggingFace model directory after extraction; "
+                "continuing with model_out_dir (may fail downstream)."
+            )
             resolved_model_path = model_out_dir
 
     # ------------------------------
@@ -510,7 +519,9 @@ def train_model(
         th_runtime = _select_runtime(client)
 
         # Build training parameters (aligned to OSFT/SFT)
-        parsed_target_patterns = [p.strip() for p in training_target_patterns.split(",") if p.strip()] if training_target_patterns else None
+        parsed_target_patterns = (
+            [p.strip() for p in training_target_patterns.split(",") if p.strip()] if training_target_patterns else None
+        )
         parsed_lr_sched_kwargs = None
         if training_lr_scheduler_kwargs:
             try:
@@ -518,9 +529,7 @@ def train_model(
                 kv: Dict[str, str] = {}
                 for item in items:
                     if "=" not in item:
-                        raise ValueError(
-                            f"Invalid scheduler kwargs segment '{item}'. Expected key=value."
-                        )
+                        raise ValueError(f"Invalid scheduler kwargs segment '{item}'. Expected key=value.")
                     key, value = item.split("=", 1)
                     key = key.strip()
                     value = value.strip()
@@ -546,7 +555,11 @@ def train_model(
 
         def _compute_nproc_and_nodes() -> Tuple[int, int]:
             nproc_auto = str(training_resource_num_procs_per_worker).strip().lower() == "auto"
-            nproc = training_resource_gpu_per_worker if nproc_auto else _parse_int(training_resource_num_procs_per_worker, 1)
+            nproc = (
+                training_resource_gpu_per_worker
+                if nproc_auto
+                else _parse_int(training_resource_num_procs_per_worker, 1)
+            )
             if nproc <= 0:
                 nproc = 1
             nnodes = _parse_int(training_resource_num_workers, 1)
@@ -561,19 +574,23 @@ def train_model(
                 "model_path": resolved_model_path,
                 # Prefer JSONL export when available; fallback to resolved directory
                 "data_path": jsonl_path if os.path.exists(jsonl_path) else resolved_dataset_dir,
-                "effective_batch_size": int(training_effective_batch_size if training_effective_batch_size is not None else 128),
+                "effective_batch_size": int(
+                    training_effective_batch_size if training_effective_batch_size is not None else 128
+                ),
                 "max_tokens_per_gpu": int(training_max_tokens_per_gpu),
                 "max_seq_len": int(training_max_seq_len if training_max_seq_len is not None else 8192),
                 "learning_rate": float(training_learning_rate if training_learning_rate is not None else 5e-6),
                 "backend": training_backend,
                 "ckpt_output_dir": checkpoints_dir,
-                "data_output_dir": training_data_output_dir or os.path.join(checkpoints_dir, "_internal_data_processing"),
+                "data_output_dir": training_data_output_dir
+                or os.path.join(checkpoints_dir, "_internal_data_processing"),
                 "warmup_steps": int(training_lr_warmup_steps) if training_lr_warmup_steps is not None else 0,
-                "checkpoint_at_epoch": bool(training_checkpoint_at_epoch) if training_checkpoint_at_epoch is not None else False,
+                "checkpoint_at_epoch": bool(training_checkpoint_at_epoch)
+                if training_checkpoint_at_epoch is not None
+                else False,
                 "num_epochs": int(training_num_epochs) if training_num_epochs is not None else 1,
                 "nproc_per_node": int(nproc_per_node),
                 "nnodes": int(nnodes),
-
             }
             algo = (training_algorithm or "").strip().upper()
             if algo == "OSFT":
@@ -615,7 +632,7 @@ def train_model(
 
         # Determine which algorithm to use
         algo_str = (training_algorithm or "").strip().upper()
-        use_sft = (algo_str == "SFT")
+        use_sft = algo_str == "SFT"
         algo_value = TrainingHubAlgorithms.SFT if use_sft else TrainingHubAlgorithms.OSFT
 
         # Algorithm selection: include OSFT-only param when applicable
@@ -658,6 +675,7 @@ def train_model(
             if fsdp_sharding_strategy:
                 try:
                     from instructlab.training.config import FSDPOptions, ShardingStrategies
+
                     strategy_map = {
                         "FULL_SHARD": ShardingStrategies.FULL_SHARD,
                         "HYBRID_SHARD": ShardingStrategies.HYBRID_SHARD,
@@ -724,7 +742,9 @@ def train_model(
                 PodTemplateOverrides(
                     PodTemplateOverride(
                         target_jobs=["node"],
-                        metadata={"labels": tpl_labels, "annotations": tpl_annotations} if (tpl_labels or tpl_annotations) else None,
+                        metadata={"labels": tpl_labels, "annotations": tpl_annotations}
+                        if (tpl_labels or tpl_annotations)
+                        else None,
                         spec=_build_pod_spec_override(),
                         # numProcsPerWorker=training_resource_num_procs_per_worker,
                         # numWorkers=training_resource_num_workers,
@@ -759,6 +779,7 @@ def train_model(
     def _get_training_metrics(search_root: str, algo: str = "osft") -> Dict[str, float]:
         """Find and parse TrainingHub metrics file (OSFT/SFT)."""
         import math
+
         # File patterns: OSFT=training_metrics_0.jsonl, SFT=training_params_and_metrics_global0.jsonl
         patterns = ["training_metrics_0.jsonl", "training_params_and_metrics_global0.jsonl"]
         if algo.lower() == "sft":
@@ -786,21 +807,33 @@ def train_model(
                         try:
                             e = json.loads(line)
                             # Map fields: loss/avg_loss->loss, lr->learning_rate, gradnorm/grad_norm->grad_norm
-                            for src, dst in [('loss','loss'),('avg_loss','loss'),('lr','learning_rate'),
-                                             ('grad_norm','grad_norm'),('gradnorm','grad_norm'),
-                                             ('val_loss','eval_loss'),('epoch','epoch'),('step','step')]:
+                            for src, dst in [
+                                ("loss", "loss"),
+                                ("avg_loss", "loss"),
+                                ("lr", "learning_rate"),
+                                ("grad_norm", "grad_norm"),
+                                ("gradnorm", "grad_norm"),
+                                ("val_loss", "eval_loss"),
+                                ("epoch", "epoch"),
+                                ("step", "step"),
+                            ]:
                                 if src in e and dst not in metrics:
-                                    try: metrics[dst] = float(e[src])
-                                    except: pass
-                            lv = e.get('loss') or e.get('avg_loss')
+                                    try:
+                                        metrics[dst] = float(e[src])
+                                    except:
+                                        pass
+                            lv = e.get("loss") or e.get("avg_loss")
                             if lv:
-                                try: losses.append(float(lv))
-                                except: pass
-                        except: pass
+                                try:
+                                    losses.append(float(lv))
+                                except:
+                                    pass
+                        except:
+                            pass
             if losses:
-                metrics['final_loss'] = losses[-1]
-                metrics['min_loss'] = min(losses)
-                metrics['final_perplexity'] = math.exp(min(losses[-1], 10))
+                metrics["final_loss"] = losses[-1]
+                metrics["min_loss"] = min(losses)
+                metrics["final_perplexity"] = math.exp(min(losses[-1], 10))
             logger.info(f"Extracted {len(metrics)} metrics")
         except Exception as ex:
             logger.warning(f"Failed to parse metrics: {ex}")
