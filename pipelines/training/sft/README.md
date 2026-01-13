@@ -5,6 +5,7 @@
 SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 
 A 4-stage ML pipeline for fine-tuning language models:
+
 1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
 2) SFT Training - Fine-tunes using instructlab-training backend
 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
