@@ -12,5 +12,6 @@
 # - allowed_image_patterns: list of regex patterns matched against the full image
 allowed_images:
   - 'quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:latest-cpu'
+  - 'registry.access.redhat.com/ubi9/python-311:latest'
 allowed_image_patterns:
   - '^python:\d+\.\d+.*$'

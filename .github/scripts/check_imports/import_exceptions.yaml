@@ -3,6 +3,7 @@ modules:
   - pytest
   - kfp
   - kfp_components
+  - pipelines
 files:
   # Allow any file in test directories to import from tests module
   # Glob patterns: * matches any directory, ** matches any path
