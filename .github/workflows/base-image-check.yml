@@ -45,3 +45,5 @@ jobs:
 
       - name: Run base image validation
         run: uv run python scripts/validate_base_images/validate_base_images.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}
