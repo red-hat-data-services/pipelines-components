@@ -11,8 +11,8 @@ to new tasks or domains using labeled training data.
 """
 
 import kfp
-from kfp import dsl
 import kfp.kubernetes
+from kfp import dsl
 
 # Import reusable training component
 from kfp_components.components.training.finetuning import train_model
@@ -71,7 +71,9 @@ def sft_pipeline(
     phase_01_dataset_opt_subset: int = 0,
     phase_02_train_opt_annotations: str = "",
     phase_02_train_opt_cpu: str = "4",
-    phase_02_train_opt_env_vars: str = "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000",
+    phase_02_train_opt_env_vars: str = (
+        "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000"
+    ),
     phase_02_train_opt_hf_token: str = "",
     phase_02_train_opt_labels: str = "",
     phase_02_train_opt_learning_rate: float = 5e-6,
@@ -101,6 +103,7 @@ def sft_pipeline(
     """SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 
     A 4-stage ML pipeline for fine-tuning language models:
+
     1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
     2) SFT Training - Fine-tunes using instructlab-training backend
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
@@ -151,7 +154,6 @@ def sft_pipeline(
         phase_04_registry_opt_format_version: Model format version.
         phase_04_registry_opt_port: Model Registry server port.
     """
-
     # =========================================================================
     # Stage 1: Dataset Download
     # =========================================================================
@@ -294,6 +296,6 @@ if __name__ == "__main__":
         pipeline_func=sft_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
-    print(f"SFT Pipeline compiled successfully!")
+    print("SFT Pipeline compiled successfully!")
     print(f"  PVC Size: {PVC_SIZE}")
     print(f"  Storage Class: {PVC_STORAGE_CLASS}")

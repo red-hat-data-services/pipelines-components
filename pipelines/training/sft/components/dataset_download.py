@@ -55,6 +55,7 @@ def dataset_download(
         shared_log_file: Name of the shared log file
     """
     import os
+
     from datasets import Dataset, load_dataset
 
     def log_message(msg: str):
@@ -166,7 +167,7 @@ def dataset_download(
         except ValueError as e:
             # If "train" split doesn't exist, try to find an alternative
             if "Unknown split" in str(e):
-                log_message(f"'train' split not found, attempting to detect available splits...")
+                log_message("'train' split not found, attempting to detect available splits...")
 
                 # Load dataset info without specifying split
                 try:
@@ -210,7 +211,6 @@ def dataset_download(
 
     def download_from_s3(s3_path: str) -> Dataset:
         """Download dataset from AWS S3 using datasets library native S3 support."""
-
         log_message(f"Loading from AWS S3: s3://{s3_path}")
 
         # Get credentials from Kubernetes secret (environment variables)
@@ -236,7 +236,6 @@ def dataset_download(
 
     def download_from_http(http_url: str) -> Dataset:
         """Download dataset from HTTP/HTTPS URL (e.g., MinIO shared links)."""
-
         log_message(f"Loading from HTTP: {http_url}")
 
         # Load dataset directly from HTTP URL using datasets library

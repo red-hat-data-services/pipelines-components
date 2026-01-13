@@ -59,6 +59,7 @@ def model_registry(
         source_namespace: Namespace where pipeline runs (auto-detected if empty).
     """
     import os
+
     from model_registry import ModelRegistry
     from model_registry.exceptions import StoreError
 
@@ -124,8 +125,8 @@ def model_registry(
                     resolved_namespace = ""
 
             print("\n  Provenance:")
-            print(f"    - Source Kind: kfp")
-            print(f"    - Source Class: pipelinerun")
+            print("    - Source Kind: kfp")
+            print("    - Source Class: pipelinerun")
             if source_pipeline_name:
                 version_metadata["pipeline_name"] = source_pipeline_name
                 print(f"    - Pipeline Name: {source_pipeline_name}")

@@ -4,8 +4,8 @@ A comprehensive LLM evaluation component using EleutherAI's lm-evaluation-harnes
 Supports both standard benchmark evaluation and custom holdout evaluation.
 """
 
-from kfp import dsl
 import kfp
+from kfp import dsl
 
 
 @dsl.component(
@@ -61,21 +61,22 @@ def universal_llm_evaluator(
         verbosity: Logging verbosity level (DEBUG, INFO, WARNING, ERROR).
         custom_eval_max_tokens: Max tokens for generation in custom eval (default: 256).
     """
-    import logging
     import json
+    import logging
     import os
-    import time
     import random
+    import time
+
     import torch
 
     # Delayed imports for lm-eval
     from lm_eval import tasks
+    from lm_eval.api.instance import Instance
+    from lm_eval.api.metrics import mean
     from lm_eval.api.registry import get_model
+    from lm_eval.api.task import TaskConfig
     from lm_eval.evaluator import evaluate
     from lm_eval.tasks import get_task_dict
-    from lm_eval.api.instance import Instance
-    from lm_eval.api.task import TaskConfig
-    from lm_eval.api.metrics import mean
 
     # --- 1. Setup Logging ---
     logging.basicConfig(
@@ -259,8 +260,9 @@ def universal_llm_evaluator(
 
         def process_results(self, doc, results):
             """Calculate metrics between prediction and target, plus perplexity."""
-            import sacrebleu
             import math
+
+            import sacrebleu
             from rouge_score import rouge_scorer
 
             generated_text = results[0]
@@ -399,9 +401,10 @@ def universal_llm_evaluator(
     config_path = os.path.join(final_model_path, "config.json")
     if not os.path.exists(config_path):
         logger.error(f"Model directory missing config.json: {final_model_path}")
-        logger.error(
-            f"Directory contents: {os.listdir(final_model_path) if os.path.isdir(final_model_path) else 'NOT A DIRECTORY'}"
-        )
+        if os.path.isdir(final_model_path):
+            logger.error(f"Directory contents: {os.listdir(final_model_path)}")
+        else:
+            logger.error("Path is NOT A DIRECTORY")
         raise ValueError(f"Invalid model directory - no config.json found at {final_model_path}")
 
     # --- 3. Prepare eval dataset info and custom task ---
@@ -484,13 +487,13 @@ def universal_llm_evaluator(
         if isinstance(val, str):
             try:
                 return json.loads(val)
-            except:
+            except json.JSONDecodeError:
                 return val
         return val
 
     tasks_list = parse_input(task_names, [])
     m_args = parse_input(model_args, {})
-    g_kwargs = parse_input(gen_kwargs, {})
+    _ = parse_input(gen_kwargs, {})  # Reserved for future use
     limit_val = None if limit == -1 else limit
 
     # --- 5. Build task dict ---
@@ -530,7 +533,7 @@ def universal_llm_evaluator(
         else:
             try:
                 bs = int(batch_size)
-            except:
+            except ValueError:
                 bs = "auto"
 
         additional_config = {

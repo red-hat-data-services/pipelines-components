@@ -11,8 +11,8 @@ while preserving their original capabilities.
 """
 
 import kfp
-from kfp import dsl
 import kfp.kubernetes
+from kfp import dsl
 
 # Import reusable training component
 from kfp_components.components.training.finetuning import train_model
@@ -77,6 +77,7 @@ def osft_pipeline(
     """OSFT Training Pipeline - Continual learning without catastrophic forgetting.
 
     A 4-stage ML pipeline for fine-tuning language models with OSFT:
+
     1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
     2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
@@ -103,7 +104,6 @@ def osft_pipeline(
         phase_02_train_opt_use_liger: [OSFT] Enable Liger kernel optimizations. Recommended
         phase_04_registry_opt_format_version: Model format version
     """
-
     # =========================================================================
     # Stage 1: Dataset Download
     # =========================================================================
@@ -238,6 +238,6 @@ if __name__ == "__main__":
         pipeline_func=osft_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
-    print(f"OSFT Pipeline compiled successfully!")
+    print("OSFT Pipeline compiled successfully!")
     print(f"  PVC Size: {PVC_SIZE}")
     print(f"  Storage Class: {PVC_STORAGE_CLASS}")

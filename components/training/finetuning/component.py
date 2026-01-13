@@ -8,8 +8,9 @@ Reusable inline training component modeled after the OSFT notebook flow.
 - Basic metrics logging and checkpoint export
 """
 
-from kfp import dsl
 from typing import Optional
+
+from kfp import dsl
 
 
 @dsl.component(
@@ -131,8 +132,14 @@ def train_model(
         training_fsdp_sharding_strategy: [SFT] FSDP sharding strategy.
         kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
     """
-    import os, sys, json, time, logging, re, subprocess, shutil
-    from typing import Dict, List, Tuple, Optional as _Optional
+    import json
+    import logging
+    import os
+    import shutil
+    import subprocess
+    import sys
+    from typing import Dict, List, Tuple
+    from typing import Optional as _Optional
 
     # ------------------------------
     # Logging configuration
@@ -195,10 +202,11 @@ def train_model(
     # ------------------------------
     # Kubernetes connection
     # ------------------------------
-    def _init_k8s_client() -> _Optional["k8s_client.ApiClient"]:
+    def _init_k8s_client() -> _Optional[object]:
         """Initialize and return a Kubernetes client from env (server/token) or in-cluster/kubeconfig."""
         try:
-            from kubernetes import client as k8s_client, config as k8s_config
+            from kubernetes import client as k8s_client
+            from kubernetes import config as k8s_config
 
             env_server = os.environ.get("KUBERNETES_SERVER_URL", "").strip()
             env_token = os.environ.get("KUBERNETES_AUTH_TOKEN", "").strip()
@@ -273,7 +281,7 @@ def train_model(
     # ------------------------------
     # Dataset resolution
     # ------------------------------
-    from datasets import load_dataset, load_from_disk, Dataset
+    from datasets import Dataset, load_dataset, load_from_disk
 
     resolved_dataset_dir = os.path.join(pvc_path, "dataset", "train")
     os.makedirs(resolved_dataset_dir, exist_ok=True)
@@ -285,8 +293,11 @@ def train_model(
         return p.startswith("s3://") or p.startswith("http://") or p.startswith("https://")
 
     def _resolve_dataset(input_dataset: _Optional[dsl.Input[dsl.Dataset]], out_dir: str) -> None:
-        """Resolve dataset with preference: existing PVC dir > input artifact > remote artifact/HF > default.
-        Remote path is read from input_dataset.metadata['artifact_path'] if present. If metadata['pvc_dir'] exists, prefer it.
+        """Resolve dataset with preference order.
+
+        Priority: existing PVC dir > input artifact > remote artifact/HF > default.
+        Remote path is read from input_dataset.metadata['artifact_path'] if present.
+        If metadata['pvc_dir'] exists, prefer it.
         """
         # 0) If already present (e.g., staged by prior step), keep it
         if os.path.isdir(out_dir) and any(os.scandir(out_dir)):
@@ -342,7 +353,8 @@ def train_model(
                         ds: Dataset = load_dataset("parquet", data_files=rp, split="train")
                     else:
                         raise ValueError(
-                            "Unsupported remote dataset format. Provide a JSON/JSONL/PARQUET file or a HF dataset repo id."
+                            "Unsupported remote dataset format. "
+                            "Provide a JSON/JSONL/PARQUET file or a HF dataset repo id."
                         )
                     ds.save_to_disk(out_dir)
                     return
@@ -533,16 +545,17 @@ def train_model(
 
     # Wire in TrainingHubTrainer (modularized steps)
     try:
-        from kubeflow.trainer import TrainerClient
-        from kubeflow.trainer.rhai import TrainingHubAlgorithms, TrainingHubTrainer
         from kubeflow_trainer_api import models as _th_models  # noqa: F401
+
         from kubeflow.common.types import KubernetesBackendConfig
+        from kubeflow.trainer import TrainerClient
         from kubeflow.trainer.options.kubernetes import (
-            PodTemplateOverrides,
-            PodTemplateOverride,
-            PodSpecOverride,
             ContainerOverride,
+            PodSpecOverride,
+            PodTemplateOverride,
+            PodTemplateOverrides,
         )
+        from kubeflow.trainer.rhai import TrainingHubAlgorithms, TrainingHubTrainer
 
         if _api_client is None:
             raise RuntimeError("Kubernetes API client is not initialized")
@@ -700,8 +713,6 @@ def train_model(
             Args:
                 parameters: Dict of training parameters (passed by SDK as single arg)
             """
-            import os
-
             # Extract algorithm and fsdp_sharding_strategy from parameters
             args = dict(parameters or {})
             algorithm = args.pop("_algorithm", "sft")
@@ -765,8 +776,7 @@ def train_model(
                         volume_mounts=volume_mounts,
                     )
                 ],
-                # node_selector=(kubernetes_config.node_selector if kubernetes_config and getattr(kubernetes_config, "node_selector", None) else None),
-                # tolerations=(kubernetes_config.tolerations if kubernetes_config and getattr(kubernetes_config, "tolerations", None) else None),
+                # node_selector and tolerations are not yet supported
             )
 
         job_name = client.train(
@@ -862,15 +872,15 @@ def train_model(
                                 if src in e and dst not in metrics:
                                     try:
                                         metrics[dst] = float(e[src])
-                                    except:
+                                    except (ValueError, TypeError):
                                         pass
                             lv = e.get("loss") or e.get("avg_loss")
                             if lv:
                                 try:
                                     losses.append(float(lv))
-                                except:
+                                except (ValueError, TypeError):
                                     pass
-                        except:
+                        except (ValueError, KeyError):
                             pass
             if losses:
                 metrics["final_loss"] = losses[-1]
