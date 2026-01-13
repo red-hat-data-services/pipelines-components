@@ -1,6 +1,6 @@
 name: sft_pipeline
 tier: core
-stability: alpha
+stability: dev preview
 dependencies:
   kubeflow:
     - name: Pipelines

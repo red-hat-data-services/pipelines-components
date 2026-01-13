@@ -7,7 +7,7 @@ from kfp import dsl
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th03-cuda128-torch28-py312-rhel9@sha256:84d05c5ef9dd3c6ff8173c93dca7e2e6a1cab290f416fb2c469574f89b8e6438",
+    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:latest-cpu",
     packages_to_install=["model-registry==0.3.4"],
 )
 def model_registry(
