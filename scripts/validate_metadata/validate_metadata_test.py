@@ -133,7 +133,7 @@ def test_validate_metadata_yaml_success(test_data):
             expected_exception=ValidationError,
             expected_exception_msg=re.escape(
                 "Invalid 'stability' value in metadata.yaml for 'invalid-stability': 'invalid-stability'. "
-                "Expected one of: ['alpha', 'beta', 'stable']."
+                "Expected one of: ['alpha', 'beta', 'stable', 'dev preview']."
             ),
         ),
         ValidateMetadataTestFile(
