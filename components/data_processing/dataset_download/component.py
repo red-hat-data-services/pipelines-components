@@ -34,23 +34,10 @@ def dataset_download(
     Args:
         train_dataset: Output artifact for training dataset (JSONL format)
         eval_dataset: Output artifact for evaluation dataset (JSONL format)
-        dataset_uri: Dataset URI with scheme. Supported formats:
-            - HuggingFace: hf://dataset-name or dataset-name
-            - AWS S3: s3://bucket/path/file.jsonl
-            - HTTP/HTTPS: http://... or https://... (e.g., MinIO shared links)
-            - Local/PVC: pvc://path/file.jsonl or /absolute/path/file.jsonl
-            Examples:
-                - hf://HuggingFaceH4/ultrachat_200k
-                - s3://my-bucket/datasets/chat_data.jsonl
-                - https://minio.example.com/api/v1/download-shared-object/...
-                - pvc://datasets/local_data.jsonl
-                - /workspace/data/dataset.jsonl
-            Note: S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) must be
-            provided via Kubernetes secret mounted as environment variables
+        dataset_uri: Dataset URI (hf://, s3://, https://, pvc:// or absolute path)
         pvc_mount_path: Path where the shared PVC is mounted
-        train_split_ratio: Ratio for train split (e.g., 0.9 for 90/10, 0.8 for 80/20)
-        subset_count: Number of examples to use (0 = use all). Useful for testing with
-            smaller datasets (e.g., 100 for quick tests, 1000 for validation runs)
+        train_split_ratio: Ratio for train split (e.g., 0.9 for 90/10)
+        subset_count: Number of examples to use (0 = use all)
         hf_token: HuggingFace token for gated/private datasets
         shared_log_file: Name of the shared log file
     """

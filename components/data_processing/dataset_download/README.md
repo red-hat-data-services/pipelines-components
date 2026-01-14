@@ -12,21 +12,12 @@ Validates that datasets follow chat template format (messages/conversations with
 |-----------|------|---------|-------------|
 | `train_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for training dataset (JSONL format) |
 | `eval_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for evaluation dataset (JSONL format) |
-| `dataset_uri` | `str` | `None` | Dataset URI with scheme (hf://, s3://, https://, pvc://) |
+| `dataset_uri` | `str` | `None` | Dataset URI (hf://, s3://, https://, pvc:// or absolute path) |
 | `pvc_mount_path` | `str` | `None` | Path where the shared PVC is mounted |
 | `train_split_ratio` | `float` | `0.9` | Ratio for train split (e.g., 0.9 for 90/10) |
 | `subset_count` | `int` | `0` | Number of examples to use (0 = use all) |
 | `hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
 | `shared_log_file` | `str` | `pipeline_log.txt` | Name of the shared log file |
-
-### Supported URI Schemes
-
-- **HuggingFace**: `hf://dataset-name` or just `dataset-name`
-- **AWS S3**: `s3://bucket/path/file.jsonl`
-- **HTTP/HTTPS**: `http://...` or `https://...` (e.g., MinIO shared links)
-- **Local/PVC**: `pvc://path/file.jsonl` or `/absolute/path/file.jsonl`
-
-> **Note**: S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) must be provided via Kubernetes secret mounted as environment variables.
 
 ## Metadata 🗂️
 
