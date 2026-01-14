@@ -14,7 +14,7 @@ from kfp import dsl
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:latest-cpu",
+    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
     packages_to_install=[
         "kubernetes",
         "olot",
