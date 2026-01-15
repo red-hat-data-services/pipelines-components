@@ -1,5 +1,4 @@
 name: sft_minimal_pipeline
-tier: core
 stability: alpha
 dependencies:
   kubeflow:

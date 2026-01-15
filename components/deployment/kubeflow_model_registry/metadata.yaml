@@ -1,5 +1,4 @@
 name: kubeflow_model_registry
-tier: core
 stability: experimental
 dependencies:
   kubeflow:

@@ -1,5 +1,4 @@
 name: finetuning
-tier: core
 stability: alpha
 dependencies:
   kubeflow:

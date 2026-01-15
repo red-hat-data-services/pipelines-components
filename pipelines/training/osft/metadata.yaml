@@ -1,5 +1,4 @@
 name: osft_pipeline
-tier: core
 stability: alpha
 dependencies:
   kubeflow:
