@@ -11,7 +11,8 @@ from semver import Version
 # The following ordered fields are required in a metadata.yaml file.
 REQUIRED_FIELDS = ["name", "stability", "dependencies", "lastVerified"]
 # The following fields are optional in a metadata.yaml file.
-OPTIONAL_FIELDS = ["tags", "ci", "links"]
+# NOTE: 'readme_sections' is used to drive README generation and is optional.
+OPTIONAL_FIELDS = ["tags", "ci", "links", "readme_sections"]
 STABILITY_OPTIONS = ["experimental", "alpha", "beta", "stable"]
 # 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
 DEPENDENCIES_FIELDS = ["kubeflow", "external_services"]
@@ -319,6 +320,14 @@ def validate_required_fields(metadata: dict):
                 raise ValidationError(
                     f"{value_type} value identified in field 'links' in {METADATA} for '{name}'. "
                     f"Value must be dictionary."
+                )
+
+        elif field == "readme_sections":
+            sections_val = metadata.get("readme_sections")
+            if not isinstance(sections_val, dict):
+                raise ValidationError(
+                    f"{value_type} value identified in field 'readme_sections' in {METADATA} for '{name}'. "
+                    f"Value must be dictionary of markdown snippet strings."
                 )
 
 

@@ -13,6 +13,23 @@ A 4-stage ML pipeline for fine-tuning language models:
 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
 4) Model Registry - Registers trained model to Kubeflow Model Registry
 
+## Quick start 🚀
+
+For a minimal run of this pipeline:
+
+- **Required parameter**:
+  - Set `phase_01_dataset_man_data_uri` to a supported dataset, for example:
+    - `hf://LipengCS/Table-GPT:All`
+  - All other inputs have reasonable defaults and can be left unchanged for a first run.
+- **Pipeline server**: Must be configured for your OpenShift AI project (see Prerequisites below).
+- **Model Registry**: Optional. Leave `phase_04_registry_man_address` empty to skip registration.
+- **Secrets**:
+  - **Required**: `kubernetes-credentials` (provides `KUBERNETES_SERVER_URL` and `KUBERNETES_AUTH_TOKEN`) so the
+    training step can submit a Training Hub SFT job.
+  - **Optional but often needed**:
+    - `hf-token` (`HF_TOKEN`) if the chosen HF dataset or model is gated/private.
+    - `s3-secret` if you use an `s3://` dataset URI instead of HF/HTTP/PVC`.
+
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
