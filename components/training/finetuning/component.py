@@ -18,6 +18,7 @@ from kfp import dsl
     packages_to_install=[
         "kubernetes",
         "olot",
+        "matplotlib",
     ],
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
@@ -34,6 +35,7 @@ def train_model(
     # Outputs (no defaults)
     output_model: dsl.Output[dsl.Model],
     output_metrics: dsl.Output[dsl.Metrics],
+    output_loss_chart: dsl.Output[dsl.HTML],
     # Dataset input and optional remote artifact path via metadata (e.g., s3://...)
     dataset: dsl.Input[dsl.Dataset] = None,
     # Base model (HF ID or local path)
@@ -885,8 +887,12 @@ def train_model(
     # ------------------------------
     # Metrics (hyperparameters + training metrics from trainer output)
     # ------------------------------
-    def _get_training_metrics(search_root: str, algo: str = "osft") -> Dict[str, float]:
-        """Find and parse TrainingHub metrics file (OSFT/SFT)."""
+    def _get_training_metrics(search_root: str, algo: str = "osft") -> tuple:
+        """Find and parse TrainingHub metrics file (OSFT/SFT).
+        
+        Returns:
+            Tuple of (metrics dict, losses list for plotting)
+        """
         import math
 
         # File patterns: OSFT=training_metrics_0.jsonl, SFT=training_params_and_metrics_global0.jsonl
@@ -905,7 +911,7 @@ def train_model(
 
         if not mfile or not os.path.exists(mfile):
             logger.warning(f"No metrics file in {search_root}")
-            return {}
+            return {}, []
 
         logger.info(f"Reading metrics from: {mfile}")
         metrics, losses = {}, []
@@ -943,13 +949,93 @@ def train_model(
                 metrics["final_loss"] = losses[-1]
                 metrics["min_loss"] = min(losses)
                 metrics["final_perplexity"] = math.exp(min(losses[-1], 10))
-            logger.info(f"Extracted {len(metrics)} metrics")
+            logger.info(f"Extracted {len(metrics)} metrics, {len(losses)} loss values")
         except Exception as ex:
             logger.warning(f"Failed to parse metrics: {ex}")
-        return metrics
+        return metrics, losses
+
+    def _generate_loss_chart(losses: list, output_path: str) -> None:
+        """Generate a loss curve chart and save as HTML."""
+        import base64
+        from io import BytesIO
+
+        import matplotlib
+        matplotlib.use("Agg")  # Non-interactive backend
+        import matplotlib.pyplot as plt
+
+        if not losses:
+            logger.warning("No loss data available for chart")
+            with open(output_path, "w") as f:
+                f.write("<html><body><p>No training loss data available.</p></body></html>")
+            return
+
+        try:
+            # Create the plot - larger size for better visibility
+            fig, ax = plt.subplots(figsize=(14, 8))
+            steps = list(range(1, len(losses) + 1))
+            ax.plot(steps, losses, "b-", linewidth=2, label="Training Loss")
+            ax.set_xlabel("Step", fontsize=12)
+            ax.set_ylabel("Loss", fontsize=12)
+            ax.set_title("Training Loss Curve", fontsize=14, fontweight="bold")
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+
+            # Add min/final loss annotations
+            min_loss = min(losses)
+            min_idx = losses.index(min_loss)
+            ax.annotate(
+                f"Min: {min_loss:.4f}",
+                xy=(min_idx + 1, min_loss),
+                xytext=(10, 10),
+                textcoords="offset points",
+                fontsize=9,
+                arrowprops=dict(arrowstyle="->", color="green"),
+                color="green",
+            )
+            ax.annotate(
+                f"Final: {losses[-1]:.4f}",
+                xy=(len(losses), losses[-1]),
+                xytext=(-60, 10),
+                textcoords="offset points",
+                fontsize=9,
+                color="red",
+            )
+
+            # Save to buffer and encode as base64 - higher DPI for crisp display
+            buf = BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+            buf.seek(0)
+            img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+            plt.close(fig)
+
+            # Write HTML with embedded image
+            # Simple HTML - clickable image opens full size PNG
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Training Loss</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: system-ui, sans-serif; padding: 5px; background: #fff; }}
+        .stats {{ font-size: 10px; margin-bottom: 5px; color: #333; }}
+        .chart {{ width: 100%; cursor: pointer; }}
+    </style>
+</head>
+<body>
+    <div class="stats">Loss: {losses[0]:.4f} to {losses[-1]:.4f} (min {min_loss:.4f}) | {len(losses)} steps</div>
+    <img class="chart" src="data:image/png;base64,{img_base64}" alt="Training Loss" onclick="window.open(this.src, '_blank')" title="Click to view full size" />
+</body>
+</html>"""
+            with open(output_path, "w") as f:
+                f.write(html_content)
+            logger.info(f"Generated loss chart at {output_path}")
+        except Exception as ex:
+            logger.warning(f"Failed to generate loss chart: {ex}")
+            with open(output_path, "w") as f:
+                f.write(f"<html><body><p>Failed to generate chart: {ex}</p></body></html>")
 
     def _log_all_metrics() -> None:
-        """Log hyperparameters and training metrics."""
+        """Log hyperparameters and training metrics, and generate loss chart."""
         # 1. Log hyperparameters
         output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 1))
         output_metrics.log_metric("effective_batch_size", float(params.get("effective_batch_size") or 128))
@@ -960,9 +1046,12 @@ def train_model(
 
         # 2. Find and parse training metrics file
         algo = (training_algorithm or "osft").strip().lower()
-        training_metrics = _get_training_metrics(checkpoints_dir, algo)
+        training_metrics, losses = _get_training_metrics(checkpoints_dir, algo)
         for k, v in training_metrics.items():
             output_metrics.log_metric(f"training_{k}", v)
+
+        # 3. Generate loss chart visualization
+        _generate_loss_chart(losses, output_loss_chart.path)
 
     _log_all_metrics()
 
