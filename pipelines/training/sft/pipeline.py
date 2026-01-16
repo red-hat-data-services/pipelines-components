@@ -65,14 +65,12 @@ def sft_pipeline(
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
-    phase_01_dataset_opt_hf_token: str = "",
     phase_01_dataset_opt_subset: int = 0,
     phase_02_train_opt_annotations: str = "",
     phase_02_train_opt_cpu: str = "4",
     phase_02_train_opt_env_vars: str = (
         "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000"
     ),
-    phase_02_train_opt_hf_token: str = "",
     phase_02_train_opt_labels: str = "",
     phase_02_train_opt_learning_rate: float = 5e-6,
     phase_02_train_opt_lr_warmup: int = 0,
@@ -121,13 +119,11 @@ def sft_pipeline(
         phase_04_registry_man_author: Author name for the registered model.
         phase_04_registry_man_name: Model name in registry.
         phase_04_registry_man_version: Semantic version (major.minor.patch).
-        phase_01_dataset_opt_hf_token: HuggingFace token for private datasets.
         phase_01_dataset_opt_subset: Limit dataset to N samples (0 = all).
         phase_02_train_opt_annotations: Pod annotations as key=value,key=value.
         phase_02_train_opt_cpu: CPU cores per worker.
         phase_02_train_opt_env_vars: Environment variables as KEY=VAL,KEY=VAL.
         phase_02_train_opt_fsdp_sharding: FSDP strategy (FULL_SHARD, HYBRID_SHARD).
-        phase_02_train_opt_hf_token: HuggingFace token for gated models.
         phase_02_train_opt_labels: Pod labels as key=value,key=value.
         phase_02_train_opt_learning_rate: Learning rate for training.
         phase_02_train_opt_lr_scheduler: LR scheduler type (cosine, linear).
@@ -160,7 +156,6 @@ def sft_pipeline(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         train_split_ratio=phase_01_dataset_man_data_split,
         subset_count=phase_01_dataset_opt_subset,
-        hf_token=phase_01_dataset_opt_hf_token,
         shared_log_file="pipeline_log.txt",
     )
     dataset_download_task.set_caching_options(False)

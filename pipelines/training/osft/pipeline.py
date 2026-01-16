@@ -67,12 +67,10 @@ def osft_pipeline(
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
-    phase_01_dataset_opt_hf_token: str = "",
     phase_01_dataset_opt_subset: int = 0,
     phase_02_train_opt_annotations: str = "",
     phase_02_train_opt_cpu: str = "8",
     phase_02_train_opt_env_vars: str = "",
-    phase_02_train_opt_hf_token: str = "",
     phase_02_train_opt_labels: str = "",
     phase_02_train_opt_learning_rate: float = 5e-6,
     phase_02_train_opt_lr_scheduler: str = "cosine",
@@ -124,12 +122,10 @@ def osft_pipeline(
             phase_04_registry_man_reg_author: Author name for the registered model
             phase_04_registry_man_reg_name: Model name in registry
             phase_04_registry_man_reg_version: Semantic version (major.minor.patch)
-            phase_01_dataset_opt_hf_token: HuggingFace token for gated/private datasets
             phase_01_dataset_opt_subset: Limit to first N examples (0 = all)
             phase_02_train_opt_annotations: K8s annotations (key=val,...)
             phase_02_train_opt_cpu: CPU cores per worker. 8 recommended for OSFT
             phase_02_train_opt_env_vars: Env vars (KEY=VAL,...). OSFT typically doesn't need special vars
-            phase_02_train_opt_hf_token: HuggingFace token for gated models (Llama, Mistral)
             phase_02_train_opt_labels: K8s labels (key=val,...)
             phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
             phase_02_train_opt_lr_scheduler: [OSFT] LR schedule (cosine, linear, constant)
@@ -165,7 +161,6 @@ def osft_pipeline(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         train_split_ratio=phase_01_dataset_man_data_split,
         subset_count=phase_01_dataset_opt_subset,
-        hf_token=phase_01_dataset_opt_hf_token,
         shared_log_file="pipeline_log.txt",
     )
     dataset_download_task.set_caching_options(False)

@@ -31,12 +31,10 @@ A 4-stage ML pipeline for fine-tuning language models with OSFT:
 | `phase_04_registry_man_reg_author` | `str` | `pipeline` | Author name for the registered model |
 | `phase_04_registry_man_reg_name` | `str` | `osft-model` | Model name in registry |
 | `phase_04_registry_man_reg_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
-| `phase_01_dataset_opt_hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |
 | `phase_02_train_opt_annotations` | `str` | `` | K8s annotations (key=val,...) |
 | `phase_02_train_opt_cpu` | `str` | `8` | CPU cores per worker. 8 recommended for OSFT |
 | `phase_02_train_opt_env_vars` | `str` | `` | Env vars (KEY=VAL,...). OSFT typically doesn't need special vars |
-| `phase_02_train_opt_hf_token` | `str` | `` | HuggingFace token for gated models (Llama, Mistral) |
 | `phase_02_train_opt_labels` | `str` | `` | K8s labels (key=val,...) |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate (1e-6 to 1e-4). 5e-6 recommended |
 | `phase_02_train_opt_lr_scheduler` | `str` | `cosine` | [OSFT] LR schedule (cosine, linear, constant) |

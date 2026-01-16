@@ -29,7 +29,6 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip registration) |
 | `phase_04_registry_man_reg_name` | `str` | `sft-model` | Model name in registry |
 | `phase_04_registry_man_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
-| `phase_01_dataset_opt_hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |
 | `phase_02_train_opt_env_vars` | `str` | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, NCCL_DEBUG=INFO, NCCL_P2P_DISABLE=1, INSTRUCTLAB_NCCL_TIMEOUT_MS=60000` | Env vars (KEY=VAL,...) with NCCL timeout and memory optimization |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate (1e-6 to 1e-4). 5e-6 recommended |

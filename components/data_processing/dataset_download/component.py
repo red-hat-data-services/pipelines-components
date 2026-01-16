@@ -24,7 +24,6 @@ def dataset_download(
     pvc_mount_path: str,
     train_split_ratio: float = 0.9,
     subset_count: int = 0,
-    hf_token: str = "",
     shared_log_file: str = "pipeline_log.txt",
 ):
     """Download and prepare datasets from multiple sources.
@@ -38,12 +37,15 @@ def dataset_download(
         pvc_mount_path: Path where the shared PVC is mounted
         train_split_ratio: Ratio for train split (e.g., 0.9 for 90/10)
         subset_count: Number of examples to use (0 = use all)
-        hf_token: HuggingFace token for gated/private datasets
         shared_log_file: Name of the shared log file
     """
     import os
 
     from datasets import Dataset, load_dataset
+
+    # Prefer HF_TOKEN from the environment (typically injected via the `hf-token` Kubernetes secret).
+    # This keeps authentication configuration in Kubernetes secrets instead of pipeline parameters.
+    hf_token = (os.environ.get("HF_TOKEN") or "").strip()
 
     def log_message(msg: str):
         """Log message to console and shared log file."""
@@ -149,16 +151,19 @@ def dataset_download(
         else:
             log_message(f"Downloading from HuggingFace: {ds_id}")
 
-        # Set up authentication if token provided
+        # Set up authentication if token provided via environment
         if hf_token:
-            log_message("Using provided HuggingFace token for authentication")
+            log_message("Using HF_TOKEN from environment for Hugging Face authentication")
         else:
             import logging as _logging
 
+            pretty_id = f"{ds_id}:{ds_config}" if ds_config else ds_id
             _logging.warning(
-                "No HF_TOKEN provided; only public, non-gated Hugging Face datasets can be downloaded. "
-                "If you need access to gated datasets, configure the 'hf-token' Kubernetes secret or "
-                "pass an hf_token parameter."
+                "HF_TOKEN is not set; attempting to download Hugging Face dataset "
+                f"'{pretty_id}' without authentication. "
+                "Only public, non-gated datasets can be downloaded. "
+                "If you need access to gated datasets, configure the 'hf-token' Kubernetes "
+                "secret so HF_TOKEN is available to the component."
             )
 
         # Try to load with "train" split first

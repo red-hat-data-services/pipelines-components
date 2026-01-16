@@ -18,7 +18,6 @@ Validates that datasets follow chat template format (messages/conversations with
 | `pvc_mount_path` | `str` | `None` | Path where the shared PVC is mounted |
 | `train_split_ratio` | `float` | `0.9` | Ratio for train split (e.g., 0.9 for 90/10) |
 | `subset_count` | `int` | `0` | Number of examples to use (0 = use all) |
-| `hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
 | `shared_log_file` | `str` | `pipeline_log.txt` | Name of the shared log file |
 
 ## Metadata 🗂️

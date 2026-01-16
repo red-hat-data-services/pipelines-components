@@ -30,12 +30,10 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_04_registry_man_author` | `str` | `pipeline` | Author name for the registered model. |
 | `phase_04_registry_man_name` | `str` | `sft-model` | Model name in registry. |
 | `phase_04_registry_man_version` | `str` | `1.0.0` | Semantic version (major.minor.patch). |
-| `phase_01_dataset_opt_hf_token` | `str` | `` | HuggingFace token for private datasets. |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit dataset to N samples (0 = all). |
 | `phase_02_train_opt_annotations` | `str` | `` | Pod annotations as key=value,key=value. |
 | `phase_02_train_opt_cpu` | `str` | `4` | CPU cores per worker. |
 | `phase_02_train_opt_env_vars` | `str` | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000` | Environment variables as KEY=VAL,KEY=VAL. |
-| `phase_02_train_opt_hf_token` | `str` | `` | HuggingFace token for gated models. |
 | `phase_02_train_opt_labels` | `str` | `` | Pod labels as key=value,key=value. |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate for training. |
 | `phase_02_train_opt_lr_warmup` | `int` | `0` | Learning rate warmup steps. |

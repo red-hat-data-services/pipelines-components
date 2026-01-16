@@ -30,7 +30,6 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 | `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip registration) |
 | `phase_04_registry_man_reg_name` | `str` | `osft-model` | Model name in registry |
 | `phase_04_registry_man_reg_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
-| `phase_01_dataset_opt_hf_token` | `str` | `` | HuggingFace token for gated/private datasets |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate (1e-6 to 1e-4). 5e-6 recommended |
 | `phase_02_train_opt_max_seq_len` | `int` | `8192` | Max sequence length in tokens |

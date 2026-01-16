@@ -20,18 +20,20 @@ class TestDatasetDownloadUnitTests:
         sig = inspect.signature(dataset_download.python_func)
         params = list(sig.parameters.keys())
 
-        expected_params = [
+        expected_params = {
             "train_dataset",
             "eval_dataset",
             "dataset_uri",
             "pvc_mount_path",
             "train_split_ratio",
             "subset_count",
-            "hf_token",
-        ]
+        }
 
+        # Component should expose exactly the expected parameters (no per-call hf_token;
+        # authentication is driven via the HF_TOKEN environment variable instead).
         for param in expected_params:
             assert param in params, f"Expected parameter '{param}' not found in component"
+        assert "hf_token" not in params, "hf_token should not be an explicit component parameter"
 
     def test_component_default_values(self):
         """Test that the component has expected default values."""
@@ -42,7 +44,6 @@ class TestDatasetDownloadUnitTests:
 
         assert params["train_split_ratio"].default == 0.9
         assert params["subset_count"].default == 0
-        assert params["hf_token"].default == ""
 
     @mock.patch.dict("sys.modules", {"datasets": mock.MagicMock()})
     @mock.patch("datasets.load_dataset")

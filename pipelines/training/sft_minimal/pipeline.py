@@ -71,7 +71,6 @@ def sft_minimal_pipeline(
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
-    phase_01_dataset_opt_hf_token: str = "",
     phase_01_dataset_opt_subset: int = 0,
     phase_02_train_opt_env_vars: str = (
         "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, "
@@ -105,7 +104,6 @@ def sft_minimal_pipeline(
         phase_04_registry_man_address: Model Registry address (empty = skip registration)
         phase_04_registry_man_version: Semantic version (major.minor.patch)
         phase_04_registry_man_reg_name: Model name in registry
-        phase_01_dataset_opt_hf_token: HuggingFace token for gated/private datasets
         phase_01_dataset_opt_subset: Limit to first N examples (0 = all)
         phase_02_train_opt_env_vars: Env vars (KEY=VAL,...) with NCCL timeout and memory optimization
         phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
@@ -122,7 +120,6 @@ def sft_minimal_pipeline(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         train_split_ratio=phase_01_dataset_man_data_split,
         subset_count=phase_01_dataset_opt_subset,
-        hf_token=phase_01_dataset_opt_hf_token,
         shared_log_file="pipeline_log.txt",
     )
     dataset_download_task.set_caching_options(False)
