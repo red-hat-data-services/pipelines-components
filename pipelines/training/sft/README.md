@@ -8,10 +8,17 @@ SFT Training Pipeline - Standard supervised fine-tuning with instructlab-trainin
 
 A 4-stage ML pipeline for fine-tuning language models:
 
-1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
-2) SFT Training - Fine-tunes using instructlab-training backend
-3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-4) Model Registry - Registers trained model to Kubeflow Model Registry
+1) Dataset Download – Uses the shared ``dataset_download`` component to pull datasets from Hugging Face, S3,
+   HTTP, or PVC, validate chat-format structure, and materialize train/eval JSONL splits on the workspace PVC
+   and in the artifact store.
+2) SFT Training – Uses the shared ``train_model`` component with the TrainingHub ``instructlab-training``
+   backend to run supervised fine-tuning, producing a fine-tuned checkpoint and training metrics for the base
+   model.
+3) Evaluation – Runs the ``universal_llm_evaluator`` component, which wraps lm-evaluation-harness (typically
+   with a vLLM backend) to score the SFT model on benchmarks such as ARC-Easy, MMLU, and GSM8K, as well as
+   optional custom holdout sets.
+4) Model Registry – Uses the ``kubeflow_model_registry`` component to register the fine-tuned model in Kubeflow
+   Model Registry, attaching both training and evaluation metadata to the model version.
 
 ## Inputs 📥
 
@@ -90,3 +97,87 @@ A 4-stage ML pipeline for fine-tuning language models:
 ## Additional Resources 📚
 
 - **Documentation**: [https://github.com/kubeflow/trainer](https://github.com/kubeflow/trainer)
+
+<!-- custom-content -->
+
+## Compiling the Pipeline
+
+This pipeline is defined as a Python function in `pipeline.py` and must be **compiled to a pipeline YAML** before it
+can be imported into OpenShift AI.
+
+1. **Ensure KFP SDK version**  
+   Install or upgrade to **Kubeflow Pipelines SDK >= 2.15.2** in your environment:
+
+   ```bash
+   pip install "kfp>=2.15.2"
+   ```
+
+2. **Compile the pipeline**  
+   From the repository root (or your chosen working directory), run a small Python snippet that imports and compiles
+   the pipeline, for example:
+
+   ```python
+   from kfp import dsl
+   from pipelines.training.sft import pipeline as sft_pipeline_module
+
+   @dsl.pipeline
+   def compiled_sft_pipeline(**kwargs):
+       return sft_pipeline_module.sft_pipeline(**kwargs)
+
+   if __name__ == "__main__":
+       from kfp import compiler
+
+       compiler.Compiler().compile(
+           pipeline_func=compiled_sft_pipeline,
+           package_path="sft_pipeline.yaml",
+       )
+   ```
+
+   This will produce an `sft_pipeline.yaml` file that you can upload to OpenShift AI.
+
+3. **Import the compiled pipeline into OpenShift AI**  
+   Use the OpenShift AI console to import the compiled YAML as a new pipeline. For detailed UI steps, see the Red Hat
+   documentation:  
+   - [Importing a pipeline](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.0/html-single/working_with_ai_pipelines/index#importing-a-pipeline_ai-pipelines)
+
+Once imported, you can create runs and experiments for this pipeline in the OpenShift AI UI.
+
+## Managing Kubernetes Secrets for This Pipeline 🔐
+
+This pipeline expects several Kubernetes secrets to be present in the **same namespace** as your pipeline runs. To
+make setup easier, this directory includes a `secrets` subfolder with:
+
+- **Secret manifests**:
+  - `kubernetes-credentials.yaml`
+  - `hf-token.yaml`
+  - `s3-secret.yaml`
+  - `oci-pull-secret-model-download.yaml`
+- **Helper script**:
+  - `create_secrets.sh`
+
+Before using the script:
+
+1. Open each YAML file under `secrets/` and **replace the placeholder values** with real credentials for your environment.
+2. Save the changes locally.
+
+To create all four secrets in the **current kubectl namespace**:
+
+```bash
+cd pipelines-components/pipelines/training/sft/secrets
+./create_secrets.sh
+```
+
+To target a specific namespace (for example, `my-project`):
+
+```bash
+./create_secrets.sh my-project
+```
+
+To create only a subset of secrets (for example, just `kubernetes-credentials` and `hf-token`):
+
+```bash
+./create_secrets.sh my-project kubernetes-credentials hf-token
+```
+
+If you prefer, you can **create the same secrets via the OpenShift AI / OpenShift UI** instead of using the script; the
+YAML files serve as a reference for the expected keys and structure.

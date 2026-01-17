@@ -76,10 +76,16 @@ def osft_minimal_pipeline(
 
     A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 
-    1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
-    2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
-    3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-    4) Model Registry - Registers trained model to Kubeflow Model Registry
+    1) Dataset Download – Uses the shared ``dataset_download`` component to resolve datasets from Hugging Face,
+       S3, HTTP, or PVC into validated chat-format JSONL train/eval splits on the workspace PVC and artifact store.
+    2) OSFT Training – Uses the shared ``train_model`` component with the TrainingHub mini-trainer backend to run
+       Orthogonal Subspace Fine-Tuning with a reduced set of hyperparameters tuned for quick experimentation.
+    3) Evaluation – Uses the ``universal_llm_evaluator`` component to evaluate the minimal OSFT model on a small set
+       of benchmarks (for example ARC-Easy) and optional custom data.
+    4) Model Registry – Uses the ``kubeflow_model_registry`` component to register the fine-tuned model in Kubeflow
+       Model Registry when a registry address is provided.
+
+    For advanced configuration (more training and evaluation controls), see the full ``osft_pipeline``.
 
     Args:
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)

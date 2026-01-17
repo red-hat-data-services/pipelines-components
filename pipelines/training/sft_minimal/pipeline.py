@@ -85,12 +85,19 @@ def sft_minimal_pipeline(
 ):
     """SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 
-    A 4-stage ML pipeline for fine-tuning language models:
+    A minimal 4-stage ML pipeline for fine-tuning language models with SFT:
 
-    1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
-    2) SFT Training - Fine-tunes using instructlab-training backend
-    3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-    4) Model Registry - Registers trained model to Kubeflow Model Registry
+    1) Dataset Download – Uses the shared ``dataset_download`` component to fetch and validate chat-format datasets
+       from Hugging Face, S3, HTTP, or PVC, writing train/eval JSONL files to the workspace PVC.
+    2) SFT Training – Uses the shared ``train_model`` component with the TrainingHub ``instructlab-training``
+       backend and a reduced set of hyperparameters suitable for quick trials.
+    3) Evaluation – Uses the ``universal_llm_evaluator`` component to run a small set of benchmarks (for example
+       ARC-Easy) and optional custom holdout data against the fine-tuned model.
+    4) Model Registry – Uses the ``kubeflow_model_registry`` component to optionally register the fine-tuned model in
+       Kubeflow Model Registry when a registry address is configured.
+
+    For more advanced SFT configuration (FSDP, logging options, additional knobs), see the full ``sft_pipeline``.
+
     Args:
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)
         phase_01_dataset_man_data_split: Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training)
