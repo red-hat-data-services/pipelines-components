@@ -8,21 +8,6 @@
 
 {{ overview }}
 
-{% if quick_start %}
-## Quick start 🚀
-
-{{ quick_start }}
-{% endif %}
-{% if prerequisites %}
-## Prerequisites ✅
-
-{{ prerequisites }}
-{% endif %}
-{% if param_naming %}
-## Parameter naming convention 🧩
-
-{{ param_naming }}
-{% endif %}
 {% if parameters %}
 ## Inputs 📥
 
@@ -33,16 +18,12 @@
 {% endfor %}
 
 {% endif %}
-{% if outputs_detail or (returns and not outputs_detail) %}
+{% if returns %}
 ## Outputs 📤
 
-{% if outputs_detail %}
-{{ outputs_detail }}
-{% else %}
 | Name | Type | Description |
 |------|------|-------------|
 | Output | `{{ returns.type }}` | {{ returns.description }} |
-{% endif %}
 
 {% endif %}
 {% if example_code %}
@@ -59,18 +40,6 @@
 {% for key, value in formatted_metadata.items() %}
 - **{{ key }}**: {{ value }}
 {% endfor %}
-
-{% endif %}
-{% if customization %}
-## Customizing this pipeline 🔧
-
-{{ customization }}
-
-{% endif %}
-{% if troubleshooting %}
-## Troubleshooting 🛠️
-
-{{ troubleshooting }}
 
 {% endif %}
 {% if links %}

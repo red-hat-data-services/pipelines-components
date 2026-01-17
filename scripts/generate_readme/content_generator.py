@@ -232,15 +232,6 @@ class ReadmeContentGenerator:
         # Extract links for separate Additional Resources section (removes from feature_metadata)
         links = self.feature_metadata.pop("links", {})
 
-        # Optional rich README sections (stored under readme_sections in metadata.yaml)
-        extra_sections = self.feature_metadata.pop("readme_sections", {}) or {}
-        quick_start = extra_sections.get("quick_start", "")
-        prerequisites = extra_sections.get("prerequisites", "")
-        param_naming = extra_sections.get("param_naming", "")
-        outputs_detail = extra_sections.get("outputs_detail", "")
-        customization = extra_sections.get("customization", "")
-        troubleshooting = extra_sections.get("troubleshooting", "")
-
         stability = str(self.feature_metadata.get("stability", "")).strip()
 
         return {
@@ -253,10 +244,4 @@ class ReadmeContentGenerator:
             "formatted_metadata": self.formatted_feature_metadata,
             "links": links,
             "stability": stability,
-            "quick_start": quick_start,
-            "prerequisites": prerequisites,
-            "param_naming": param_naming,
-            "outputs_detail": outputs_detail,
-            "customization": customization,
-            "troubleshooting": troubleshooting,
         }
