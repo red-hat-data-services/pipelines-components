@@ -87,12 +87,12 @@ def sft_minimal_pipeline(
 
     A 4-stage ML pipeline for fine-tuning language models:
 
-    1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
+    1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
     2) SFT Training - Fine-tunes using instructlab-training backend
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
     4) Model Registry - Registers trained model to Kubeflow Model Registry
     Args:
-        phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)
+        phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url)
         phase_01_dataset_man_data_split: Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training)
         phase_02_train_man_train_batch: Effective batch size (samples per optimizer step). Start with 128
         phase_02_train_man_epochs: Number of training epochs. 1 is often sufficient
@@ -122,7 +122,6 @@ def sft_minimal_pipeline(
         subset_count=phase_01_dataset_opt_subset,
         shared_log_file="pipeline_log.txt",
     )
-    dataset_download_task.set_display_name("1. Data Download")
     dataset_download_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(dataset_download_task, "IfNotPresent")
 
@@ -177,7 +176,6 @@ def sft_minimal_pipeline(
         training_resource_num_procs_per_worker="auto",
         training_resource_num_workers=phase_02_train_man_workers,
     )
-    training_task.set_display_name("2. Fine Tuning")
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")
 
@@ -205,7 +203,6 @@ def sft_minimal_pipeline(
         model_args={},
         gen_kwargs={},
     )
-    eval_task.set_display_name("3. Model Eval")
     eval_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_task, "IfNotPresent")
 
@@ -245,7 +242,6 @@ def sft_minimal_pipeline(
         source_pipeline_run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
         source_namespace="",
     )
-    model_registry_task.set_display_name("4. Model Registry")
     model_registry_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(model_registry_task, "IfNotPresent")
 
