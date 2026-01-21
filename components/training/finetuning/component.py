@@ -131,7 +131,7 @@ def train_model(
         return lg
 
     log = _log()
-    log.info(f"Init: pvc={pvc_path}, model={training_base_model}")
+    log.info(f"Initializing training component with: pvc={pvc_path}, model={training_base_model}")
 
     def find_model_dir(root: str) -> _Opt[str]:
         if not os.path.isdir(root):
@@ -165,8 +165,13 @@ def train_model(
             srv = os.environ.get("KUBERNETES_SERVER_URL", "").strip()
             tok = os.environ.get("KUBERNETES_AUTH_TOKEN", "").strip()
             if not srv or not tok:
-                raise RuntimeError("K8s creds missing: KUBERNETES_SERVER_URL and KUBERNETES_AUTH_TOKEN required")
-            log.info("K8s client from env")
+                raise RuntimeError(
+                    "Kubernetes credentials missing or incomplete: both KUBERNETES_SERVER_URL and "
+                    "KUBERNETES_AUTH_TOKEN must be set and non-empty. Ensure the 'kubernetes-credentials' "
+                    "secret is configured and mounted into the training task."
+                )
+
+            log.info("Initializing Kubernetes client from environment variables")
             cfg = k8s.Configuration()
             cfg.host, cfg.verify_ssl = srv, False
             cfg.api_key = {"authorization": f"Bearer {tok}"}
@@ -280,7 +285,10 @@ def train_model(
                 log.info(f"HF ds: {rp}")
                 load_dataset(rp, split="train").save_to_disk(out_dir)
                 return
-        raise ValueError("No dataset provided")
+        raise ValueError(
+            "No dataset provided or resolvable. Please supply an input artifact, a PVC path via metadata "
+            "('pvc_path' or 'pvc_dir'), or a remote source via metadata['artifact_path'] (S3/HTTP/HF repo id)."
+        )
 
     _resolve_ds(dataset, ds_dir)
 
@@ -352,9 +360,19 @@ def train_model(
         if not raw:
             log.warning("OCI_PULL_SECRET_MODEL_DOWNLOAD not set")
             return None
-        p = json.loads(raw)
+        try:
+            p = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "OCI_PULL_SECRET_MODEL_DOWNLOAD is set but is not valid JSON. "
+                "It must contain Docker config.json content for skopeo authentication."
+            ) from exc
         if not isinstance(p, dict) or not p.get("auths"):
-            raise ValueError("Invalid OCI auth")
+            raise ValueError(
+                "OCI_PULL_SECRET_MODEL_DOWNLOAD is set but does not look like a Docker config.json. "
+                "Expected a JSON object with a non-empty 'auths' field."
+            )
+        log.info("OCI authentication configuration loaded successfully")
         return raw
 
     if isinstance(training_base_model, str) and training_base_model.startswith("oci://"):
@@ -388,14 +406,14 @@ def train_model(
 
         client = TrainerClient(KubernetesBackendConfig(client_configuration=_api.configuration))
 
-        def _rt(c):
+        def _select_runtime(c):
             for r in c.list_runtimes():
                 if getattr(r, "name", "") == "training-hub":
                     log.info(f"Runtime: {r}")
                     return r
             raise RuntimeError("Runtime 'training-hub' not found")
 
-        runtime = _rt(client)
+        runtime = _select_runtime(client)
 
         tgt = (
             [p.strip() for p in training_target_patterns.split(",") if p.strip()] if training_target_patterns else None
@@ -492,6 +510,9 @@ def train_model(
                 from training_hub import sft as tr
             else:
                 from training_hub import osft as tr
+
+            print(f"[PY] Launching {algo.upper()} training...", flush=True)
+
             if fsdp:
                 try:
                     from instructlab.training.config import FSDPOptions, ShardingStrategies
@@ -503,8 +524,10 @@ def train_model(
                     }
                     if fsdp.upper() in sm:
                         a["fsdp_options"] = FSDPOptions(sharding_strategy=sm[fsdp.upper()])
-                except ImportError:
-                    pass
+                except ImportError as exc:
+                    raise RuntimeError(
+                        "FSDP support is not available. Required package 'instructlab.training.config' is missing."
+                    ) from exc
             return tr(**a)
 
         vols, vmts = [], []
@@ -550,15 +573,17 @@ def train_model(
         client.wait_for_job_status(name=job, status={"Complete", "Failed"}, timeout=1800)
         j = client.get_job(name=job)
         if getattr(j, "status", None) == "Failed":
+            log.error(f"Job failed: {j.status}")
             raise RuntimeError(f"Job failed: {j.status}")
         elif getattr(j, "status", None) != "Complete":
+            log.error(f"Unexpected status: {j.status}")
             raise RuntimeError(f"Unexpected status: {j.status}")
-        log.info("Job complete")
+        log.info("Training completed successfully")
     except Exception as e:
         log.error(f"Training failed: {e}")
         raise
 
-    def _metrics(root: str, algo: str = "osft"):
+    def get_training_metrics(root: str, algo: str = "osft"):
         pats = ["training_metrics_0.jsonl", "training_params_and_metrics_global0.jsonl"]
         if algo.lower() == "sft":
             pats = pats[::-1]
@@ -607,7 +632,7 @@ def train_model(
             met["final_perplexity"] = __import__("math").exp(min(loss[-1], 10))
         return met, loss
 
-    def _chart(loss: list, path: str):
+    def plot_training_loss(loss: list, path: str):
         import base64
         from io import BytesIO
 
@@ -660,7 +685,7 @@ def train_model(
         with open(path, "w") as f:
             f.write(html)
 
-    def _log_met():
+    def log_training_metrics():
         output_metrics.log_metric("num_epochs", float(params.get("num_epochs") or 1))
         output_metrics.log_metric("effective_batch_size", float(params.get("effective_batch_size") or 128))
         output_metrics.log_metric("learning_rate", float(params.get("learning_rate") or 5e-6))
@@ -668,12 +693,12 @@ def train_model(
         output_metrics.log_metric("max_tokens_per_gpu", float(params.get("max_tokens_per_gpu") or 0))
         output_metrics.log_metric("unfreeze_rank_ratio", float(params.get("unfreeze_rank_ratio") or 0))
         algo = (training_algorithm or "osft").strip().lower()
-        tm, loss = _metrics(ckpt_dir, algo)
+        tm, loss = get_training_metrics(ckpt_dir, algo)
         for k, v in tm.items():
             output_metrics.log_metric(f"training_{k}", v)
-        _chart(loss, output_loss_chart.path)
+        plot_training_loss(loss, output_loss_chart.path)
 
-    _log_met()
+    log_training_metrics()
 
     def _persist():
         latest = find_model_dir(ckpt_dir)
