@@ -211,6 +211,8 @@ class ReadmeContentGenerator:
             param_type = param_info.get("type", "Any")
             default_str = f"`{param_info['default']}`" if "default" in param_info else "Required"
             description = param_info.get("description", "")
+            # Collapse multi-line descriptions into a single line for markdown tables
+            description = " ".join(description.split())
 
             parameters[param_name] = {
                 "type": param_type,
@@ -221,9 +223,12 @@ class ReadmeContentGenerator:
         # Prepare returns
         returns = self.metadata.get("returns", {})
         if returns:
+            description = returns.get("description", "Component output")
+            # Collapse multi-line descriptions into a single line for markdown tables
+            description = " ".join(description.split())
             returns = {
                 "type": returns.get("type", "Any"),
-                "description": returns.get("description", "Component output"),
+                "description": description,
             }
 
         # Load example pipeline if it exists
