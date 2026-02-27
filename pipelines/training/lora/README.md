@@ -21,10 +21,10 @@ A 4-stage ML pipeline for fine-tuning language models with LoRA:
 | `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split (0.9 = 90%/10%, 1.0 = no split) |
 | `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size (samples per optimizer step) |
 | `phase_02_train_man_train_epochs` | `int` | `2` | Number of training epochs. LoRA typically needs 2-3 |
-| `phase_02_train_man_train_gpu` | `int` | `2` | GPUs per worker. LoRA supports multi-GPU |
+| `phase_02_train_man_train_gpu` | `int` | `1` | GPUs per worker |
 | `phase_02_train_man_train_model` | `str` | `Qwen/Qwen2.5-1.5B-Instruct` | Base model (HuggingFace ID or path) |
 | `phase_02_train_man_train_tokens` | `int` | `32000` | Max tokens per GPU (memory cap). 32000 for LoRA |
-| `phase_02_train_man_train_workers` | `int` | `2` | Number of training pods |
+| `phase_02_train_man_train_workers` | `int` | `1` | Number of training pods |
 | `phase_02_train_man_lora_r` | `int` | `16` | [LoRA] Rank of the low-rank matrices (4, 8, 16, 32, 64) |
 | `phase_02_train_man_lora_alpha` | `int` | `32` | [LoRA] Scaling factor (typically 2x lora_r) |
 | `phase_03_eval_man_eval_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.) |
@@ -52,9 +52,6 @@ A 4-stage ML pipeline for fine-tuning language models with LoRA:
 | `phase_02_train_opt_lora_use_dora` | `bool` | `False` | [LoRA] Use Weight-Decomposed LoRA (DoRA) |
 | `phase_02_train_opt_lora_load_in_4bit` | `bool` | `True` | [QLoRA] Enable 4-bit quantization |
 | `phase_02_train_opt_lora_load_in_8bit` | `bool` | `False` | [QLoRA] Enable 8-bit quantization |
-| `phase_02_train_opt_lora_bnb_4bit_quant_type` | `str` | `nf4` | [QLoRA] Quantization type (nf4, fp4) |
-| `phase_02_train_opt_lora_bnb_4bit_compute_dtype` | `str` | `` | [QLoRA] Compute dtype (bfloat16, float16) |
-| `phase_02_train_opt_lora_bnb_4bit_use_double_quant` | `bool` | `False` | [QLoRA] Enable double quantization |
 | `phase_02_train_opt_lora_sample_packing` | `bool` | `False` | [LoRA] Pack multiple samples for efficiency |
 | `phase_03_eval_opt_batch` | `str` | `auto` | Eval batch size ('auto' or integer) |
 | `phase_03_eval_opt_gen_kwargs` | `dict` | `{}` | Generation params dict (max_tokens, temperature) |

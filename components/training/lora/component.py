@@ -20,8 +20,8 @@ from kfp import dsl
         "kubernetes",
         "olot",
         "matplotlib",
-        "kubeflow@git+https://github.com/opendatahub-io/kubeflow-sdk.git@8f9e677",
-        "kfp-components@git+https://github.com/Fiona-Waters/pipelines-components.git@separate-components",
+        # Shared utilities (logging, K8s init, model persistence, etc.) from the kfp-components package
+        "kfp-components@git+https://github.com/red-hat-data-services/pipelines-components.git@main",
     ],
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
@@ -140,7 +140,7 @@ def train_model(
     _api = init_k8s(log)
 
     cache = os.path.join(pvc_path, ".cache", "huggingface")
-    denv: Dict[str, str] = {
+    default_env: Dict[str, str] = {
         "XDG_CACHE_HOME": "/tmp",
         "TRITON_CACHE_DIR": "/tmp/.triton",
         "HF_HOME": "/tmp/.cache/huggingface",
@@ -150,8 +150,8 @@ def train_model(
         "PYTHONUNBUFFERED": "1",
     }
 
-    menv = configure_env(training_envs, denv, log)
-    setup_hf_token(menv, training_base_model, log)
+    merged_env = configure_env(training_envs, default_env, log)
+    setup_hf_token(merged_env, training_base_model, log)
 
     ds_dir = os.path.join(pvc_path, "dataset", "train")
     os.makedirs(ds_dir, exist_ok=True)
@@ -377,7 +377,7 @@ def train_model(
                 func_args=params,
                 algorithm=TrainingHubAlgorithms.LORA_SFT,
                 packages_to_install=[],
-                env=dict(menv),
+                env=dict(merged_env),
                 resources_per_node=resources,
             ),
             options=[

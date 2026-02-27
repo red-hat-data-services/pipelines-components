@@ -21,10 +21,10 @@ A minimal 4-stage ML pipeline for fine-tuning language models with LoRA:
 | `phase_01_dataset_man_data_split` | `float` | `0.9` | Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training) |
 | `phase_02_train_man_train_batch` | `int` | `128` | Effective batch size (samples per optimizer step) |
 | `phase_02_train_man_train_epochs` | `int` | `2` | Number of training epochs. LoRA typically needs 2-3 |
-| `phase_02_train_man_train_gpu` | `int` | `2` | GPUs per worker. LoRA supports multi-GPU |
+| `phase_02_train_man_train_gpu` | `int` | `1` | GPUs per worker |
 | `phase_02_train_man_train_model` | `str` | `Qwen/Qwen2.5-1.5B-Instruct` | Base model (HuggingFace ID or path) |
 | `phase_02_train_man_train_tokens` | `int` | `32000` | Max tokens per GPU (memory cap). 32000 for LoRA |
-| `phase_02_train_man_train_workers` | `int` | `2` | Number of training pods |
+| `phase_02_train_man_train_workers` | `int` | `1` | Number of training pods |
 | `phase_02_train_man_lora_r` | `int` | `16` | [LoRA] Rank of the low-rank matrices (4, 8, 16, 32, 64) |
 | `phase_02_train_man_lora_alpha` | `int` | `32` | [LoRA] Scaling factor (typically 2x lora_r) |
 | `phase_03_eval_man_eval_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.) |
