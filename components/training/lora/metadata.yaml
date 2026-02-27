@@ -12,7 +12,7 @@ dependencies:
     - name: Kubernetes
       version: ">=1.28.0"
     - name: Unsloth
-      version: ">=2024.11"
+      version: ">=2024.11.0"
 tags:
   - training
   - fine_tuning
