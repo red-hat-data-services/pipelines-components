@@ -13,7 +13,6 @@ This component demonstrates optional parameters with defaults.
 | `required_param` | `str` | `None` | This parameter is required. |
 | `optional_text` | `Optional[str]` | `None` | Optional text to append. |
 | `max_length` | `int` | `100` | Maximum length of output. |
-| `separator` | `str` | `""` | Separator between texts (empty by default). |
 
 ## Outputs 📤
 
