@@ -1,1 +1,1 @@
-"""Tests for scripts.generate_readme."""
+"""Unit tests for the generate_readme package."""
