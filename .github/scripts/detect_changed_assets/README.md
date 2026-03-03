@@ -43,16 +43,11 @@ Core detection logic for the `detect-changed-assets` composite action.
 ```bash
 # Matches these patterns:
 components/<category>/<name>/
-components/<category>/<subcategory>/<name>/
 pipelines/<category>/<name>/
-pipelines/<category>/<subcategory>/<name>/
 
-# Examples:
+# Example:
 # Changed file: components/training/my_trainer/component.py
 # Output: components/training/my_trainer
-#
-# Changed file: components/training/sklearn_trainer/logistic_regression/component.py
-# Output: components/training/sklearn_trainer/logistic_regression
 ```
 
 ## Outputs

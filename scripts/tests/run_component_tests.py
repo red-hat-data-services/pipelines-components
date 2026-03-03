@@ -72,18 +72,10 @@ def discover_test_dirs(targets: Sequence[Path]) -> List[Path]:
         if not search_root.exists():
             continue
 
-        # Direct tests/ folder
         direct = search_root / "tests"
         if direct.is_dir() and _is_member_of_pipeline_or_component(direct):
             if direct not in discovered:
                 discovered.append(direct)
-        else:
-            # Broader target (category, subcategory, or repo root) –
-            # recurse to find all nested tests/ directories.
-            for tests_dir in sorted(search_root.rglob("tests")):
-                if tests_dir.is_dir() and _is_member_of_pipeline_or_component(tests_dir):
-                    if tests_dir not in discovered:
-                        discovered.append(tests_dir)
 
     return discovered
 

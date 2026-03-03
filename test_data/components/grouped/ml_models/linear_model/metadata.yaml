@@ -1,7 +1,0 @@
----
-name: Linear Model
-description: A linear regression training component
-documentation: https://example.com/linear-model
-tags:
-  - testing
-  - subcategory

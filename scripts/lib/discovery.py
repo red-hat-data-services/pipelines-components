@@ -6,7 +6,6 @@ from typing import Any
 
 _COMPONENT_FILENAME = "component.py"
 _PIPELINE_FILENAME = "pipeline.py"
-_RESERVED_SUBDIRS = {"tests", "shared"}
 
 
 def get_repo_root() -> Path:
@@ -59,8 +58,7 @@ def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
         asset_type: Either 'component' or 'pipeline'
 
     Returns:
-        List of dicts with 'path', 'category', 'subcategory', 'name', and 'module_path' keys.
-        'subcategory' is None for direct category assets.
+        List of dicts with 'path', 'category', 'name', and 'module_path' keys
     """
     assets = []
     filename = f"{asset_type}.py"
@@ -72,43 +70,20 @@ def discover_assets(base_dir: Path, asset_type: str) -> list[dict[str, Any]]:
         if not category_dir.is_dir() or category_dir.name.startswith(("_", ".")):
             continue
 
-        for item_dir in category_dir.iterdir():
-            if not item_dir.is_dir() or item_dir.name.startswith(("_", ".")):
+        for asset_dir in category_dir.iterdir():
+            if not asset_dir.is_dir() or asset_dir.name.startswith(("_", ".")):
                 continue
 
-            # Check if this is a direct asset
-            asset_file = item_dir / filename
+            asset_file = asset_dir / filename
             if asset_file.exists():
                 assets.append(
                     {
                         "path": asset_file,
                         "category": category_dir.name,
-                        "subcategory": None,
-                        "name": item_dir.name,
+                        "name": asset_dir.name,
                         "module_path": str(asset_file),
                     }
                 )
-            else:
-                # This might be a subcategory
-                for subitem_dir in item_dir.iterdir():
-                    if (
-                        not subitem_dir.is_dir()
-                        or subitem_dir.name.startswith(("_", "."))
-                        or subitem_dir.name in _RESERVED_SUBDIRS
-                    ):
-                        continue
-
-                    sub_asset_file = subitem_dir / filename
-                    if sub_asset_file.exists():
-                        assets.append(
-                            {
-                                "path": sub_asset_file,
-                                "category": category_dir.name,
-                                "subcategory": item_dir.name,
-                                "name": subitem_dir.name,
-                                "module_path": str(sub_asset_file),
-                            }
-                        )
 
     return assets
 
@@ -121,8 +96,7 @@ def find_assets_with_metadata(asset_type: str, base_path: Path | None = None) ->
         base_path: Optional base path, defaults to current directory
 
     Returns:
-        List of asset paths like 'components/training/my_component' or
-        'components/training/sklearn_trainer/logistic_regression'
+        List of asset paths like 'components/training/my_component'
     """
     assets = []
     if base_path is None:
@@ -136,21 +110,12 @@ def find_assets_with_metadata(asset_type: str, base_path: Path | None = None) ->
         if not category.is_dir() or category.name.startswith((".", "_")):
             continue
 
-        for item in category.iterdir():
-            if not item.is_dir() or item.name.startswith((".", "_")):
+        for asset in category.iterdir():
+            if not asset.is_dir() or asset.name.startswith((".", "_")):
                 continue
 
-            # Check if this is a direct asset
-            if (item / "metadata.yaml").exists():
-                assets.append(f"{asset_type}/{category.name}/{item.name}")
-            else:
-                # This might be a subcategory
-                for subitem in item.iterdir():
-                    if not subitem.is_dir() or subitem.name.startswith((".", "_")) or subitem.name in _RESERVED_SUBDIRS:
-                        continue
-
-                    if (subitem / "metadata.yaml").exists():
-                        assets.append(f"{asset_type}/{category.name}/{item.name}/{subitem.name}")
+            if (asset / "metadata.yaml").exists():
+                assets.append(f"{asset_type}/{category.name}/{asset.name}")
 
     return assets
 
@@ -252,47 +217,15 @@ def resolve_pipeline_path(repo_root: Path, raw: str) -> Path:
 def _build_asset_dict_from_repo_path(
     repo_root: Path, asset_root: str, asset_file: Path, expected_filename: str
 ) -> dict[str, Any]:
-    """Build asset metadata dictionary from a file path.
-
-    Args:
-        repo_root: Repository root directory.
-        asset_root: Either 'components' or 'pipelines'.
-        asset_file: Path to the asset file (component.py or pipeline.py).
-        expected_filename: Expected filename (component.py or pipeline.py).
-
-    Returns:
-        Dictionary containing path, category, subcategory, name, and module_path.
-        'subcategory' is None for direct category assets.
-
-    Raises:
-        ValueError: If the path structure is invalid.
-    """
     root = (repo_root / asset_root).resolve()
     resolved = asset_file.resolve()
     if resolved.name != expected_filename:
         raise ValueError(f"Expected {expected_filename} under {asset_root}: {asset_file}")
     rel = resolved.relative_to(root)
-
-    if len(rel.parts) == 3:
-        # Direct category asset: category/name/filename
-        category, name = rel.parts[0], rel.parts[1]
-        subcategory = None
-    elif len(rel.parts) == 4:
-        # Subcategory asset: category/subcategory/name/filename
-        category, subcategory, name = rel.parts[0], rel.parts[1], rel.parts[2]
-    else:
-        raise ValueError(
-            f"Path must be {asset_root}/<category>/<name>/{expected_filename} or "
-            f"{asset_root}/<category>/<subcategory>/<name>/{expected_filename}: {asset_file}"
-        )
-
-    return {
-        "path": asset_file,
-        "category": category,
-        "subcategory": subcategory,
-        "name": name,
-        "module_path": str(asset_file),
-    }
+    if len(rel.parts) < 3:
+        raise ValueError(f"Path must be {asset_root}/<category>/<name>/{expected_filename}: {asset_file}")
+    category, name = rel.parts[0], rel.parts[1]
+    return {"path": asset_file, "category": category, "name": name, "module_path": str(asset_file)}
 
 
 def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, Any]:
@@ -303,8 +236,7 @@ def build_component_asset(repo_root: Path, component_file: Path) -> dict[str, An
         component_file: Path to the component.py file.
 
     Returns:
-        Dictionary containing path, category, subcategory, name, and module_path.
-        'subcategory' is None for direct category components.
+        Dictionary containing path, category, name, and module_path.
     """
     return _build_asset_dict_from_repo_path(repo_root, "components", component_file, _COMPONENT_FILENAME)
 
@@ -317,7 +249,6 @@ def build_pipeline_asset(repo_root: Path, pipeline_file: Path) -> dict[str, Any]
         pipeline_file: Path to the pipeline.py file.
 
     Returns:
-        Dictionary containing path, category, subcategory, name, and module_path.
-        'subcategory' is None for direct category pipelines.
+        Dictionary containing path, category, name, and module_path.
     """
     return _build_asset_dict_from_repo_path(repo_root, "pipelines", pipeline_file, _PIPELINE_FILENAME)
