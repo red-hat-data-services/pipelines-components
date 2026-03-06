@@ -21,7 +21,7 @@ from kfp import dsl
         "olot",
         "matplotlib",
         # Shared utilities (logging, K8s init, model persistence, etc.) from the kfp-components package
-        "kfp-components@git+https://github.com/Fiona-Waters/pipelines-components.git@separate-components",
+        "kfp-components@git+https://github.com/red-hat-data-services/pipelines-components.git@main",
     ],
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
