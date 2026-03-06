@@ -24,23 +24,23 @@ Train model using OSFT (Orthogonal Subspace Fine-Tuning). Outputs model artifact
 | `training_checkpoint_at_epoch` | `Optional[bool]` | `None` | Save checkpoint at each epoch. |
 | `training_num_epochs` | `Optional[int]` | `None` | Number of training epochs. |
 | `training_data_output_dir` | `Optional[str]` | `None` | Directory for processed training data. |
-| `training_envs` | `str` | `` | Environment overrides as KEY=VAL,KEY=VAL. |
+| `training_envs` | `str` | `""` | Environment overrides as KEY=VAL,KEY=VAL. |
 | `training_resource_cpu_per_worker` | `str` | `8` | CPU cores per worker. |
 | `training_resource_gpu_per_worker` | `int` | `1` | GPUs per worker. |
 | `training_resource_memory_per_worker` | `str` | `32Gi` | Memory per worker (e.g., 32Gi). |
 | `training_resource_num_procs_per_worker` | `str` | `auto` | Processes per worker (auto or int). |
 | `training_resource_num_workers` | `int` | `1` | Number of training pods. |
-| `training_metadata_labels` | `str` | `` | Pod labels as key=value,key=value. |
-| `training_metadata_annotations` | `str` | `` | Pod annotations as key=value,key=value. |
+| `training_metadata_labels` | `str` | `""` | Pod labels as key=value,key=value. |
+| `training_metadata_annotations` | `str` | `""` | Pod annotations as key=value,key=value. |
 | `training_unfreeze_rank_ratio` | `float` | `0.25` | Fraction of parameters to unfreeze. |
 | `training_osft_memory_efficient_init` | `bool` | `True` | Use memory-efficient initialization. |
-| `training_target_patterns` | `str` | `` | Target layer patterns (comma-separated). |
+| `training_target_patterns` | `str` | `""` | Target layer patterns (comma-separated). |
 | `training_seed` | `Optional[int]` | `None` | Random seed for reproducibility. |
 | `training_use_liger` | `Optional[bool]` | `None` | Enable Liger kernel optimizations. |
 | `training_use_processed_dataset` | `Optional[bool]` | `None` | Use pre-processed dataset. |
 | `training_unmask_messages` | `Optional[bool]` | `None` | Unmask assistant messages during training. |
 | `training_lr_scheduler` | `Optional[str]` | `None` | LR scheduler type (cosine, linear, etc.). |
-| `training_lr_scheduler_kwargs` | `str` | `` | LR scheduler kwargs as key=val,key=val. |
+| `training_lr_scheduler_kwargs` | `str` | `""` | LR scheduler kwargs as key=val,key=val. |
 | `training_save_final_checkpoint` | `Optional[bool]` | `None` | Save final checkpoint after training. |
 | `training_fsdp_sharding_strategy` | `Optional[str]` | `None` | FSDP sharding strategy. |
 | `kubernetes_config` | `dsl.TaskConfig` | `None` | KFP TaskConfig for volumes/env/resources passthrough. |

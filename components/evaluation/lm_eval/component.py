@@ -64,9 +64,13 @@ def universal_llm_evaluator(
     """
     import json
     import logging
+    import multiprocessing
     import os
     import random
     import time
+
+    # vLLM requires 'spawn' to avoid "Cannot re-initialize CUDA in forked subprocess"
+    multiprocessing.set_start_method("spawn", force=True)
 
     import torch
 

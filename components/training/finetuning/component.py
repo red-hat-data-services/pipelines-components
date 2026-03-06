@@ -176,6 +176,10 @@ def train_model(
             cfg.host, cfg.verify_ssl = srv, False
             cfg.api_key = {"authorization": f"Bearer {tok}"}
             k8s.Configuration.set_default(cfg)
+
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
             return k8s.ApiClient(cfg)
         except Exception as e:
             log.warning(f"K8s client init failed: {e}")

@@ -24,18 +24,18 @@ Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics
 | `training_checkpoint_at_epoch` | `Optional[bool]` | `None` | Save checkpoint at each epoch. |
 | `training_num_epochs` | `Optional[int]` | `None` | Number of training epochs (default: 3). |
 | `training_data_output_dir` | `Optional[str]` | `None` | Directory for processed training data. |
-| `training_envs` | `str` | `` | Environment overrides as KEY=VAL,KEY=VAL. |
+| `training_envs` | `str` | `""` | Environment overrides as KEY=VAL,KEY=VAL. |
 | `training_resource_cpu_per_worker` | `str` | `4` | CPU cores per worker. |
 | `training_resource_gpu_per_worker` | `int` | `1` | GPUs per worker. |
 | `training_resource_memory_per_worker` | `str` | `32Gi` | Memory per worker (e.g., 32Gi). |
 | `training_resource_num_procs_per_worker` | `str` | `auto` | Processes per worker (auto or int). |
-| `training_resource_num_workers` | `int` | `1` | Number of training pods. **Note: LoRA (unsloth) only supports single-node; this value is forced to 1 internally.** |
-| `training_metadata_labels` | `str` | `` | Pod labels as key=value,key=value. |
-| `training_metadata_annotations` | `str` | `` | Pod annotations as key=value,key=value. |
+| `training_resource_num_workers` | `int` | `1` | Number of training pods. |
+| `training_metadata_labels` | `str` | `""` | Pod labels as key=value,key=value. |
+| `training_metadata_annotations` | `str` | `""` | Pod annotations as key=value,key=value. |
 | `training_lora_r` | `int` | `16` | LoRA rank (controls model capacity). |
 | `training_lora_alpha` | `int` | `32` | LoRA scaling factor. |
 | `training_lora_dropout` | `float` | `0.0` | Dropout rate for LoRA layers. |
-| `training_lora_target_modules` | `str` | `` | Comma-separated list of modules to apply LoRA (empty = auto-detect). |
+| `training_lora_target_modules` | `str` | `""` | Comma-separated list of modules to apply LoRA (empty = auto-detect). |
 | `training_lora_use_rslora` | `Optional[bool]` | `None` | Use Rank-Stabilized LoRA variant. |
 | `training_lora_use_dora` | `Optional[bool]` | `None` | Use Weight-Decomposed LoRA (DoRA). |
 | `training_lora_load_in_4bit` | `Optional[bool]` | `None` | Enable 4-bit quantization (QLoRA). |

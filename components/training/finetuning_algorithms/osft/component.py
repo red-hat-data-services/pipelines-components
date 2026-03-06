@@ -21,7 +21,7 @@ from kfp import dsl
         "olot",
         "matplotlib",
         # Shared utilities (logging, K8s init, model persistence, etc.) from the kfp-components package
-        "kfp-components@git+https://github.com/red-hat-data-services/pipelines-components.git@main",
+        "kfp-components@git+https://github.com/Fiona-Waters/pipelines-components.git@separate-components",
     ],
     task_config_passthroughs=[
         dsl.TaskConfigField.RESOURCES,
@@ -113,7 +113,7 @@ def train_model(
     import os
     from typing import Dict
 
-    from kfp_components.components.training.shared import (
+    from kfp_components.components.training.finetuning_algorithms.shared import (
         configure_env,
         create_logger,
         download_oci_model,

@@ -24,14 +24,14 @@ Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metri
 | `training_checkpoint_at_epoch` | `Optional[bool]` | `None` | Save checkpoint at each epoch. |
 | `training_num_epochs` | `Optional[int]` | `None` | Number of training epochs. |
 | `training_data_output_dir` | `Optional[str]` | `None` | Directory for processed training data. |
-| `training_envs` | `str` | `` | Environment overrides as KEY=VAL,KEY=VAL. |
+| `training_envs` | `str` | `""` | Environment overrides as KEY=VAL,KEY=VAL. |
 | `training_resource_cpu_per_worker` | `str` | `4` | CPU cores per worker. |
 | `training_resource_gpu_per_worker` | `int` | `1` | GPUs per worker. |
 | `training_resource_memory_per_worker` | `str` | `64Gi` | Memory per worker (e.g., 64Gi). |
 | `training_resource_num_procs_per_worker` | `str` | `auto` | Processes per worker (auto or int). |
 | `training_resource_num_workers` | `int` | `1` | Number of training pods. |
-| `training_metadata_labels` | `str` | `` | Pod labels as key=value,key=value. |
-| `training_metadata_annotations` | `str` | `` | Pod annotations as key=value,key=value. |
+| `training_metadata_labels` | `str` | `""` | Pod labels as key=value,key=value. |
+| `training_metadata_annotations` | `str` | `""` | Pod annotations as key=value,key=value. |
 | `training_seed` | `Optional[int]` | `None` | Random seed for reproducibility. |
 | `training_use_liger` | `Optional[bool]` | `None` | Enable Liger kernel optimizations. |
 | `training_lr_scheduler` | `Optional[str]` | `None` | LR scheduler type (cosine, linear, etc.). |

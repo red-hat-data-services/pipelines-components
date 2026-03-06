@@ -8,10 +8,9 @@ LoRA Minimal Training Pipeline - Parameter-efficient fine-tuning.
 
 A minimal 4-stage ML pipeline for fine-tuning language models with LoRA:
 
-1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-2) LoRA Training - Fine-tunes using unsloth backend (low-rank adapters)
-3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
-4) Model Registry - Registers trained model to Kubeflow Model Registry
+1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP 2) LoRA Training - Fine-tunes using unsloth
+backend (low-rank adapters) 3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.) 4) Model Registry -
+Registers trained model to Kubeflow Model Registry
 
 ## Inputs 📥
 
@@ -24,11 +23,10 @@ A minimal 4-stage ML pipeline for fine-tuning language models with LoRA:
 | `phase_02_train_man_train_gpu` | `int` | `1` | GPUs per worker |
 | `phase_02_train_man_train_model` | `str` | `Qwen/Qwen2.5-1.5B-Instruct` | Base model (HuggingFace ID or path) |
 | `phase_02_train_man_train_tokens` | `int` | `32000` | Max tokens per GPU (memory cap). 32000 for LoRA |
-| ~~`phase_02_train_man_train_workers`~~ | `int` | `1` | ~~Number of training pods~~ — **Disabled: LoRA (unsloth) only supports single-node training. Hardcoded to 1 until multi-node support is added.** |
 | `phase_02_train_man_lora_r` | `int` | `16` | [LoRA] Rank of the low-rank matrices (4, 8, 16, 32, 64) |
 | `phase_02_train_man_lora_alpha` | `int` | `32` | [LoRA] Scaling factor (typically 2x lora_r) |
 | `phase_03_eval_man_eval_tasks` | `list` | `['arc_easy']` | lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.) |
-| `phase_04_registry_man_address` | `str` | `` | Model Registry address (empty = skip registration) |
+| `phase_04_registry_man_address` | `str` | `""` | Model Registry address (empty = skip registration) |
 | `phase_04_registry_man_reg_name` | `str` | `lora-model` | Model name in registry |
 | `phase_04_registry_man_reg_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |
