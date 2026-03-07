@@ -19,7 +19,7 @@ from components.deployment.kubeflow_model_registry import (
     kubeflow_model_registry as model_registry,
 )
 from components.evaluation.lm_eval import universal_llm_evaluator
-from components.training.finetuning import train_model
+from components.training.finetuning_algorithms.osft import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -182,8 +182,6 @@ def osft_pipeline(
         dataset=dataset_download_task.outputs["train_dataset"],
         # Model - OSFT specific
         training_base_model=phase_02_train_man_train_model,
-        training_algorithm="OSFT",  # Hardcoded for OSFT pipeline
-        training_backend="mini-trainer",  # Hardcoded for OSFT
         training_unfreeze_rank_ratio=phase_02_train_man_train_unfreeze,
         # Hyperparameters
         training_effective_batch_size=phase_02_train_man_train_batch,
@@ -204,9 +202,6 @@ def osft_pipeline(
         # Saving (OSFT)
         training_checkpoint_at_epoch=phase_02_train_opt_save_epoch,
         training_save_final_checkpoint=phase_02_train_opt_save_final,
-        # Not used by OSFT - pass empty/zero
-        training_save_samples=0,
-        training_accelerate_full_state_at_epoch=False,
         # Environment
         training_envs=phase_02_train_opt_env_vars,
         training_metadata_labels=phase_02_train_opt_labels,

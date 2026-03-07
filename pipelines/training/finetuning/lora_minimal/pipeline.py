@@ -1,14 +1,15 @@
-"""OSFT Minimal (Orthogonal Subspace Fine-Tuning) Training Pipeline.
+"""LoRA Minimal (Low-Rank Adaptation) Training Pipeline.
 
-A minimal 4-stage pipeline for continual learning without catastrophic forgetting:
+A minimal 4-stage pipeline for parameter-efficient fine-tuning:
 1. Dataset Download
-2. OSFT Training (mini-trainer backend)
+2. LoRA Training (unsloth backend)
 3. Evaluation with lm-eval
 4. Model Registry
 
-OSFT enables adapting pre-trained or instruction-tuned models to new tasks
-while preserving their original capabilities. This minimal version provides
-a streamlined workflow for quick testing and development.
+LoRA enables efficient fine-tuning by training low-rank adapter matrices
+instead of full model weights, dramatically reducing compute and memory.
+This minimal version provides a streamlined workflow for quick testing
+and development.
 """
 
 import kfp
@@ -19,7 +20,7 @@ from kfp import dsl
 from components.data_processing.dataset_download import dataset_download
 from components.deployment.kubeflow_model_registry import kubeflow_model_registry
 from components.evaluation.lm_eval import universal_llm_evaluator
-from components.training.finetuning import train_model
+from components.training.finetuning_algorithms.lora import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -27,13 +28,13 @@ from components.training.finetuning import train_model
 PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
-PIPELINE_NAME = "osft-minimal-pipeline"
+PIPELINE_NAME = "lora-minimal-pipeline"
 # =============================================================================
 
 
 @dsl.pipeline(
     name=PIPELINE_NAME,
-    description="OSFT Minimal pipeline: continual learning without catastrophic forgetting using mini-trainer",
+    description="LoRA Minimal pipeline: parameter-efficient fine-tuning using unsloth backend",
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
             size=PVC_SIZE,
@@ -46,38 +47,42 @@ PIPELINE_NAME = "osft-minimal-pipeline"
         ),
     ),
 )
-def osft_minimal_pipeline(
+def lora_minimal_pipeline(
     # =========================================================================
     # KEY PARAMETERS (Required/Important) - Sorted by step
     # =========================================================================
     phase_01_dataset_man_data_uri: str,
     phase_01_dataset_man_data_split: float = 0.9,
     phase_02_train_man_train_batch: int = 128,
-    phase_02_train_man_train_epochs: int = 1,
+    phase_02_train_man_train_epochs: int = 2,
     phase_02_train_man_train_gpu: int = 1,
     phase_02_train_man_train_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    phase_02_train_man_train_tokens: int = 64000,
-    phase_02_train_man_train_unfreeze: float = 0.25,
-    phase_02_train_man_train_workers: int = 1,
+    phase_02_train_man_train_tokens: int = 32000,
+    # TODO: LoRA (unsloth backend) only supports single-node training.
+    # Uncomment when unsloth/training_hub add multi-node LoRA support.
+    # phase_02_train_man_train_workers: int = 1,
+    phase_02_train_man_lora_r: int = 16,
+    phase_02_train_man_lora_alpha: int = 32,
     phase_03_eval_man_eval_tasks: list = ["arc_easy"],
     phase_04_registry_man_address: str = "",
-    phase_04_registry_man_reg_name: str = "osft-model",
+    phase_04_registry_man_reg_name: str = "lora-model",
     phase_04_registry_man_reg_version: str = "1.0.0",
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
     phase_01_dataset_opt_subset: int = 0,
-    phase_02_train_opt_learning_rate: float = 5e-6,
+    phase_02_train_opt_learning_rate: float = 2e-4,
     phase_02_train_opt_max_seq_len: int = 8192,
     phase_02_train_opt_use_liger: bool = True,
+    phase_02_train_opt_lora_load_in_4bit: bool = True,
     phase_04_registry_opt_port: int = 8080,
 ):
-    """OSFT Minimal Training Pipeline - Continual learning without catastrophic forgetting.
+    """LoRA Minimal Training Pipeline - Parameter-efficient fine-tuning.
 
-    A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
+    A minimal 4-stage ML pipeline for fine-tuning language models with LoRA:
 
     1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-    2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
+    2) LoRA Training - Fine-tunes using unsloth backend (low-rank adapters)
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
     4) Model Registry - Registers trained model to Kubeflow Model Registry
 
@@ -85,20 +90,21 @@ def osft_minimal_pipeline(
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url)
         phase_01_dataset_man_data_split: Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training)
         phase_02_train_man_train_batch: Effective batch size (samples per optimizer step)
-        phase_02_train_man_train_epochs: Number of training epochs. OSFT typically needs 1-2
-        phase_02_train_man_train_gpu: GPUs per worker. OSFT handles multi-GPU well
+        phase_02_train_man_train_epochs: Number of training epochs. LoRA typically needs 2-3
+        phase_02_train_man_train_gpu: GPUs per worker
         phase_02_train_man_train_model: Base model (HuggingFace ID or path)
-        phase_02_train_man_train_tokens: Max tokens per GPU (memory cap). 64000 for OSFT
-        phase_02_train_man_train_unfreeze: [OSFT] Fraction to unfreeze (0.1=minimal, 0.25=balanced, 0.5=strong)
-        phase_02_train_man_train_workers: Number of training pods. OSFT efficient single-node (1)
+        phase_02_train_man_train_tokens: Max tokens per GPU (memory cap). 32000 for LoRA
+        phase_02_train_man_lora_r: [LoRA] Rank of the low-rank matrices (4, 8, 16, 32, 64)
+        phase_02_train_man_lora_alpha: [LoRA] Scaling factor (typically 2x lora_r)
         phase_03_eval_man_eval_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
         phase_04_registry_man_address: Model Registry address (empty = skip registration)
-        phase_04_registry_man_reg_version: Semantic version (major.minor.patch)
         phase_04_registry_man_reg_name: Model name in registry
+        phase_04_registry_man_reg_version: Semantic version (major.minor.patch)
         phase_01_dataset_opt_subset: Limit to first N examples (0 = all)
-        phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
+        phase_02_train_opt_learning_rate: Learning rate. 2e-4 recommended for LoRA
         phase_02_train_opt_max_seq_len: Max sequence length in tokens
-        phase_02_train_opt_use_liger: [OSFT] Enable Liger kernel optimizations. Recommended
+        phase_02_train_opt_use_liger: Enable Liger kernel optimizations
+        phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization
         phase_04_registry_opt_port: Model registry server port
     """
     # =========================================================================
@@ -125,40 +131,41 @@ def osft_minimal_pipeline(
     )
 
     # =========================================================================
-    # Stage 2: OSFT Training
+    # Stage 2: LoRA Training
     # =========================================================================
     training_task = train_model(
         pvc_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         dataset=dataset_download_task.outputs["train_dataset"],
-        # Model - OSFT specific
+        # Model
         training_base_model=phase_02_train_man_train_model,
-        training_algorithm="OSFT",  # Hardcoded for OSFT pipeline
-        training_backend="mini-trainer",  # Hardcoded for OSFT
-        training_unfreeze_rank_ratio=phase_02_train_man_train_unfreeze,
-        training_osft_memory_efficient_init=True,
         # Hyperparameters
         training_effective_batch_size=phase_02_train_man_train_batch,
         training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        # training_target_patterns=phase_02_train_opt_target_patterns,
         training_seed=42,
         training_num_epochs=phase_02_train_man_train_epochs,
-        # OSFT-specific optimizations
+        # LoRA-specific parameters
+        training_lora_r=phase_02_train_man_lora_r,
+        training_lora_alpha=phase_02_train_man_lora_alpha,
+        training_lora_dropout=0.0,
+        # QLoRA parameters
+        training_lora_load_in_4bit=phase_02_train_opt_lora_load_in_4bit,
+        # Optimizations
         training_use_liger=phase_02_train_opt_use_liger,
+        # Learning rate scheduler
         training_lr_scheduler="cosine",
-        # Saving (OSFT)
+        training_lr_warmup_steps=0,
+        # Saving
         training_checkpoint_at_epoch=True,
-        training_save_final_checkpoint=True,
-        # Not used by OSFT - pass empty/zero
-        training_save_samples=0,
-        training_accelerate_full_state_at_epoch=False,
         # Resources
-        training_resource_cpu_per_worker="8",
+        training_resource_cpu_per_worker="4",
         training_resource_gpu_per_worker=phase_02_train_man_train_gpu,
         training_resource_memory_per_worker="32Gi",
         training_resource_num_procs_per_worker="auto",
-        training_resource_num_workers=phase_02_train_man_train_workers,
+        # TODO: LoRA (unsloth backend) only supports single-node training.
+        # Hardcoded to 1 until unsloth/training_hub add multi-node LoRA support.
+        training_resource_num_workers=1,
     )
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")
@@ -239,6 +246,6 @@ def osft_minimal_pipeline(
 
 if __name__ == "__main__":
     kfp.compiler.Compiler().compile(
-        pipeline_func=osft_minimal_pipeline,
+        pipeline_func=lora_minimal_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
