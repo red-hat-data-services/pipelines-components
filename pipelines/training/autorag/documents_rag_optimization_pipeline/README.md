@@ -1,4 +1,6 @@
-# Simple Pipeline ✨
+# Documents Rag Optimization Pipeline ✨
+
+> ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
@@ -15,12 +17,25 @@ This pipeline demonstrates basic pipeline structure for testing the README gener
 
 ## Metadata 🗂️
 
-- **Name**: Simple Pipeline
-- **Description**: A basic pipeline for testing README generation
-- **Documentation**: https://example.com/simple-pipeline
+- **Name**: documents_rag_optimization_pipeline
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: ai4rag, Version: >=1.0.0
+    - Name: llama-stack API, Version: >=1.0.0
+    - Name: RHOAI Connections API, Version: >=1.0.0
+    - Name: Milvus, Version: >=2.0.0
+    - Name: Milvus Lite, Version: >=2.0.0
+    - Name: MLFlow, Version: >=2.0.0
+    - Name: docling, Version: >=1.0.0
 - **Tags**:
-  - testing
+  - training
   - pipeline
+  - autorag
+  - rag-optimization
+- **Last Verified**: 2026-03-09 13:14:31+00:00
 - **Owners**:
   - Approvers:
     - HumairAK
