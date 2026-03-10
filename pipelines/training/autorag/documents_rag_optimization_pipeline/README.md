@@ -4,292 +4,71 @@
 
 ## Overview 🧾
 
-Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications as part of Red Hat OpenShift AI.
+Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications.
 
-Documents Rag Optimization Pipeline leverages Kubeflow Pipelines to orchestrate the experiment workflow,
-using the ai4rag optimization engine to systematically explore RAG configurations and
-identify the best performing parameter settings based on an upfront-specified quality metric.
+The Documents RAG Optimization Pipeline is an automated system for building and optimizing Retrieval-Augmented
+Generation (RAG) applications within Red Hat OpenShift AI. It leverages Kubeflow Pipelines to orchestrate the
+optimization workflow, using the ai4rag optimization engine to systematically explore RAG configurations and identify
+the best performing parameter settings based on an upfront-specified quality metric.
 
-The system integrates with llama-stack API for model inference and vector database operations, producing optimized RAG
-Patterns as artifacts that can be deployed and used for production-grade RAG applications.
-
-The optimization process involves the following stages:
-
-1. **Test Data Loading**: Loads test data from JSON files for evaluation
-2. **Document Loading & Sampling**: Loads documents from data sources and chooses a subset based
-   on the test data
-3. **Text Extraction**: Extracts text from sampled documents using the docling library
-4. **Search Space Preparation**: Builds the search space defining RAG configurations to try out in the experiment process. Limits the foundation and embedding models to 3 and 2 (respectively)
-5. **RAG Templates Optimization**: Systematically tests different RAG configurations from the
-   defined search space using GAM-based prediction. Produces artifacts including RAG Patterns, associated metrics, logs and notebooks.
-6. **Evaluation**: Assesses each configuration's performance using test data
-7. **Leaderboard**: Builds a leaderboard of RAG Patterns ranked by performance
+The system integrates with llama-stack API for inference and vector database operations, producing optimized RAG
+patterns as artifacts that can be deployed and used for production RAG applications.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-| ----------- | ------ | --------- | ------------- |
-| `test_data_secret_name` | `str` | — | Kubernetes secret's name for S3-compatible storage credentials holding test data. Must include: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
-| `test_data_bucket_name` | `str` | — | Name of the S3-like bucket holding test data. |
-| `test_data_key` | `str` | — | S3-like object key (a path) identifying the test data (a JSON file) |
-| `input_data_secret_name` | `str` | — | Kubernetes secret's name for S3-compatible storage credentials holding input documents. Must include the same set of keys as `test_data_secret_name`. |
-| `input_data_bucket_name` | `str` | — | Name of the S3-like bucket holding input documents. |
-| `input_data_key` | `str` | — | S3-like object key (a path) identifying the input data (file or a folder of thereof). |
-| `llama_stack_secret_name` | `str` | — | Kubernetes secret's name for llama-stack server connection info. The secret must include: `LLAMA_STACK_CLIENT_API_KEY`, `LLAMA_STACK_CLIENT_BASE_URL`. |
-| `llama_stack_vector_database_id` | `Optional[str]` | `ls_milvus` | Vector database identifier as registered in llama-stack (e.g. llama-stack Milvus). |
-| `embeddings_models` | `List` | - | List of embedding model identifiers to try out in the experiment process. |
-| `generation_models` | `List` | - | List of foundation/generation model identifiers to try out in the experiment process. |
-| `optimization_metric` | `str` | `"faithfulness"` | Metric to optimize for. Supported: `faithfulness`, `answer_correctness`, `context_correctness`. |
-| `optimization_max_rag_patterns` | `int` | `8` | Maximum number of RAG patterns to generate. Passed to ai4rag (max_number_of_rag_patterns). |
+|-----------|------|---------|-------------|
+| `test_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for
+test data access. The following environment variables are required:
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `test_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the test data file. |
+| `test_data_key` | `str` | `None` | Object key (path) of the test data JSON file in the test data bucket. |
+| `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials
+for input document data access. The following environment variables are required:
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the input documents. |
+| `input_data_key` | `str` | `None` | Object key (path) of the input documents in the input data bucket. |
+| `llama_stack_secret_name` | `str` | `None` | Name of the Kubernetes secret for llama-stack API connection.
+The secret must define: LLAMA_STACK_CLIENT_API_KEY, LLAMA_STACK_CLIENT_BASE_URL. |
+| `embeddings_models` | `Optional[List]` | `None` | Optional list of embedding model identifiers to use in the search space. |
+| `generation_models` | `Optional[List]` | `None` | Optional list of foundation/generation model identifiers to use in the
+search space. |
+| `optimization_metric` | `str` | `faithfulness` | Quality metric used to optimize RAG patterns. Supported values:
+"faithfulness", "answer_correctness", "context_correctness". |
+| `optimization_max_rag_patterns` | `int` | `8` | Maximum number of RAG patterns to generate. Passed to ai4rag
+(max_number_of_rag_patterns). Defaults to 8. |
+| `llama_stack_vector_database_id` | `Optional[str]` | `None` | Optional vector database id (e.g., registered in llama-stack Milvus).
+If not provided, an in-memory database may be used. |
 
-## Outputs 📤
+## Metadata 🗂️
 
-| Output | Type | Description |
-| ------ | ---- | ----------- |
-| `documents_sampling_task.sampled_documents_atrifact` | `dsl.Output[dsl.Artifact]` | JSON artifact containing sampled documents metadata. |
-| `text_extraction_task.extracted_text_artifact` | `dsl.Output[dsl.Artifact]` | Extracted text from documents (folder with markdown files). |
-| `rag_templates_optimization.rag_patterns_artifact` | `dsl.Output[dsl.Artifact]` | A directory containing one subdirectory per top-N RAG pattern (named by pattern). |
-| `leaderboard_evaluation_task.html_artifact` | `dsl.Output[dsl.HTML]` | HTML leaderboard table of RAG patterns ranked by `final_score`, with pattern name, metrics (e.g. mean_answer_correctness, mean_faithfulness, mean_context_correctness), and config columns (chunking, embedding, retrieval, generation). |
+- **Name**: documents_rag_optimization_pipeline
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: ai4rag, Version: >=1.0.0
+    - Name: llama-stack API, Version: >=1.0.0
+    - Name: RHOAI Connections API, Version: >=1.0.0
+    - Name: Milvus, Version: >=2.0.0
+    - Name: Milvus Lite, Version: >=2.0.0
+    - Name: MLFlow, Version: >=2.0.0
+    - Name: docling, Version: >=1.0.0
+- **Tags**:
+  - training
+  - pipeline
+  - autorag
+  - rag-optimization
+- **Last Verified**: 2026-01-23 14:57:32+00:00
+- **Owners**:
+  - Approvers:
+    - LukaszCmielowski
+    - filip-komarzyniec
+    - witold-nowogorski
+  - Reviewers:
+    - LukaszCmielowski
 
-### `rag_patterns_artifact` details
-
-Each RAG Pattern subdirectory includes:
-
-- **pattern.json** — Flat schema with `name`, `iteration`, `max_combinations`, `duration_seconds`, `settings` (vector_store, chunking, embedding, retrieval, generation), `scores` (per-metric mean/ci_low/ci_high), and `final_score`
-- **evaluation_results.json** — Per-question evaluation (question, answer, correct_answers, answer_contexts, scores)
-- **indexing_notebook.ipynb** — Notebook for building or populating the vector index/collection
-- **inference_notebook.ipynb** — Notebook for retrieval and generation
-
-#### Metadata of artifact
-
-```json
-{
-   "name":"rag_patterns_artifact",
-   "uri":"documents-rag-optimization-pipeline/b888dca4-11de-49f5-8b60-e820613a623d/rag-templates-optimization/29a02588-7bed-4bf2-a595-66ae503440d3/rag_patterns/",
-   "metadata":{
-      "patterns":[
-         {
-            "name":"pattern0",
-            "iteration":0,
-            "max_combinations":3,
-            "duration_seconds":20,
-            "location": {
-               "evaluation_results": "pattern0/evaluation_results.json",
-               "indexing_notebook": "pattern0/indexing_notebook.ipynb",  
-               "inference_notebook": "pattern0/inference_notebook.ipynb",
-               "pattern_descriptor": "pattern0/pattern.json"
-            },  
-            "settings":{
-               "vector_store":{
-                  "datasource_type":"ls_milvus",
-                  "collection_name":"collection0"
-               },
-               "chunking":{
-                  "method":"recursive",
-                  "chunk_size":256,
-                  "chunk_overlap":128
-               },
-               "embedding":{
-                  "model_id":"mock-embed-a",
-                  "distance_metric":"cosine"
-               },
-               "retrieval":{
-                  "method":"window",
-                  "number_of_chunks":5
-               },
-               "generation":{
-                  "model_id":"mock-llm-1",
-                  "context_template_text":"{document}",
-                  "user_message_text":"\n\nContext:\n{reference_documents}:\n\nQuestion: {question}. \nAgain, please answer the question based on the context 
-                  provided only. If the context is not related to the question, just say you cannot answer. Respond exclusively in the language of the question,
-                  regardless of any other language used in the provided context. Ensure that your entire response is in the same language as the question.",
-                  "system_message_text":"Please answer the question I provide in the Question section below, based solely on the information 
-                  I provide in the Context section. If the question is unanswerable, please say you cannot answer."
-               }
-            },
-            "scores":{
-               "answer_correctness":{
-                  "mean":0.5,
-                  "ci_low":0.4,
-                  "ci_high":0.7
-               },
-               "faithfulness":{
-                  "mean":0.2,
-                  "ci_low":0.1,
-                  "ci_high":0.5
-               },
-               "context_correctness":{
-                  "mean":1.0,
-                  "ci_low":0.9,
-                  "ci_high":1.0
-               }
-            },
-            "final_score":0.5
-         },
-      ]
-   }
-}
-```
-
-#### Evaluation results
-
-Structure matches ai4rag `ExperimentResults.create_evaluation_results_json()`. For details see the sample evaluation_results.json below.
-
-```json
-[
-  {
-    "question": "What foundation models are available in watsonx.ai?",
-    "correct_answers": ["The following models are available in watsonx.ai: flan-t5-xl-3b, ..."],
-    "answer": "Watsonx.ai provides foundation models such as flan-t5-xl-3b, granite-13b-instruct-v2, and others.",
-    "answer_contexts": [
-      { "text": "Model architecture influences how the model behaves.", "document_id": "120CAE8361AE4E0B6FE4D6F0D32EEE9517F11190_1.txt" },
-      { "text": "Learn more about governing assets in AI use cases.", "document_id": "0ECEAC44DA213D067B5B5EA66694E6283457A441_9.txt" }
-    ],
-    "scores": {
-      "answer_correctness": 0.72,
-      "faithfulness": 0.85,
-      "context_correctness": 1.0
-    }
-  },
-  {
-    "question": "How can I ensure generated answers are accurate and factual?",
-    "correct_answers": ["Utilize RAG, prompt engineering, and validate output."],
-    "answer": "Use retrieval-augmented generation and validate the model output against your data.",
-    "answer_contexts": [
-      { "text": "Retrieval-augmented generation in IBM watsonx.ai.", "document_id": "752D982C2F694FFEE2A312CEA6ADF22C2384D4B2_0.txt" }
-    ],
-    "scores": {
-      "answer_correctness": 0.65,
-      "faithfulness": 0.91,
-      "context_correctness": 0.8
-    }
-  }
-]
-```
-
-#### Pattern details
-
-Collection of pattern details and related metadata. For details see the sample pattern.json below.
-
-```json
-{
-  "name": "Pattern_0",
-  "iteration": 0,
-  "max_combinations": 390,
-  "duration_seconds": 100,
-  "settings": {
-    "vector_store": {
-      "datasource_type": "ls_milvus",
-      "collection_name": "collection0"
-    },
-    "chunking": {
-      "method": "recursive",
-      "chunk_size": 256,
-      "chunk_overlap": 128
-    },
-    "embedding": {
-      "model_id": "mock-embed-a",
-      "distance_metric": "cosine"
-    },
-    "retrieval": {
-      "method": "recursive",
-      "number_of_chunks": 5
-    },
-    "generation": {
-      "model_id": "mock-llm-1",
-      "context_template_text": "{document}",
-      "user_message_text": "\n\nContext:\n{reference_documents}:\n\nQuestion: {question}. \nAgain, please answer the question based on the context provided only.
-      If the context is not related to the question, just say you cannot answer. Respond exclusively in the language of the question, 
-      regardless of any other language used in the provided context. Ensure that your entire response is in the same language as the question.",
-      "system_message_text": "Please answer the question I provide in the Question section below, based solely on the information 
-      I provide in the Context section. If the question is unanswerable, please say you cannot answer."
-    }
-  },
-  "scores": {
-    "answer_correctness": {
-      "mean": 0.5,
-      "ci_low": 0.4,
-      "ci_high": 0.7
-    },
-    "faithfulness": {
-      "mean": 0.2,
-      "ci_low": 0.1,
-      "ci_high": 0.5
-    },
-    "context_correctness": {
-      "mean": 1.0,
-      "ci_low": 0.9,
-      "ci_high": 1.0
-    }
-  },
-  "final_score": 0.5
-}
-```
-
-### Files stored in user storage
-
-Pipeline outputs are written to the artifact store (S3-compatible storage configured for Kubeflow Pipelines). The layout below matches what components write and what downstream consumers expect when loading the leaderboard or a refitted model.
-
-```text
-<pipeline_name>/
-└── <run_id>/
-    ├── documents-sampling/
-    │   └── <task_id>/
-    │       └── sampled_documents_atrifact        # JSON artifact containing sampled documents metadata
-    ├── text-extraction/
-    │   └── <task_id>/
-    │       └── extracted_text_artifact           # Folder containing markdown files with extracted text
-    ├── leaderboard-evaluation/
-    │   └── <task_id>/
-    │       └── html_artifact                     # HTML leaderboard (RAG pattern names + metrics); single file at path
-    └── rag-templates-optimization/
-        └── <task_id>/
-            └── autorag_run_artifact              # Log and experiment status
-            └── rag_patterns_artifact/
-                ├── <pattern_name_0>/             # One per top-N RAG pattern
-                │   ├── pattern.json              # Flat schema: name, iteration, settings, scores, final_score
-                │   ├── evaluation_results.json   # Per-question evaluation (question, answer, correct_answers, scores, etc.)
-                │   ├── indexing_notebook.ipynb   # Notebook to build/populate the vector index
-                │   └── inference_notebook.ipynb  # Notebook for retrieval and generation
-                ├── <pattern_name_1>/
-                │   ├── pattern.json
-                │   ├── evaluation_results.json
-                │   ├── indexing_notebook.ipynb
-                │   └── inference_notebook.ipynb
-                └── ...
-```
-
-- `pipeline_name`: pipeline identifier (e.g. `documents-rag-optimization-pipeline`).
-- `run_id`: Kubeflow Pipelines run ID.
-- Component folders (`leaderboard-evaluation`, `rag-pattern-generation`, etc.) align with pipeline steps; `<task_id>` is the KFP task ID for that step.
-- Pattern count and names depend on the run (e.g. `max_number_of_rag_patterns`).
-
-## Example usage
-
-```python
-
-from kfp_components.pipelines.training.autorag.documents_rag_optimization_pipeline import (
-    documents_rag_optimization_pipeline,
-)
-
-
-def my_pipeline():
-    """Full example with optional parameters."""
-    return documents_rag_optimization_pipeline(
-        test_data_secret_name="s3-test-data-secret",
-        test_data_bucket_name="autorag-benchmarks",
-        test_data_key="my-folder/test_data.json",
-        input_data_secret_name="s3-input-secret",
-        input_data_bucket_name="my-documents-bucket",
-        input_data_key="rh_documents/",
-        llama_stack_secret_name="llama-stack-secret",
-        embeddings_models=["ibm/slate-125m-english-rtrvr-v2", "intfloat/multilingual-e5-large"],
-        generation_models=["mistralai/mixtral-8x7b-instruct-v01", "ibm/granite-13b-instruct-v2"],
-        optimization_metric="answer_correctness",
-        optimization_max_rag_patterns=8,
-        llama_stack_vector_database_id="milvus-database",
-    )
-```
 
 <!-- custom-content -->
 

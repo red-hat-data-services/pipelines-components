@@ -6,4 +6,6 @@ This directory contains pipelines in the **Training** category:
 - [Osft Pipeline](./osft/README.md): OSFT Training Pipeline - Continual learning without catastrophic forgetting.
 - [Sft Minimal Pipeline](./sft_minimal/README.md): SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 - [Sft Pipeline](./sft/README.md): SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
-- [Documents Rag Optimization Pipeline](autorag/documents_rag_optimization_pipeline/README.md): Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications.
+## Subcategories
+
+- [Autorag](./autorag/README.md)
