@@ -349,7 +349,10 @@ class TestTrainTestSplitUnitTests:
             assert hasattr(result, "split_config")
             assert isinstance(result.sample_row, str)
             assert result.sample_row == '[{"a":1,"b":2}]'
-            assert result.split_config == {"test_size": 0.25}
+            # Component returns effective split config (user input + defaults)
+            assert result.split_config["test_size"] == 0.25
+            assert result.split_config["random_state"] == 42
+            assert result.split_config["stratify"] is False  # regression
 
     def test_pd_concat_called_twice_for_train_and_test(self, tmp_path):
         """pd.concat is called once for train (X_train, y_train) and once for test (X_test, y_test)."""
