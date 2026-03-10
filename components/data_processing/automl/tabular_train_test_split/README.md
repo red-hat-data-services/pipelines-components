@@ -43,13 +43,14 @@ You can override these by providing the `split_config` dictionary with the corre
     - Name: Pipelines, Version: >=2.15.2
 - **Tags**:
   - data-processing
+  - automl
 - **Last Verified**: 2026-03-06 11:05:29+00:00
 - **Owners**:
   - Approvers:
-    - mprahl
-    - nsingla
+    - LukaszCmielowski
   - Reviewers:
-    - HumairAK
+    - Mateusz-Switala
+    - DorotaDR
 
 <!-- custom-content -->
 ## Split Configuration

@@ -48,10 +48,10 @@ efficiency), then the best candidates are refitted on the full dataset for optim
 - **Last Verified**: 2026-03-06 11:05:29+00:00
 - **Owners**:
   - Approvers:
-    - mprahl
-    - nsingla
+    - LukaszCmielowski
   - Reviewers:
-    - HumairAK
+    - Mateusz-Switala
+    - DorotaDR
 
 <!-- custom-content -->
 ## Usage Examples 💡
