@@ -8,8 +8,8 @@ dependencies:
   external_services:
     - name: ai4rag
       version: ">=1.0.0"
-    - name: pyYaml
     - name: pandas
+      version: ">=2.2.3"
 tags:
   - training
   - autorag
