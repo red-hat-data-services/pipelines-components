@@ -14,7 +14,6 @@ from ai4rag.utils.event_handler.event_handler import BaseEventHandler, LogLevel
 
 
 class StdoutEventHandler(BaseEventHandler):
-
     def __init__(self, event_handler: BaseEventHandler) -> None:
         self.event_handler = event_handler
         super().__init__()
@@ -27,7 +26,6 @@ class StdoutEventHandler(BaseEventHandler):
 
 
 class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
-
     def __init__(self, rag_experiment: AI4RAGExperiment) -> None:
         self.rag_experiment = rag_experiment
         self.metrics = ["faithfulness"]
@@ -128,7 +126,6 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
 
 
 class DisconnectedModelsPreSelector(ModelsPreSelector):
-
     def __init__(self, mps: ModelsPreSelector) -> None:
         self.mps: ModelsPreSelector = mps
         self.metric = mps.metric

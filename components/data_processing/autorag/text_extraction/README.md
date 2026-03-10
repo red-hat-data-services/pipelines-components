@@ -32,5 +32,8 @@ documents_descriptor.json with bucket, prefix, and documents list. |
   - text-extraction
 - **Last Verified**: 2026-01-23 10:29:57+00:00
 - **Owners**:
-  - Approvers: None
-  - Reviewers: None
+  - Approvers:
+    - LukaszCmielowski
+  - Reviewers:
+    - filip-komarzyniec
+    - witold-nowogorski
