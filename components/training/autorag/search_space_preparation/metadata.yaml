@@ -1,0 +1,22 @@
+---
+name: search_space_preparation
+stability: alpha  # New component without proven track record
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: ai4rag
+      version: ">=1.0.0"
+    - name: pyYaml
+    - name: pandas
+
+tags:
+  - training
+  - autorag
+  - search-space
+  - optimization
+lastVerified: 2026-02-01T23:39:58.58Z
+# links:  # Add relevant links
+#   documentation: https://your-docs-url.com
+#   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
