@@ -28,11 +28,13 @@ test = [
     "pytest-timeout",
     "docstring-parser",
     "jinja2",
+    "kfp-kubernetes>=2.15.2",
     "packaging",
     "pyyaml",
     "semver",
     "pip",
     "setuptools",
+    "kfp-kubernetes"
 ]
 # Local development (extends test with additional tools)
 dev = ["kfp-components[lint]", "kfp-components[test]"]
@@ -53,9 +55,16 @@ packages = [
     "kfp_components.components.training.autorag.search_space_preparation",
     "kfp_components.components.training.autorag.rag_templates_optimization",
     "kfp_components.components.training.autorag.leaderboard_evaluation",
+    "kfp_components.components.data_processing.autorag",
+    "kfp_components.components.training.automl",
+    "kfp_components.components.training.automl.autogluon_leaderboard_evaluation",
+    "kfp_components.components.training.automl.autogluon_models_full_refit",
+    "kfp_components.components.training.automl.autogluon_models_selection",
     "kfp_components.components.evaluation",
     "kfp_components.components.data_processing",
-    "kfp_components.components.data_processing.autorag",
+    "kfp_components.components.data_processing.automl",
+    "kfp_components.components.data_processing.automl.tabular_data_loader",
+    "kfp_components.components.data_processing.automl.tabular_train_test_split",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.data_processing.autorag.documents_discovery",
     "kfp_components.components.data_processing.autorag.test_data_loader",
