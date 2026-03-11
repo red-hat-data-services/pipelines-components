@@ -20,7 +20,7 @@ Loads test data without sampling, extracts text, then chunks and indexes the ext
 | `input_data_secret_name`         | `str`             | —             | Secret with S3 credentials for input data.               |
 | `input_data_bucket_name`         | `str`             | —             | S3 bucket containing input documents.                    |
 | `input_data_key`                 | `str`             | —             | Path to folder with input documents in the bucket.       |
-| `llama_stack_secret_name`        | `str`             | —             | Secret with Llama stack credentials                      |
+| `llama_stack_secret_name`        | `str`             | —             | Secret with Llama stack credentials.                     |
 | `embedding_model_id`             | `str`             | —             | Embedding model ID for the vector store.                 |
 | `llama_stack_vector_database_id` | `Optional[str]`   | `None`        | Vector store provider ID.                                |
 | `collection_name`                | `str`             | —             | Name of the vector store collection.                     |

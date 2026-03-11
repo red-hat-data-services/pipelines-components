@@ -19,11 +19,11 @@ reducing computational cost and improving optimization efficiency.
 
 ## Inputs 📥
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `constraints` | `dict` | `{}` | Dictionary containing search space constraints. See [Constraints Structure](#constraints-structure) below. |
-| `models_config` | `dict` | `None` | Optional dictionary with models configuration. |
-| `metric` | `str` | `faithfulness` | A RAG metric to optimise the experiment for. |
+| Parameter       | Type   | Default  | Description |
+|-----------------|-------|----------|-------------|
+| `constraints`   | `dict`| `{}`     | Dictionary containing search space constraints. See [Constraints Structure](#constraints-structure) below. |
+| `models_config` | `dict`| `None`   | Optional dictionary with models configuration. |
+| `metric`        | `str` | `faithfulness` | A RAG metric to optimise the experiment for. |
 
 ### Constraints Structure
 

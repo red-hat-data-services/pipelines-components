@@ -8,15 +8,15 @@ Produces an HTML leaderboard artifact from RAG pattern evaluation results. It re
 
 ## Inputs
 
-| Parameter     | Type                         | Description |
-|--------------|------------------------------|-------------|
+| Parameter      | Type                         | Description |
+|----------------|------------------------------|-------------|
 | `rag_patterns` | `dsl.InputPath[dsl.Artifact]` | Path to the directory of RAG patterns; each subdir must contain `pattern.json` (e.g. output of `rag_templates_optimization`). |
 
 ## Outputs
 
-| Output        | Type                    | Description |
-|---------------|-------------------------|-------------|
-| `html_artifact` | `dsl.Output[dsl.HTML]` | HTML artifact (single file at artifact path) containing the leaderboard table (pattern name, settings, metrics, execution time, final score). Same output type and path semantics as the autogluon leaderboard_evaluation component. |
+| Output          | Type                    | Description |
+|-----------------|-------------------------|-------------|
+| `html_artifact` | `dsl.Output[dsl.HTML]`  | HTML artifact (single file at artifact path) containing the leaderboard table (pattern name, settings, metrics, execution time, final score). Same output type and path semantics as the autogluon leaderboard_evaluation component. |
 
 ## Usage
 

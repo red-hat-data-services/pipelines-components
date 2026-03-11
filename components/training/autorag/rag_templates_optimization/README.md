@@ -19,13 +19,13 @@ deployment.
 
 ## Inputs 📥
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `extracted_text` | `dsl.InputPath[dsl.Artifact]` | --- | Path to a file (or a folder of files) containing extracted texts from input documents. |
-| `test_data` | `dsl.InputPath[dsl.Artifact]` | --- | Path to a .json file containing test data for evaluation. |
-| `search_space_prep_report` | `dsl.InputPath[dsl.Artifact]` | --- | Path to a .yml file containing short report on the first experiment's phase (search space preparation). |
-| `vector_database_id` | `str` | `None` | Optional vector database ID (e.g., registered in llama-stack Milvus database). If not provided, an in-memory database will be used. |
-| `optimization_settings` | `dict` | `None` | Optional dictionary with optimization settings. See [Optimization Settings](#optimization-settings) below. |
+| Parameter                 | Type                         | Default  | Description |
+|---------------------------|------------------------------|----------|-------------|
+| `extracted_text`          | `dsl.InputPath[dsl.Artifact]` | ---      | Path to a file (or a folder of files) containing extracted texts from input documents. |
+| `test_data`               | `dsl.InputPath[dsl.Artifact]` | ---      | Path to a .json file containing test data for evaluation. |
+| `search_space_prep_report`| `dsl.InputPath[dsl.Artifact]` | ---      | Path to a .yml file containing short report on the first experiment's phase (search space preparation). |
+| `vector_database_id`      | `str`                        | `None`   | Optional vector database ID (e.g., registered in llama-stack Milvus database). If not provided, an in-memory database will be used. |
+| `optimization_settings`   | `dict`                       | `None`   | Optional dictionary with optimization settings. See [Optimization Settings](#optimization-settings) below. |
 
 ### Optimization Settings
 

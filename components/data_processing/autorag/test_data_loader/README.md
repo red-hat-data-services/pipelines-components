@@ -21,18 +21,18 @@ AutoRAG pipeline, as the test data is needed for document sampling in subsequent
 |-------------------------|----------------------------|-----------|------------------------------------------------------------------------|
 | `test_data`             | `dsl.Output[dsl.Artifact]` | `None`    | Output artifact containing the loaded test data as a pandas DataFrame. |
 | `test_data_bucket_name` | `str`                      | Mandatory | S3 bucket that contains the test data file.                            |
-| `test_data_path`        | `str`                      | Mandatory | S3 object key to the JSON test data file.                              |
+| `test_data_path`        | `str`                      | Mandatory | S3 object key to the JSON test data file. |
 
 ### Test Data Reference Structure
 
 To access the test data stored in an S3-compatible storage, the component requires the following environment variables to be available at runtime:
 
 | Environment variable name | Description                                         |
-|--------------------------|-----------------------------------------------------|
-| `AWS_ACCESS_KEY_ID`      | access key used to authenticate with the S3 service |
-| `AWS_SECRET_ACCESS_KEY`  | secret key used to authenticate with the S3 service |
-| `AWS_S3_ENDPOINT`        | endpoint URL of the S3 instance                     |
-| `AWS_REGION`             | region in which the S3 instance is deployed         |
+|---------------------------|-----------------------------------------------------|
+| `AWS_ACCESS_KEY_ID`       | Access key used to authenticate with the S3 service. |
+| `AWS_SECRET_ACCESS_KEY`   | Secret key used to authenticate with the S3 service. |
+| `AWS_S3_ENDPOINT`         | Endpoint URL of the S3 instance.                    |
+| `AWS_REGION`              | Region in which the S3 instance is deployed.         |
 
 ## Outputs 📤
 

@@ -58,7 +58,7 @@ Each RAG Pattern subdirectory includes:
 - **indexing_notebook.ipynb** — Notebook for building or populating the vector index/collection
 - **inference_notebook.ipynb** — Notebook for retrieval and generation
 
-#### Metadata of artifact
+#### Artifact metadata (JSON)
 
 ```json
 {

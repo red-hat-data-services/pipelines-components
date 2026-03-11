@@ -28,10 +28,10 @@ The optimization process involves the following stages:
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-| ----------- | ------ | --------- | ------------- |
+|------------|-------|----------|--------------|
 | `test_data_secret_name` | `str` | — | Kubernetes secret's name for S3-compatible storage credentials holding test data. Must include: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
 | `test_data_bucket_name` | `str` | — | Name of the S3-like bucket holding test data. |
-| `test_data_key` | `str` | — | S3-like object key (a path) identifying the test data (a JSON file) |
+| `test_data_key` | `str` | — | S3-like object key (a path) identifying the test data (a JSON file). |
 | `input_data_secret_name` | `str` | — | Kubernetes secret's name for S3-compatible storage credentials holding input documents. Must include the same set of keys as `test_data_secret_name`. |
 | `input_data_bucket_name` | `str` | — | Name of the S3-like bucket holding input documents. |
 | `input_data_key` | `str` | — | S3-like object key (a path) identifying the input data (file or a folder of thereof). |
@@ -45,7 +45,7 @@ The optimization process involves the following stages:
 ## Outputs 📤
 
 | Output | Type | Description |
-| ------ | ---- | ----------- |
+|--------|------|-------------|
 | `documents_sampling_task.sampled_documents_atrifact` | `dsl.Output[dsl.Artifact]` | JSON artifact containing sampled documents metadata. |
 | `text_extraction_task.extracted_text_artifact` | `dsl.Output[dsl.Artifact]` | Extracted text from documents (folder with markdown files). |
 | `rag_templates_optimization.rag_patterns_artifact` | `dsl.Output[dsl.Artifact]` | A directory containing one subdirectory per top-N RAG pattern (named by pattern). |
@@ -60,7 +60,7 @@ Each RAG Pattern subdirectory includes:
 - **indexing_notebook.ipynb** — Notebook for building or populating the vector index/collection
 - **inference_notebook.ipynb** — Notebook for retrieval and generation
 
-#### Metadata of artifact
+#### Artifact metadata (JSON)
 
 ```json
 {

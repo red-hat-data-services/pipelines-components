@@ -29,8 +29,8 @@ The component downloads documents from S3 using the bucket and keys in the descr
 |---------------------------|-----------------------------------------------------|
 | `AWS_ACCESS_KEY_ID`       | Access key for the S3 service.                      |
 | `AWS_SECRET_ACCESS_KEY`   | Secret key for the S3 service.                      |
-| `AWS_S3_ENDPOINT`         | Endpoint URL of the S3 instance.                    |
-| `AWS_REGION`              | Region of the S3 instance.                         |
+| `AWS_S3_ENDPOINT`         | Endpoint URL of the S3 instance.                   |
+| `AWS_REGION`              | Region of the S3 instance.                          |
 
 ## Outputs 📤
 
