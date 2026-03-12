@@ -168,3 +168,7 @@ def main():
         # Diffs detected in check mode
         logger.error("README files are out of sync. Run with --fix to update them.")
         sys.exit(EXIT_DIFF_DETECTED)
+
+
+if __name__ == "__main__":
+    main()
