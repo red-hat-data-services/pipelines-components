@@ -9,7 +9,7 @@ dependencies:
     - name: ai4rag
       version: ">=1.0.0"
     - name: pyYaml
-      version: ">=6.0"
+      version: ">=6.0.0"
     - name: pandas
       version: ">=2.0.0"
 tags:

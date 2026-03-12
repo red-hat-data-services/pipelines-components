@@ -9,15 +9,15 @@ Defines a pipeline to load and sample input data for AutoRAG.
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `test_data_secret_name` | `str` | `None` |  |
-| `input_data_secret_name` | `str` | `None` |  |
-| `input_data_bucket_name` | `str` | `None` |  |
-| `input_data_key` | `str` | `None` |  |
-| `sampling_enabled` | `bool` | `False` |  |
-| `sampling_max_size` | `Optional[float]` | `None` |  |
-| `test_data_bucket_name` | `Optional[str]` | `None` |  |
-| `test_data_key` | `Optional[str]` | `None` |  |
+| --------- | ---- | ------- | ----------- |
+| `test_data_secret_name` | `str` | `None` | Name of the secret containing environment variables with S3 credentials used to access the test data. |
+| `input_data_secret_name` | `str` | `None` | Name of the secret containing environment variables with S3 credentials used to access the input data. |
+| `input_data_bucket_name` | `str` | `None` | Name of the S3 bucket containing input data. |
+| `input_data_key` | `str` | `None` | Path to folder with input documents within bucket. |
+| `sampling_enabled` | `bool` | `False` | Whether to enable sampling or not. |
+| `sampling_max_size` | `Optional[float]` | `None` | Maximum size of sampled documents (in gigabytes). |
+| `test_data_bucket_name` | `Optional[str]` | `None` | S3 bucket that contains the test data file. |
+| `test_data_key` | `Optional[str]` | `None` | S3 object key to the JSON test data file. |
 
 ## Metadata 🗂️
 

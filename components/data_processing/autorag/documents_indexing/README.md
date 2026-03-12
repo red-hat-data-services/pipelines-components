@@ -12,7 +12,7 @@ batch_size > 0, processes documents in batches to limit memory use and allow pro
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `embedding_model_id` | `str` | `None` | Embedding model ID used for the vector store. |
 | `extracted_text` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact (folder) containing .md files from text extraction. |
 | `llama_stack_vector_database_id` | `str` | `None` | Llama Stack provider ID for the vector database. |

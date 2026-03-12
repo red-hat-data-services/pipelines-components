@@ -23,31 +23,23 @@ def data_processing_pipeline(
     """Defines a pipeline to load and sample input data for AutoRAG.
 
     Args:
-        test_data_secret_name : str
-            Name of the secret containing environment variables with S3 credentials
+        test_data_secret_name: Name of the secret containing environment variables with S3 credentials
             used to access the test data.
 
-        input_data_secret_name : str
-            Name of the secret containing environment variables with S3 credentials
+        input_data_secret_name: Name of the secret containing environment variables with S3 credentials
             used to access the input data.
 
-        test_data_bucket_name : str
-            S3 bucket that contains the test data file.
+        test_data_bucket_name: S3 bucket that contains the test data file.
 
-        test_data_key : str
-            S3 object key to the JSON test data file.
+        test_data_key: S3 object key to the JSON test data file.
 
-        input_data_bucket_name : str
-            Name of the S3 bucket containing input data.
+        input_data_bucket_name: Name of the S3 bucket containing input data.
 
-        input_data_key : str
-            Path to folder with input documents within bucket.
+        input_data_key: Path to folder with input documents within bucket.
 
-        sampling_enabled : bool
-            Whether to enable sampling or not.
+        sampling_enabled: Whether to enable sampling or not.
 
-        sampling_max_size : float
-            Maximum size of sampled documents (in gigabytes).
+        sampling_max_size: Maximum size of sampled documents (in gigabytes).
     """
     test_data_loader_task = test_data_loader(
         test_data_bucket_name=test_data_bucket_name,

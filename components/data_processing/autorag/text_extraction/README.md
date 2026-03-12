@@ -6,15 +6,13 @@
 
 Text Extraction component.
 
-Reads the documents_descriptor JSON (from documents_discovery), fetches the listed documents from S3, and extracts text
-using the docling library.
+Reads the documents_descriptor JSON (from documents_discovery), fetches the listed documents from S3, and extracts text using the docling library.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing
-documents_descriptor.json with bucket, prefix, and documents list. |
+| --------- | ---- | ------- | ----------- |
+| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing documents_descriptor.json with bucket, prefix, and documents list. |
 | `extracted_text` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact where the extracted text content will be stored. |
 
 ## Metadata 🗂️

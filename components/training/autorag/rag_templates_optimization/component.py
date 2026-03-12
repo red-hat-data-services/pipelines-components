@@ -447,10 +447,10 @@ def rag_templates_optimization(
         "MD_1_1": NotebookCell(
             cell_type="markdown",
             source=(
-            "### Import required libraries\n\n"
-            "Import all necessary Python modules and configure logging to suppress verbose output from component "
-            "loggers."
-        ),
+                "### Import required libraries\n\n"
+                "Import all necessary Python modules and configure logging to suppress verbose output from component "
+                "loggers."
+            ),
         ),
         "MAIN_IMPORTS": NotebookCell(
             cell_type="code",
@@ -514,10 +514,10 @@ def rag_templates_optimization(
         "MD_1_3": NotebookCell(
             cell_type="markdown",
             source=(
-            "### Prepare S3 client\n\n"
-            "Creates an S3 client session using the provided credentials. This client will be used to discover and "
-            "download documents from the specified S3 bucket."
-        ),
+                "### Prepare S3 client\n\n"
+                "Creates an S3 client session using the provided credentials. This client will be used to discover and "
+                "download documents from the specified S3 bucket."
+            ),
         ),
         "S3_CLIENT": NotebookCell(
             cell_type="code",
@@ -691,11 +691,11 @@ def rag_templates_optimization(
                 'if not os.getenv("LLAMA_STACK_CLIENT_API_KEY") or not os.getenv("LLAMA_STACK_CLIENT_BASE_URL"):\n',
                 (
                     '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass('
-                    '"Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n'
+                    "\"Please enter 'LLAMA_STACK_CLIENT_API_KEY': \")\n"
                 ),
                 (
                     '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass('
-                    '"Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n'
+                    "\"Please enter 'LLAMA_STACK_CLIENT_BASE_URL': \")\n"
                 ),
                 "\n",
                 "client = LlamaStackClient(\n",
@@ -810,10 +810,10 @@ def rag_templates_optimization(
         "MD_3_5": NotebookCell(
             cell_type="markdown",
             source=(
-            "### Retrieve chunks for sample question\n\n"
-            "This section demonstrates how to perform a semantic search query against the populated vector store. "
-            "You can test retrieval by searching for relevant chunks based on a sample question."
-        ),
+                "### Retrieve chunks for sample question\n\n"
+                "This section demonstrates how to perform a semantic search query against the populated vector store. "
+                "You can test retrieval by searching for relevant chunks based on a sample question."
+            ),
         ),
         "SAMPLE_SEARCH": NotebookCell(
             cell_type="code",
@@ -952,11 +952,11 @@ def rag_templates_optimization(
                 'if not os.getenv("LLAMA_STACK_CLIENT_API_KEY") or not os.getenv("LLAMA_STACK_CLIENT_BASE_URL"):\n',
                 (
                     '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass('
-                    '"Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n'
+                    "\"Please enter 'LLAMA_STACK_CLIENT_API_KEY': \")\n"
                 ),
                 (
                     '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass('
-                    '"Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n'
+                    "\"Please enter 'LLAMA_STACK_CLIENT_BASE_URL': \")\n"
                 ),
                 "\n",
                 "client = LlamaStackClient(\n",
@@ -1205,10 +1205,10 @@ def rag_templates_optimization(
         "MD_4_3": NotebookCell(
             cell_type="markdown",
             source=(
-            "### Initialize S3 Client\n\n"
-            "Creates an S3 client session using the provided credentials. This client is used to download "
-            "test data from the specified S3 bucket."
-        ),
+                "### Initialize S3 Client\n\n"
+                "Creates an S3 client session using the provided credentials. This client is used to download "
+                "test data from the specified S3 bucket."
+            ),
         ),
         "S3_CLIENT": NotebookCell(
             cell_type="markdown",

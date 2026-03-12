@@ -12,7 +12,7 @@ with metadata. Does not download document contents.
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket containing input data. |
 | `input_data_path` | `str` | `None` | Path to folder with input documents within the bucket. |
 | `test_data` | `dsl.Input[dsl.Artifact]` | `None` | Optional input artifact containing test data for sampling. |
