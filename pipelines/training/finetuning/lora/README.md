@@ -48,9 +48,32 @@ Registers trained model to Kubeflow Model Registry
 | `phase_02_train_opt_lora_target_modules` | `str` | `""` | [LoRA] Modules to apply LoRA (empty=auto-detect) |
 | `phase_02_train_opt_lora_use_rslora` | `bool` | `False` | [LoRA] Use Rank-Stabilized LoRA |
 | `phase_02_train_opt_lora_use_dora` | `bool` | `False` | [LoRA] Use Weight-Decomposed LoRA (DoRA) |
-| `phase_02_train_opt_lora_load_in_4bit` | `bool` | `True` | [QLoRA] Enable 4-bit quantization |
-| `phase_02_train_opt_lora_load_in_8bit` | `bool` | `False` | [QLoRA] Enable 8-bit quantization |
+| `phase_02_train_opt_lora_load_in_4bit` | `bool` | `True` | [QLoRA] Enable 4-bit quantization (cannot use with 8-bit) |
+| `phase_02_train_opt_lora_load_in_8bit` | `bool` | `False` | [QLoRA] Enable 8-bit quantization (cannot use with 4-bit) |
 | `phase_02_train_opt_lora_sample_packing` | `bool` | `False` | [LoRA] Pack multiple samples for efficiency |
+| `phase_02_train_opt_micro_batch_size` | `int` | `2` | Micro batch size per GPU |
+| `phase_02_train_opt_grad_accum_steps` | `int` | `1` | Gradient accumulation steps |
+| `phase_02_train_opt_flash_attention` | `bool` | `True` | Enable flash attention |
+| `phase_02_train_opt_bf16` | `bool` | `True` | Use bfloat16 precision |
+| `phase_02_train_opt_fp16` | `bool` | `False` | Use float16 precision |
+| `phase_02_train_opt_tf32` | `bool` | `True` | Enable TF32 on Ampere+ GPUs |
+| `phase_02_train_opt_save_steps` | `int` | `500` | Save checkpoint every N steps |
+| `phase_02_train_opt_eval_steps` | `int` | `500` | Run evaluation every N steps |
+| `phase_02_train_opt_logging_steps` | `int` | `10` | Log metrics every N steps |
+| `phase_02_train_opt_save_total_limit` | `int` | `3` | Max checkpoints to keep |
+| `phase_02_train_opt_wandb_project` | `str` | `""` | Weights & Biases project name |
+| `phase_02_train_opt_wandb_entity` | `str` | `""` | Weights & Biases entity/team |
+| `phase_02_train_opt_wandb_run_name` | `str` | `""` | Weights & Biases run name |
+| `phase_02_train_opt_tensorboard_log_dir` | `str` | `""` | TensorBoard log directory |
+| `phase_02_train_opt_mlflow_tracking_uri` | `str` | `""` | MLflow tracking server URI |
+| `phase_02_train_opt_mlflow_experiment_name` | `str` | `""` | MLflow experiment name |
+| `phase_02_train_opt_mlflow_run_name` | `str` | `""` | MLflow run name |
+| `phase_02_train_opt_dataset_type` | `str` | `""` | Dataset format type |
+| `phase_02_train_opt_field_messages` | `str` | `""` | Field name for messages in dataset |
+| `phase_02_train_opt_field_instruction` | `str` | `""` | Field name for instruction in dataset |
+| `phase_02_train_opt_field_input` | `str` | `""` | Field name for input in dataset |
+| `phase_02_train_opt_field_output` | `str` | `""` | Field name for output in dataset |
+| `phase_02_train_opt_enable_model_splitting` | `bool` | `False` | Enable model splitting across GPUs |
 | `phase_03_eval_opt_batch` | `str` | `auto` | Eval batch size ('auto' or integer) |
 | `phase_03_eval_opt_gen_kwargs` | `dict` | `{}` | Generation params dict (max_tokens, temperature) |
 | `phase_03_eval_opt_limit` | `int` | `-1` | Max samples per task (-1 = all) |

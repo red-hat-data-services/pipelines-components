@@ -72,6 +72,35 @@ def train_model(
     training_seed: Optional[int] = None,
     training_use_liger: Optional[bool] = None,
     training_lr_scheduler: Optional[str] = None,
+    # Batch params
+    training_micro_batch_size: Optional[int] = None,
+    training_gradient_accumulation_steps: Optional[int] = None,
+    # Optimization params
+    training_flash_attention: Optional[bool] = None,
+    training_bf16: Optional[bool] = None,
+    training_fp16: Optional[bool] = None,
+    training_tf32: Optional[bool] = None,
+    # Saving/Logging params
+    training_save_steps: Optional[int] = None,
+    training_eval_steps: Optional[int] = None,
+    training_logging_steps: Optional[int] = None,
+    training_save_total_limit: Optional[int] = None,
+    # Logging integration params
+    training_wandb_project: Optional[str] = None,
+    training_wandb_entity: Optional[str] = None,
+    training_wandb_run_name: Optional[str] = None,
+    training_tensorboard_log_dir: Optional[str] = None,
+    training_mlflow_tracking_uri: Optional[str] = None,
+    training_mlflow_experiment_name: Optional[str] = None,
+    training_mlflow_run_name: Optional[str] = None,
+    # Dataset format params
+    training_dataset_type: Optional[str] = None,
+    training_field_messages: Optional[str] = None,
+    training_field_instruction: Optional[str] = None,
+    training_field_input: Optional[str] = None,
+    training_field_output: Optional[str] = None,
+    # Multi-GPU params
+    training_enable_model_splitting: Optional[bool] = None,
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
     """Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics.
@@ -114,6 +143,29 @@ def train_model(
         training_seed: Random seed for reproducibility.
         training_use_liger: Enable Liger kernel optimizations.
         training_lr_scheduler: LR scheduler type (cosine, linear, etc.). Training_hub default: linear.
+        training_micro_batch_size: Micro batch size per GPU.
+        training_gradient_accumulation_steps: Gradient accumulation steps.
+        training_flash_attention: Enable flash attention.
+        training_bf16: Use bfloat16 precision.
+        training_fp16: Use float16 precision.
+        training_tf32: Enable TF32 on Ampere+ GPUs.
+        training_save_steps: Save checkpoint every N steps.
+        training_eval_steps: Run evaluation every N steps.
+        training_logging_steps: Log metrics every N steps.
+        training_save_total_limit: Max checkpoints to keep.
+        training_wandb_project: Weights & Biases project name.
+        training_wandb_entity: Weights & Biases entity/team.
+        training_wandb_run_name: Weights & Biases run name.
+        training_tensorboard_log_dir: TensorBoard log directory.
+        training_mlflow_tracking_uri: MLflow tracking server URI.
+        training_mlflow_experiment_name: MLflow experiment name.
+        training_mlflow_run_name: MLflow run name.
+        training_dataset_type: Dataset format type.
+        training_field_messages: Field name for messages in dataset.
+        training_field_instruction: Field name for instruction in dataset.
+        training_field_input: Field name for input in dataset.
+        training_field_output: Field name for output in dataset.
+        training_enable_model_splitting: Enable model splitting across GPUs.
         kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
 
     Environment:
@@ -221,6 +273,8 @@ def train_model(
                 b["use_dora"] = bool(training_lora_use_dora)
 
             # QLoRA parameters
+            if training_lora_load_in_4bit and training_lora_load_in_8bit:
+                raise ValueError("Cannot enable both 4-bit and 8-bit quantization. Choose one or neither.")
             if training_lora_load_in_4bit is not None:
                 b["load_in_4bit"] = bool(training_lora_load_in_4bit)
             if training_lora_load_in_8bit is not None:
@@ -240,6 +294,64 @@ def train_model(
                 b["use_liger"] = bool(training_use_liger)
             if training_seed is not None:
                 b["seed"] = int(training_seed)
+
+            # Batch params
+            if training_micro_batch_size is not None:
+                b["micro_batch_size"] = int(training_micro_batch_size)
+            if training_gradient_accumulation_steps is not None:
+                b["gradient_accumulation_steps"] = int(training_gradient_accumulation_steps)
+
+            # Optimization params
+            if training_flash_attention is not None:
+                b["flash_attention"] = bool(training_flash_attention)
+            if training_bf16 is not None:
+                b["bf16"] = bool(training_bf16)
+            if training_fp16 is not None:
+                b["fp16"] = bool(training_fp16)
+            if training_tf32 is not None:
+                b["tf32"] = bool(training_tf32)
+
+            # Saving/Logging params
+            if training_save_steps is not None:
+                b["save_steps"] = int(training_save_steps)
+            if training_eval_steps is not None:
+                b["eval_steps"] = int(training_eval_steps)
+            if training_logging_steps is not None:
+                b["logging_steps"] = int(training_logging_steps)
+            if training_save_total_limit is not None:
+                b["save_total_limit"] = int(training_save_total_limit)
+
+            # Logging integration params
+            if training_wandb_project:
+                b["wandb_project"] = training_wandb_project
+            if training_wandb_entity:
+                b["wandb_entity"] = training_wandb_entity
+            if training_wandb_run_name:
+                b["wandb_run_name"] = training_wandb_run_name
+            if training_tensorboard_log_dir:
+                b["tensorboard_log_dir"] = training_tensorboard_log_dir
+            if training_mlflow_tracking_uri:
+                b["mlflow_tracking_uri"] = training_mlflow_tracking_uri
+            if training_mlflow_experiment_name:
+                b["mlflow_experiment_name"] = training_mlflow_experiment_name
+            if training_mlflow_run_name:
+                b["mlflow_run_name"] = training_mlflow_run_name
+
+            # Dataset format params
+            if training_dataset_type:
+                b["dataset_type"] = training_dataset_type
+            if training_field_messages:
+                b["field_messages"] = training_field_messages
+            if training_field_instruction:
+                b["field_instruction"] = training_field_instruction
+            if training_field_input:
+                b["field_input"] = training_field_input
+            if training_field_output:
+                b["field_output"] = training_field_output
+
+            # Multi-GPU params
+            if training_enable_model_splitting is not None:
+                b["enable_model_splitting"] = bool(training_enable_model_splitting)
 
             return b
 

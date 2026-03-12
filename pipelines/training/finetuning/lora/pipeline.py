@@ -91,6 +91,35 @@ def lora_pipeline(
     phase_02_train_opt_lora_load_in_4bit: bool = True,
     phase_02_train_opt_lora_load_in_8bit: bool = False,
     phase_02_train_opt_lora_sample_packing: bool = False,
+    # Batch params
+    phase_02_train_opt_micro_batch_size: int = 2,
+    phase_02_train_opt_grad_accum_steps: int = 1,
+    # Optimization params
+    phase_02_train_opt_flash_attention: bool = True,
+    phase_02_train_opt_bf16: bool = True,
+    phase_02_train_opt_fp16: bool = False,
+    phase_02_train_opt_tf32: bool = True,
+    # Saving/Logging params
+    phase_02_train_opt_save_steps: int = 500,
+    phase_02_train_opt_eval_steps: int = 500,
+    phase_02_train_opt_logging_steps: int = 10,
+    phase_02_train_opt_save_total_limit: int = 3,
+    # Logging integration params
+    phase_02_train_opt_wandb_project: str = "",
+    phase_02_train_opt_wandb_entity: str = "",
+    phase_02_train_opt_wandb_run_name: str = "",
+    phase_02_train_opt_tensorboard_log_dir: str = "",
+    phase_02_train_opt_mlflow_tracking_uri: str = "",
+    phase_02_train_opt_mlflow_experiment_name: str = "",
+    phase_02_train_opt_mlflow_run_name: str = "",
+    # Dataset format params
+    phase_02_train_opt_dataset_type: str = "",
+    phase_02_train_opt_field_messages: str = "",
+    phase_02_train_opt_field_instruction: str = "",
+    phase_02_train_opt_field_input: str = "",
+    phase_02_train_opt_field_output: str = "",
+    # Multi-GPU params
+    phase_02_train_opt_enable_model_splitting: bool = False,
     phase_03_eval_opt_batch: str = "auto",
     phase_03_eval_opt_gen_kwargs: dict = {},
     phase_03_eval_opt_limit: int = -1,
@@ -144,9 +173,32 @@ def lora_pipeline(
             phase_02_train_opt_lora_target_modules: [LoRA] Modules to apply LoRA (empty=auto-detect)
             phase_02_train_opt_lora_use_rslora: [LoRA] Use Rank-Stabilized LoRA
             phase_02_train_opt_lora_use_dora: [LoRA] Use Weight-Decomposed LoRA (DoRA)
-            phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization
-            phase_02_train_opt_lora_load_in_8bit: [QLoRA] Enable 8-bit quantization
+            phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization (cannot use with 8-bit)
+            phase_02_train_opt_lora_load_in_8bit: [QLoRA] Enable 8-bit quantization (cannot use with 4-bit)
             phase_02_train_opt_lora_sample_packing: [LoRA] Pack multiple samples for efficiency
+            phase_02_train_opt_micro_batch_size: Micro batch size per GPU
+            phase_02_train_opt_grad_accum_steps: Gradient accumulation steps
+            phase_02_train_opt_flash_attention: Enable flash attention
+            phase_02_train_opt_bf16: Use bfloat16 precision
+            phase_02_train_opt_fp16: Use float16 precision
+            phase_02_train_opt_tf32: Enable TF32 on Ampere+ GPUs
+            phase_02_train_opt_save_steps: Save checkpoint every N steps
+            phase_02_train_opt_eval_steps: Run evaluation every N steps
+            phase_02_train_opt_logging_steps: Log metrics every N steps
+            phase_02_train_opt_save_total_limit: Max checkpoints to keep
+            phase_02_train_opt_wandb_project: Weights & Biases project name
+            phase_02_train_opt_wandb_entity: Weights & Biases entity/team
+            phase_02_train_opt_wandb_run_name: Weights & Biases run name
+            phase_02_train_opt_tensorboard_log_dir: TensorBoard log directory
+            phase_02_train_opt_mlflow_tracking_uri: MLflow tracking server URI
+            phase_02_train_opt_mlflow_experiment_name: MLflow experiment name
+            phase_02_train_opt_mlflow_run_name: MLflow run name
+            phase_02_train_opt_dataset_type: Dataset format type
+            phase_02_train_opt_field_messages: Field name for messages in dataset
+            phase_02_train_opt_field_instruction: Field name for instruction in dataset
+            phase_02_train_opt_field_input: Field name for input in dataset
+            phase_02_train_opt_field_output: Field name for output in dataset
+            phase_02_train_opt_enable_model_splitting: Enable model splitting across GPUs
             phase_03_eval_opt_batch: Eval batch size ('auto' or integer)
             phase_03_eval_opt_gen_kwargs: Generation params dict (max_tokens, temperature)
             phase_03_eval_opt_limit: Max samples per task (-1 = all)
@@ -226,6 +278,35 @@ def lora_pipeline(
         # TODO: LoRA (unsloth backend) only supports single-node training.
         # Hardcoded to 1 until unsloth/training_hub add multi-node LoRA support.
         training_resource_num_workers=1,
+        # Batch params
+        training_micro_batch_size=phase_02_train_opt_micro_batch_size,
+        training_gradient_accumulation_steps=phase_02_train_opt_grad_accum_steps,
+        # Optimization params
+        training_flash_attention=phase_02_train_opt_flash_attention,
+        training_bf16=phase_02_train_opt_bf16,
+        training_fp16=phase_02_train_opt_fp16,
+        training_tf32=phase_02_train_opt_tf32,
+        # Saving/Logging params
+        training_save_steps=phase_02_train_opt_save_steps,
+        training_eval_steps=phase_02_train_opt_eval_steps,
+        training_logging_steps=phase_02_train_opt_logging_steps,
+        training_save_total_limit=phase_02_train_opt_save_total_limit,
+        # Logging integration params
+        training_wandb_project=phase_02_train_opt_wandb_project,
+        training_wandb_entity=phase_02_train_opt_wandb_entity,
+        training_wandb_run_name=phase_02_train_opt_wandb_run_name,
+        training_tensorboard_log_dir=phase_02_train_opt_tensorboard_log_dir,
+        training_mlflow_tracking_uri=phase_02_train_opt_mlflow_tracking_uri,
+        training_mlflow_experiment_name=phase_02_train_opt_mlflow_experiment_name,
+        training_mlflow_run_name=phase_02_train_opt_mlflow_run_name,
+        # Dataset format params
+        training_dataset_type=phase_02_train_opt_dataset_type,
+        training_field_messages=phase_02_train_opt_field_messages,
+        training_field_instruction=phase_02_train_opt_field_instruction,
+        training_field_input=phase_02_train_opt_field_input,
+        training_field_output=phase_02_train_opt_field_output,
+        # Multi-GPU params
+        training_enable_model_splitting=phase_02_train_opt_enable_model_splitting,
     )
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")

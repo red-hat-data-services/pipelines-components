@@ -74,7 +74,10 @@ def lora_minimal_pipeline(
     phase_02_train_opt_learning_rate: float = 2e-4,
     phase_02_train_opt_max_seq_len: int = 8192,
     phase_02_train_opt_use_liger: bool = True,
+    phase_02_train_opt_lora_dropout: float = 0.0,
+    phase_02_train_opt_lora_target_modules: str = "",
     phase_02_train_opt_lora_load_in_4bit: bool = True,
+    phase_02_train_opt_lora_load_in_8bit: bool = False,
     phase_04_registry_opt_port: int = 8080,
 ):
     """LoRA Minimal Training Pipeline - Parameter-efficient fine-tuning.
@@ -104,7 +107,10 @@ def lora_minimal_pipeline(
         phase_02_train_opt_learning_rate: Learning rate. 2e-4 recommended for LoRA
         phase_02_train_opt_max_seq_len: Max sequence length in tokens
         phase_02_train_opt_use_liger: Enable Liger kernel optimizations
-        phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization
+        phase_02_train_opt_lora_dropout: [LoRA] Dropout rate for LoRA layers
+        phase_02_train_opt_lora_target_modules: [LoRA] Modules to apply LoRA (empty=auto-detect)
+        phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization (cannot use with 8-bit)
+        phase_02_train_opt_lora_load_in_8bit: [QLoRA] Enable 8-bit quantization (cannot use with 4-bit)
         phase_04_registry_opt_port: Model registry server port
     """
     # =========================================================================
@@ -148,9 +154,11 @@ def lora_minimal_pipeline(
         # LoRA-specific parameters
         training_lora_r=phase_02_train_man_lora_r,
         training_lora_alpha=phase_02_train_man_lora_alpha,
-        training_lora_dropout=0.0,
+        training_lora_dropout=phase_02_train_opt_lora_dropout,
+        training_lora_target_modules=phase_02_train_opt_lora_target_modules,
         # QLoRA parameters
         training_lora_load_in_4bit=phase_02_train_opt_lora_load_in_4bit,
+        training_lora_load_in_8bit=phase_02_train_opt_lora_load_in_8bit,
         # Optimizations
         training_use_liger=phase_02_train_opt_use_liger,
         # Learning rate scheduler

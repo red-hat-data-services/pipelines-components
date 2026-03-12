@@ -47,6 +47,29 @@ Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics
 | `training_seed` | `Optional[int]` | `None` | Random seed for reproducibility. |
 | `training_use_liger` | `Optional[bool]` | `None` | Enable Liger kernel optimizations. |
 | `training_lr_scheduler` | `Optional[str]` | `None` | LR scheduler type (cosine, linear, etc.). Training_hub default: linear. |
+| `training_micro_batch_size` | `Optional[int]` | `None` | Micro batch size per GPU. |
+| `training_gradient_accumulation_steps` | `Optional[int]` | `None` | Gradient accumulation steps. |
+| `training_flash_attention` | `Optional[bool]` | `None` | Enable flash attention. |
+| `training_bf16` | `Optional[bool]` | `None` | Use bfloat16 precision. |
+| `training_fp16` | `Optional[bool]` | `None` | Use float16 precision. |
+| `training_tf32` | `Optional[bool]` | `None` | Enable TF32 on Ampere+ GPUs. |
+| `training_save_steps` | `Optional[int]` | `None` | Save checkpoint every N steps. |
+| `training_eval_steps` | `Optional[int]` | `None` | Run evaluation every N steps. |
+| `training_logging_steps` | `Optional[int]` | `None` | Log metrics every N steps. |
+| `training_save_total_limit` | `Optional[int]` | `None` | Max checkpoints to keep. |
+| `training_wandb_project` | `Optional[str]` | `None` | Weights & Biases project name. |
+| `training_wandb_entity` | `Optional[str]` | `None` | Weights & Biases entity/team. |
+| `training_wandb_run_name` | `Optional[str]` | `None` | Weights & Biases run name. |
+| `training_tensorboard_log_dir` | `Optional[str]` | `None` | TensorBoard log directory. |
+| `training_mlflow_tracking_uri` | `Optional[str]` | `None` | MLflow tracking server URI. |
+| `training_mlflow_experiment_name` | `Optional[str]` | `None` | MLflow experiment name. |
+| `training_mlflow_run_name` | `Optional[str]` | `None` | MLflow run name. |
+| `training_dataset_type` | `Optional[str]` | `None` | Dataset format type. |
+| `training_field_messages` | `Optional[str]` | `None` | Field name for messages in dataset. |
+| `training_field_instruction` | `Optional[str]` | `None` | Field name for instruction in dataset. |
+| `training_field_input` | `Optional[str]` | `None` | Field name for input in dataset. |
+| `training_field_output` | `Optional[str]` | `None` | Field name for output in dataset. |
+| `training_enable_model_splitting` | `Optional[bool]` | `None` | Enable model splitting across GPUs. |
 | `kubernetes_config` | `dsl.TaskConfig` | `None` | KFP TaskConfig for volumes/env/resources passthrough. |
 
 ## Outputs 📤
