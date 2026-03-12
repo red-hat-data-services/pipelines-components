@@ -67,9 +67,9 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                     answer="I cannot answer this question, because I am just a mocked model.",
                     contexts=[
                         (
-                        "*  asset_name_or_item: (Required) Either a string with the name of a stored data asset "
-                        "or an item like those returned by list_stored_data()."
-                    ),
+                            "*  asset_name_or_item: (Required) Either a string with the name of a stored data asset "
+                            "or an item like those returned by list_stored_data()."
+                        ),
                         "Model architecture   The architecture of the model influences how the model behaves.",
                         "Learn more \n\nParent topic:[Governing assets in AI use cases]",
                     ],
