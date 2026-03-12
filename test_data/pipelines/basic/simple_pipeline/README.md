@@ -9,7 +9,7 @@ This pipeline demonstrates basic pipeline structure for testing the README gener
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `input_text` | `str` | `None` | The input text to process. |
 | `iterations` | `int` | `3` | Number of iterations to run. |
 

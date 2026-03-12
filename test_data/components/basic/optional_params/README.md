@@ -9,7 +9,7 @@ This component demonstrates optional parameters with defaults.
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `required_param` | `str` | `None` | This parameter is required. |
 | `optional_text` | `Optional[str]` | `None` | Optional text to append. |
 | `max_length` | `int` | `100` | Maximum length of output. |
@@ -18,7 +18,7 @@ This component demonstrates optional parameters with defaults.
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` | The processed text. |
 
 ## Usage Examples 🧪

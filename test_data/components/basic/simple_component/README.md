@@ -9,14 +9,14 @@ This is a simple component used for testing the README generator.
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `input_text` | `str` | `None` | The text to process. |
 | `count` | `int` | `None` | Number of times to repeat the operation. |
 
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` | The processed result. |
 
 ## Usage Examples 🧪
