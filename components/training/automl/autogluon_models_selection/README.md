@@ -6,21 +6,17 @@
 
 Build multiple AutoGluon models and select top performers.
 
-This component trains multiple machine learning models using AutoGluon's ensembling approach (stacking and bagging) on
-sampled training data, then evaluates them on test data to identify the top N performing models.
+This component trains multiple machine learning models using AutoGluon's ensembling approach (stacking and bagging) on sampled training data, then evaluates them on test data to identify the top N performing models.
 
-The component uses AutoGluon's TabularPredictor which automatically trains various model types (neural networks,
-tree-based models, linear models, etc.) and combines them using stacking with multiple levels and bagging. After
-training, models are evaluated on the test dataset and ranked by performance. The top N models are selected and their
-names are returned for use in subsequent refitting stages. The predictor is saved under workspace_path.
+The component uses AutoGluon's TabularPredictor which automatically trains various model types (neural networks, tree-based models, linear models, etc.) and combines them using stacking with multiple levels and bagging. After training, models are evaluated on the test dataset and ranked by
+performance. The top N models are selected and their names are returned for use in subsequent refitting stages. The predictor is saved under workspace_path.
 
-This component is part of a two-stage training pipeline where models are first built and evaluated on sampled data (for
-efficiency), then the best candidates are refitted on the full dataset for optimal performance.
+This component is part of a two-stage training pipeline where models are first built and evaluated on sampled data (for efficiency), then the best candidates are refitted on the full dataset for optimal performance.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `label_column` | `str` | `None` | Name of the target/label column in train and test datasets. |
 | `task_type` | `str` | `None` | ML task type: "binary", "multiclass", or "regression"; drives metrics and model types. |
 | `top_n` | `int` | `None` | Number of top-performing models to select from the leaderboard (positive integer). |
@@ -31,7 +27,7 @@ efficiency), then the best candidates are refitted on the full dataset for optim
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', top_models=List[str], eval_metric=str, predictor_path=str, model_config=dict)` | top_models, eval_metric, predictor_path, model_config (preset, metric, time_limit). |
 
 ## Metadata 🗂️
