@@ -66,7 +66,10 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                     question="What foundation models are available in watsonx.ai?",
                     answer="I cannot answer this question, because I am just a mocked model.",
                     contexts=[
-                        "*  asset_name_or_item: (Required) Either a string with the name of a stored data asset or an item like those returned by list_stored_data().",
+                        (
+                        "*  asset_name_or_item: (Required) Either a string with the name of a stored data asset "
+                        "or an item like those returned by list_stored_data()."
+                    ),
                         "Model architecture   The architecture of the model influences how the model behaves.",
                         "Learn more \n\nParent topic:[Governing assets in AI use cases]",
                     ],
@@ -76,7 +79,12 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                         "391DBD504569F02CCC48B181E3B953198C8F3C8A_8.txt",
                     ],
                     ground_truths=[
-                        "The following models are available in watsonx.ai: \nflan-t5-xl-3b\nFlan-t5-xxl-11b\nflan-ul2-20b\ngpt-neox-20b\ngranite-13b-chat-v2\ngranite-13b-chat-v1\ngranite-13b-instruct-v2\ngranite-13b-instruct-v1\nllama-2-13b-chat\nllama-2-70b-chat\nmpt-7b-instruct2\nmt0-xxl-13b\nstarcoder-15.5b",
+                        (
+                            "The following models are available in watsonx.ai: \nflan-t5-xl-3b\nFlan-t5-xxl-11b\n"
+                            "flan-ul2-20b\ngpt-neox-20b\ngranite-13b-chat-v2\ngranite-13b-chat-v1\n"
+                            "granite-13b-instruct-v2\ngranite-13b-instruct-v1\nllama-2-13b-chat\n"
+                            "llama-2-70b-chat\nmpt-7b-instruct2\nmt0-xxl-13b\nstarcoder-15.5b"
+                        ),
                     ],
                     question_id="q_id_0",
                     ground_truths_context_ids=None,
@@ -85,9 +93,18 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                     question="What foundation models are available on Watsonx, and which of these has IBM built?",
                     answer="I cannot answer this question, because I am just a mocked model.",
                     contexts=[
-                        "Retrieval-augmented generation \n\nYou can use foundation models in IBM watsonx.ai to generate factually accurate output.",
-                        "Methods for tuning foundation models \n\nLearn more about different tuning methods and how they work.",
-                        "Foundation models built by IBM \n\nIn IBM watsonx.ai, you can use IBM foundation models that are built with integrity and designed for business.",
+                        (
+                            "Retrieval-augmented generation \n\nYou can use foundation models in IBM watsonx.ai "
+                            "to generate factually accurate output."
+                        ),
+                        (
+                            "Methods for tuning foundation models \n\nLearn more about different tuning methods "
+                            "and how they work."
+                        ),
+                        (
+                            "Foundation models built by IBM \n\nIn IBM watsonx.ai, you can use IBM foundation "
+                            "models that are built with integrity and designed for business."
+                        ),
                     ],
                     context_ids=[
                         "752D982C2F694FFEE2A312CEA6ADF22C2384D4B2_0.txt",
@@ -95,18 +112,39 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                         "B2593108FA446C4B4B0EF5ADC2CD5D9585B0B63C_0.txt",
                     ],
                     ground_truths=[
-                        "The following foundation models are available on Watsonx:\n\n1. flan-t5-xl-3b\n2. flan-t5-xxl-11b\n3. flan-ul2-20b\n4. gpt-neox-20b\n5. granite-13b-chat-v2 (IBM built)\n6. granite-13b-chat-v1 (IBM built)\n7. granite-13b-instruct-v2 (IBM built)\n8. granite-13b-instruct-v1 (IBM built)\n9. llama-2-13b-chat\n10. llama-2-70b-chat\n11. mpt-7b-instruct2\n12. mt0-xxl-13b\n13. starcoder-15.5b\n\n The Granite family of foundation models, including granite-13b-chat-v2, granite-13b-chat-v1, and granite-13b-instruct-v2 has been build by IBM.",
+                        (
+                            "The following foundation models are available on Watsonx:\n\n1. flan-t5-xl-3b\n"
+                            "2. flan-t5-xxl-11b\n3. flan-ul2-20b\n4. gpt-neox-20b\n5. granite-13b-chat-v2 "
+                            "(IBM built)\n6. granite-13b-chat-v1 (IBM built)\n7. granite-13b-instruct-v2 "
+                            "(IBM built)\n8. granite-13b-instruct-v1 (IBM built)\n9. llama-2-13b-chat\n"
+                            "10. llama-2-70b-chat\n11. mpt-7b-instruct2\n12. mt0-xxl-13b\n13. starcoder-15.5b\n\n "
+                            "The Granite family of foundation models, including granite-13b-chat-v2, "
+                            "granite-13b-chat-v1, and granite-13b-instruct-v2 has been build by IBM."
+                        ),
                     ],
                     question_id="q_id_1",
                     ground_truths_context_ids=None,
                 ),
                 EvaluationData(
-                    question="How can I ensure that the generated answers will be accurate, factual and based on my information?",
+                    question=(
+                        "How can I ensure that the generated answers will be accurate, factual and based on "
+                        "my information?"
+                    ),
                     answer="I cannot answer this question, because I am just a mocked model.",
                     contexts=[
-                        "Functions used in Watson Pipelines's Expression Builder \n\nUse these functions in Pipelines code editors.",
-                        "Table 1. Supported values, defaults, and usage notes for sampling decoding\n\n Parameter        Supported values                                                                                 Default  Use",
-                        "applygmm properties \n\nYou can use the Gaussian Mixture node to generate a Gaussian Mixture model nugget.",
+                        (
+                            "Functions used in Watson Pipelines's Expression Builder \n\nUse these functions "
+                            "in Pipelines code editors."
+                        ),
+                        (
+                            "Table 1. Supported values, defaults, and usage notes for sampling decoding\n\n "
+                            "Parameter        Supported values                         "
+                            "                                        Default  Use"
+                        ),
+                        (
+                            "applygmm properties \n\nYou can use the Gaussian Mixture node to generate a "
+                            "Gaussian Mixture model nugget."
+                        ),
                     ],
                     context_ids=[
                         "E933C12C1DF97E13CBA40BCD54E4F4B8133DA10C_0.txt",
@@ -114,7 +152,22 @@ class DisconnectedAI4RAGExperiment(AI4RAGExperiment):
                         "F2D3C76D5EABBBF72A0314F29374527C8339591A_0.txt",
                     ],
                     ground_truths=[
-                        "To ensure a language model provides the most accurate and factual answers to questions based on your data, you can follow these steps:\n1. Utilize Retrieval-augmented generation pattern. In this pattaern, you provide the relevant facts from your dataset as context in your prompt text. This will guide the model to generate responses grounded in the provided data\n2. Prompt Engineering: Experiment with prompt engineering techniques to shape the model's output. Understand the capabilities and limitations of the foundation model by fine-tuning prompts and adjusting inputs to align with the desired output. This process helps in refining the generated responses for accuracy.\n3. Review and Validate Output: Regularly review the generated output for biased, inappropriate, or incorrect content. Third-party models may produce outputs containing misinformation, offensive language, or biased content. Implement mechanisms to evaluate and validate the accuracy of the model's responses, ensuring alignment with factual information from your dataset.\n",
+                        (
+                            "To ensure a language model provides the most accurate and factual answers to "
+                            "questions based on your data, you can follow these steps:\n1. Utilize "
+                            "Retrieval-augmented generation pattern. In this pattaern, you provide the relevant "
+                            "facts from your dataset as context in your prompt text. This will guide the model "
+                            "to generate responses grounded in the provided data\n2. Prompt Engineering: "
+                            "Experiment with prompt engineering techniques to shape the model's output. "
+                            "Understand the capabilities and limitations of the foundation model by "
+                            "fine-tuning prompts and adjusting inputs to align with the desired output. "
+                            "This process helps in refining the generated responses for accuracy.\n3. Review "
+                            "and Validate Output: Regularly review the generated output for biased, "
+                            "inappropriate, or incorrect content. Third-party models may produce outputs "
+                            "containing misinformation, offensive language, or biased content. Implement "
+                            "mechanisms to evaluate and validate the accuracy of the model's responses, "
+                            "ensuring alignment with factual information from your dataset.\n"
+                        ),
                     ],
                     question_id="q_id_2",
                     ground_truths_context_ids=None,

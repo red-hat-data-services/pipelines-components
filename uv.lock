@@ -420,6 +420,7 @@ version = "1.11.0"
 source = { editable = "." }
 dependencies = [
     { name = "kfp" },
+    { name = "kfp-kubernetes" },
 ]
 
 [package.optional-dependencies]
@@ -466,6 +467,8 @@ requires-dist = [
     { name = "kfp", specifier = ">=2.15.2" },
     { name = "kfp-components", extras = ["lint"], marker = "extra == 'dev'" },
     { name = "kfp-components", extras = ["test"], marker = "extra == 'dev'" },
+    { name = "kfp-kubernetes", specifier = ">=2.15.0" },
+    { name = "kfp-kubernetes", marker = "extra == 'test'" },
     { name = "kfp-kubernetes", marker = "extra == 'test'", specifier = ">=2.15.2" },
     { name = "packaging", marker = "extra == 'test'" },
     { name = "pip", marker = "extra == 'test'" },
