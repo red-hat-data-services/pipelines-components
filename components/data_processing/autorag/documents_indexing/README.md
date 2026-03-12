@@ -1,46 +1,46 @@
-# Documents Indexing 📇
+# Documents Indexing ✨
 
 > ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
 
-## Overview
+## Overview 🧾
 
-Reads markdown files from the **extracted_text** artifact (produced by the [Text Extraction](../text_extraction/README.md) component),
-chunks them, embeds them via Llama Stack, and indexes them into a vector store. Supports **batch processing**: when `batch_size` > 0, documents are read, chunked, embedded, and indexed in batches to limit memory use and allow progress on large inputs.
+Index extracted text into a vector store with optional batch processing.
 
-## Inputs
+Reads markdown files from extracted_text, chunks them, embeds via Llama Stack, and adds them to the vector store. When
+batch_size > 0, processes documents in batches to limit memory use and allow progress on large inputs.
 
-| Parameter                        | Type                      | Default       | Description                                                                      |
-|----------------------------------|---------------------------|---------------|----------------------------------------------------------------------------------|
-| `embedding_params`               | `dict`                    | —             | Embedding parameters.                                                            |
-| `embedding_model_id`             | `str`                     | —             | Embedding model ID.                                                              |
-| `extracted_text`                 | `dsl.Input[dsl.Artifact]` | —             | Input artifact (folder) containing `.md` files from text extraction.             |
-| `llama_stack_vector_database_id` | `str`                     | —             | Vector store provider ID.                                                        |
-| `distance_metric`                | `str`                     | `"cosine"`    | Vector distance metric.                                                          |
-| `chunking_method`                | `str`                     | `"recursive"` | Chunking method (e.g. LangChain recursive splitter).                             |
-| `chunk_size`                     | `int`                     | `1024`        | Chunk size in characters.                                                        |
-| `chunk_overlap`                  | `int`                     | `0`           | Chunk overlap in characters.                                                     |
-| `batch_size`                     | `int`                     | `50`          | Number of documents per batch. Set to `0` to process all documents in one batch. |
+## Inputs 📥
 
-### Llama Stack credentials
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `embedding_model_id` | `str` | `None` | Embedding model ID used for the vector store. |
+| `extracted_text` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact (folder) containing .md files from text extraction. |
+| `llama_stack_vector_database_id` | `str` | `None` | Llama Stack provider ID for the vector database. |
+| `embedding_params` | `Optional[dict]` | `None` | Optional embedding parameters. |
+| `distance_metric` | `str` | `cosine` | Vector distance metric (e.g. "cosine"). |
+| `chunking_method` | `str` | `recursive` | Chunking method. |
+| `chunk_size` | `int` | `1024` | Chunk size in characters. |
+| `chunk_overlap` | `int` | `0` | Chunk overlap in characters. |
+| `batch_size` | `int` | `20` | Number of documents per batch; 0 means process all in one batch. |
+| `collection_name` | `Optional[str]` | `None` | Optional name of the collection to reuse; omit to create a new one. |
 
-The component uses Llama Stack for embedding and vector store. Set these environment variables (e.g. via a Kubernetes secret) when running the component:
+## Metadata 🗂️
 
-| Environment variable             | Description                      |
-|----------------------------------|----------------------------------|
-| `LLAMA_STACK_CLIENT_BASE_URL`    | Base URL of the Llama Stack API. |
-| `LLAMA_STACK_CLIENT_API_KEY`     | API key for the Llama Stack API. |
-
-## Outputs
-
-This component does not produce pipeline artifacts. It writes embedded chunks directly to the vector store configured via `llama_stack_vector_database_id` and the Llama Stack client.
-
-## Batch processing
-
-- **`batch_size > 0`** (default `20`): Documents are processed in batches. For each batch the component reads files, chunks them, embeds, and calls the vector store. This reduces peak memory and surfaces progress in logs.
-- **`batch_size <= 0`**: All documents are processed in a single batch (legacy behavior).
-
-## Dependencies
-
-- **ai4rag** (embedding, chunking, vector store)
-- **langchain-text-splitters** (chunking)
-- **llama_stack_client** (Llama Stack API)
+- **Name**: documents_indexing
+- **Stability**: alpha
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: RHOAI Connections API, Version: >=1.0.0
+    - Name: ai4rag, Version: >=1.0.0
+- **Tags**:
+  - data-indexing
+  - autorag
+- **Last Verified**: 2026-01-23 10:29:35+00:00
+- **Owners**:
+  - Approvers:
+    - LukaszCmielowski
+  - Reviewers:
+    - filip-komarzyniec
+    - witold-nowogorski

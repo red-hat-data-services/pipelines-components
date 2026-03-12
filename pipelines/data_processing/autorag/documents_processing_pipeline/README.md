@@ -8,16 +8,16 @@ Defines a pipeline to load and sample input data for AutoRAG.
 
 ## Inputs 📥
 
-| Parameter                | Type              | Default   | Description   |
-|--------------------------|-------------------|-----------|---------------|
-| `test_data_secret_name`  | `str`             | `None`    |               |
-| `input_data_secret_name` | `str`             | `None`    |               |
-| `input_data_bucket_name` | `str`             | `None`    |               |
-| `input_data_key`         | `str`             | `None`    |               |
-| `sampling_enabled`       | `bool`            | `False`   |               |
-| `sampling_max_size`      | `Optional[float]` | `None`    |               |
-| `test_data_bucket_name`  | `Optional[str]`   | `None`    |               |
-| `test_data_key`          | `Optional[str]`   | `None`    |               |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `test_data_secret_name` | `str` | `None` |  |
+| `input_data_secret_name` | `str` | `None` |  |
+| `input_data_bucket_name` | `str` | `None` |  |
+| `input_data_key` | `str` | `None` |  |
+| `sampling_enabled` | `bool` | `False` |  |
+| `sampling_max_size` | `Optional[float]` | `None` |  |
+| `test_data_bucket_name` | `Optional[str]` | `None` |  |
+| `test_data_key` | `Optional[str]` | `None` |  |
 
 ## Metadata 🗂️
 

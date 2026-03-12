@@ -10,13 +10,9 @@ dependencies:
       version: ">=1.0.0"
     - name: pyYaml
     - name: pandas
-
 tags:
   - training
   - autorag
   - search-space
   - optimization
 lastVerified: 2026-02-01T23:39:58.58Z
-# links:  # Add relevant links
-#   documentation: https://your-docs-url.com
-#   issue_tracker: https://github.com/kubeflow/pipelines-components/issues
