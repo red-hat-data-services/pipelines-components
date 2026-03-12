@@ -382,7 +382,11 @@ def rag_templates_optimization(
             source=[
                 "## Pattern {PATTERN_NAME} Index Building Content\n",
                 "\n",
-                "This notebook demonstrates how to process documents and build a vector store index for RAG applications. It covers document discovery, text extraction, chunking, and uploading embeddings to a vector database using Llama Stack.\n",
+                (
+                    "This notebook demonstrates how to process documents and build a vector store index for RAG "
+                    "applications. It covers document discovery, text extraction, chunking, and uploading "
+                    "embeddings to a vector database using Llama Stack.\n"
+                ),
                 "\n",
                 "### &#x1F4CB; Contents \n",
                 "This notebook contains the following sections:\n",
@@ -395,7 +399,10 @@ def rag_templates_optimization(
                 "- **[Process input documents](#Process-input-documents)**\n",
                 "  - [Documents discovery](#Documents-discovery)\n",
                 "  - [Text extraction](#Text-extraction)\n",
-                "- **[Upload documents content into vector store database](#Upload-documents-content-into-vector-store-database)**\n",
+                (
+                    "- **[Upload documents content into vector store database]"
+                    "(#Upload-documents-content-into-vector-store-database)**\n"
+                ),
                 "  - [Prepare Llama Stack Client](#Prepare-Llama-Stack-Client)\n",
                 "  - [Prepare chunker](#Prepare-chunker)\n",
                 "  - [Initialize vector store](#Initialize-vector-store)\n",
@@ -411,7 +418,10 @@ def rag_templates_optimization(
                 "\n",
                 "## Setup\n",
                 "\n",
-                "This section sets up the notebook environment by installing required packages, importing libraries, and configuring access to S3 storage.\n",
+                (
+                    "This section sets up the notebook environment by installing required packages, "
+                    "importing libraries, and configuring access to S3 storage.\n"
+                ),
                 "\n",
                 "### Install packages\n",
                 "\n",
@@ -426,14 +436,21 @@ def rag_templates_optimization(
             cell_type="code",
             source=[
                 "!pip install boto3 | tail -n 1\n",
-                "!pip install -U --no-cache-dir git+https://github.com/LukaszCmielowski/pipelines-components.git@rhoai_autorag | tail -n 1\n",
+                (
+                    "!pip install -U --no-cache-dir "
+                    "git+https://github.com/LukaszCmielowski/pipelines-components.git@rhoai_autorag | tail -n 1\n"
+                ),
                 "!pip install docling | tail -n 1\n",
                 "!pip install 'ai4rag' | tail -n 1",
             ],
         ),
         "MD_1_1": NotebookCell(
             cell_type="markdown",
-            source="### Import required libraries\n\nImport all necessary Python modules and configure logging to suppress verbose output from component loggers.",
+            source=(
+            "### Import required libraries\n\n"
+            "Import all necessary Python modules and configure logging to suppress verbose output from component "
+            "loggers."
+        ),
         ),
         "MAIN_IMPORTS": NotebookCell(
             cell_type="code",
@@ -464,17 +481,31 @@ def rag_templates_optimization(
             source=[
                 "### Configure S3 credentials\n",
                 "\n",
-                "To load documents from S3-compatible object storage, you need to provide credentials. If you're using OpenShift AI, these can be configured as data connections.\n",
+                (
+                    "To load documents from S3-compatible object storage, you need to provide credentials. "
+                    "If you're using OpenShift AI, these can be configured as data connections.\n"
+                ),
                 "\n",
-                "&#x1F4CC; **Action**: Provide the credentials for your S3 instance if they are not already set in the notebook environment.\n",
+                (
+                    "&#x1F4CC; **Action**: Provide the credentials for your S3 instance if they are not already set "
+                    "in the notebook environment.\n"
+                ),
                 "\n",
-                "&#x1F4A1; **Tip**: In the project, open **Connections** and add an **S3 compatible object storage connection** to a bucket you will use for documents and test data. Open **Workbenches**, edit your workbench, and attach the S3 connection you created so the notebook can read from the bucket. Save and restart the workbench if prompted.",
+                (
+                    "&#x1F4A1; **Tip**: In the project, open **Connections** and add an **S3 compatible object "
+                    "storage connection** to a bucket you will use for documents and test data. Open **Workbenches**, "
+                    "edit your workbench, and attach the S3 connection you created so the notebook can read from the "
+                    "bucket. Save and restart the workbench if prompted."
+                ),
             ],
         ),
         "AWS_ENV": NotebookCell(
             cell_type="code",
             source=[
-                'required_vars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", "AWS_DEFAULT_REGION", "AWS_S3_BUCKET"]\n',
+                (
+                    'required_vars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", '
+                    '"AWS_DEFAULT_REGION", "AWS_S3_BUCKET"]\n'
+                ),
                 "missing = [var for var in required_vars if not os.environ.get(var)]\n",
                 "if missing:\n",
                 '    raise ValueError(f"Missing required environment variables: {{missing}}")',
@@ -482,7 +513,11 @@ def rag_templates_optimization(
         ),
         "MD_1_3": NotebookCell(
             cell_type="markdown",
-            source="### Prepare S3 client\n\nCreates an S3 client session using the provided credentials. This client will be used to discover and download documents from the specified S3 bucket.",
+            source=(
+            "### Prepare S3 client\n\n"
+            "Creates an S3 client session using the provided credentials. This client will be used to discover and "
+            "download documents from the specified S3 bucket."
+        ),
         ),
         "S3_CLIENT": NotebookCell(
             cell_type="code",
@@ -504,25 +539,44 @@ def rag_templates_optimization(
                 "\n",
                 "## Process input documents\n",
                 "\n",
-                "This section handles document discovery and text extraction. Documents are first discovered in S3 storage, then their content is extracted and converted to markdown format for further processing.",
+                (
+                    "This section handles document discovery and text extraction. Documents are first discovered in "
+                    "S3 storage, then their content is extracted and converted to markdown format for further "
+                    "processing."
+                ),
             ],
         ),
         "MD_2_1": NotebookCell(
             cell_type="markdown",
             source=[
-                "The data processing pipeline prepares documents for the RAG system in multiple steps. Each step runs as a standalone component with outputs stored under `step_outputs/`. \n",
+                (
+                    "The data processing pipeline prepares documents for the RAG system in multiple steps. Each step "
+                    "runs as a standalone component with outputs stored under `step_outputs/`. \n"
+                ),
                 "\n",
                 "| Step | Component | Purpose |\n",
                 "|------|-----------|---------|\n",
-                "| 1 | **Documents discovery** | List documents in the bucket, prioritize benchmark-referenced docs, apply a size cap, and write a JSON manifest (no content download). |\n",
-                "| 2 | **Text extraction** | Download the listed documents from S3 and extract text to Markdown using Docling. |",
+                (
+                    "| 1 | **Documents discovery** | List documents in the bucket, prioritize benchmark-referenced "
+                    "docs, apply a size cap, and write a JSON manifest (no content download). |\n"
+                ),
+                (
+                    "| 2 | **Text extraction** | Download the listed documents from S3 and extract text to "
+                    "Markdown using Docling. |"
+                ),
             ],
         ),
         "LOAD_DATA": NotebookCell(
             cell_type="code",
             source=[
-                "from kfp_components.components.data_processing.autorag.documents_discovery.component import documents_discovery\n",
-                "from kfp_components.components.data_processing.autorag.text_extraction.component import text_extraction\n",
+                (
+                    "from kfp_components.components.data_processing.autorag.documents_discovery.component import "
+                    "documents_discovery\n"
+                ),
+                (
+                    "from kfp_components.components.data_processing.autorag.text_extraction.component import "
+                    "text_extraction\n"
+                ),
                 "\n",
                 'step_output_dir = Path("./step_outputs")\n',
                 "input_data_bucket_name = os.environ['AWS_S3_BUCKET']\n",
@@ -535,7 +589,15 @@ def rag_templates_optimization(
             source=[
                 "### Documents discovery\n",
                 "\n",
-                "Lists objects in the S3 input bucket, filters by supported extensions (e.g., `.pdf`, `.docx`, `.pptx`, `.md`, `.html`, `.txt`), and builds a document set. Documents referenced in the benchmark are prioritized, then others are added until a configurable size limit (1 GB by default) is reached. This step does not download document contents but writes a JSON manifest (`documents_descriptor.json`) containing the bucket, prefix, and list of selected object keys and sizes for the next step.",
+                (
+                    "Lists objects in the S3 input bucket, filters by supported extensions (e.g., `.pdf`, `.docx`, "
+                    "`.pptx`, `.md`, `.html`, `.txt`), and builds a document set. Documents referenced in the "
+                    "benchmark are prioritized, then others are added until a configurable size limit "
+                    "(1 GB by default) is reached. This step does not download document contents but writes a JSON "
+                    "manifest (`documents_descriptor.json`) containing the bucket, prefix, and list of selected "
+                    "object keys "
+                    "and sizes for the next step."
+                ),
             ],
         ),
         "DOCUMENTS_DISCOVERY": NotebookCell(
@@ -561,7 +623,12 @@ def rag_templates_optimization(
             source=[
                 "### Text extraction\n",
                 "\n",
-                "Reads the `documents_descriptor.json` produced by the discovery step, downloads each listed document from S3 into a temporary directory, and runs **Docling** to extract text. Output is one Markdown file per document (e.g., `document_0.md`, `document_1.md`) written to the artifact output path. These files form the final text corpus for the RAG system.",
+                (
+                    "Reads the `documents_descriptor.json` produced by the discovery step, downloads each listed "
+                    "document from S3 into a temporary directory, and runs **Docling** to extract text. Output is one "
+                    "Markdown file per document (e.g., `document_0.md`, `document_1.md`) written to the artifact "
+                    "output path. These files form the final text corpus for the RAG system."
+                ),
             ],
         ),
         "TEXT_EXTRACTION": NotebookCell(
@@ -583,9 +650,16 @@ def rag_templates_optimization(
                 "\n",
                 "## Upload documents content into vector store\n",
                 "\n",
-                "This section configures the vector store, chunks the extracted documents, and uploads embeddings to the database for semantic search.\n",
+                (
+                    "This section configures the vector store, chunks the extracted documents, and uploads embeddings "
+                    "to the database for semantic search.\n"
+                ),
                 "\n",
-                "&#x1F516; **Note**: This notebook requires a Llama Stack server to be available for the AutoRAG experiment. Detailed instructions on how to setup Llama Stack server for AutoRAG can be found here: https://github.com/LukaszCmielowski/prototypes/blob/main/llamastack/SETUP.md",
+                (
+                    "&#x1F516; **Note**: This notebook requires a Llama Stack server to be available for the AutoRAG "
+                    "experiment. Detailed instructions on how to setup Llama Stack server for AutoRAG can be found "
+                    "here: https://github.com/LukaszCmielowski/prototypes/blob/main/llamastack/SETUP.md"
+                ),
             ],
         ),
         "MD_3_1": NotebookCell(
@@ -593,13 +667,20 @@ def rag_templates_optimization(
             source=[
                 "### Prepare Llama Stack Client\n",
                 "\n",
-                "The Llama Stack client provides the interface to the embedding models and vector database. This section initializes the client using API credentials from environment variables or prompts.\n",
+                (
+                    "The Llama Stack client provides the interface to the embedding models and vector database. "
+                    "This section initializes the client using API credentials from environment variables or "
+                    "prompts.\n"
+                ),
                 "\n",
                 "**Prerequisites:**\n",
                 "- `LLAMA_STACK_CLIENT_API_KEY`: Your authentication key for the Llama Stack API\n",
                 "- `LLAMA_STACK_CLIENT_BASE_URL`: The base URL of your Llama Stack instance\n",
                 "\n",
-                "&#x1F4A1; **Tip**: In OpenShift AI Workbench, you can add these as environment variables or data connections to avoid entering them manually each time.",
+                (
+                    "&#x1F4A1; **Tip**: In OpenShift AI Workbench, you can add these as environment variables or "
+                    "data connections to avoid entering them manually each time."
+                ),
             ],
         ),
         "LS_CLIENT": NotebookCell(
@@ -608,8 +689,14 @@ def rag_templates_optimization(
                 "from llama_stack_client import LlamaStackClient\n",
                 "\n",
                 'if not os.getenv("LLAMA_STACK_CLIENT_API_KEY") or not os.getenv("LLAMA_STACK_CLIENT_BASE_URL"):\n',
-                '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass("Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n',
-                '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass("Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n',
+                (
+                    '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass('
+                    '"Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n'
+                ),
+                (
+                    '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass('
+                    '"Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n'
+                ),
                 "\n",
                 "client = LlamaStackClient(\n",
                 '    base_url=os.getenv("LLAMA_STACK_CLIENT_BASE_URL"),\n',
@@ -622,12 +709,21 @@ def rag_templates_optimization(
             source=[
                 "### Prepare chunker\n",
                 "\n",
-                "The chunker splits extracted documents into smaller chunks for more effective retrieval. Configuration includes:\n",
+                (
+                    "The chunker splits extracted documents into smaller chunks for more effective retrieval. "
+                    "Configuration includes:\n"
+                ),
                 "- **Chunking Method**: The algorithm used to split text (e.g., recursive character splitting)\n",
-                "- **Chunk Size**: Maximum number of characters per chunk\n",
-                "- **Chunk Overlap**: Number of overlapping characters between consecutive chunks to preserve context\n",
+                (
+                    "- **Chunk Size**: Maximum number of characters per chunk\n"
+                    "- **Chunk Overlap**: Number of overlapping characters between consecutive chunks to preserve "
+                    "context\n"
+                ),
                 "\n",
-                "Proper chunking ensures that retrieved context is both relevant and fits within the model's context window.",
+                (
+                    "Proper chunking ensures that retrieved context is both relevant and fits within the model's "
+                    "context window."
+                ),
             ],
         ),
         "CHUNKER": NotebookCell(
@@ -639,7 +735,10 @@ def rag_templates_optimization(
                 "chunk_size = {CHUNK_SIZE}\n",
                 "chunk_overlap = {CHUNK_OVERLAP}\n",
                 "\n",
-                "chunker = LangChainChunker(method=chunking_method, chunk_size=chunk_size, chunk_overlap=chunk_overlap)",
+                (
+                    "chunker = LangChainChunker(method=chunking_method, chunk_size=chunk_size, "
+                    "chunk_overlap=chunk_overlap)"
+                ),
             ],
         ),
         "MD_3_3": NotebookCell(
@@ -710,7 +809,11 @@ def rag_templates_optimization(
         ),
         "MD_3_5": NotebookCell(
             cell_type="markdown",
-            source="### Retrieve chunks for sample question\n\nThis section demonstrates how to perform a semantic search query against the populated vector store. You can test retrieval by searching for relevant chunks based on a sample question.",
+            source=(
+            "### Retrieve chunks for sample question\n\n"
+            "This section demonstrates how to perform a semantic search query against the populated vector store. "
+            "You can test retrieval by searching for relevant chunks based on a sample question."
+        ),
         ),
         "SAMPLE_SEARCH": NotebookCell(
             cell_type="code",
@@ -734,7 +837,11 @@ def rag_templates_optimization(
                 "\n",
                 "## Summary\n",
                 "\n",
-                "This notebook successfully processed documents from S3 storage, extracted their text content using Docling, chunked the text into manageable pieces, and uploaded the embeddings to a vector store. The indexed documents are now ready for semantic search and retrieval in RAG applications.",
+                (
+                    "This notebook successfully processed documents from S3 storage, extracted their text content "
+                    "using Docling, chunked the text into manageable pieces, and uploaded the embeddings to a vector "
+                    "store. The indexed documents are now ready for semantic search and retrieval in RAG applications."
+                ),
             ],
         ),
     }
@@ -746,9 +853,19 @@ def rag_templates_optimization(
             source=[
                 "## Pattern {PATTERN_NAME} Retrieve & Generation Content\n",
                 "\n",
-                "This notebook demonstrates how to implement and test a Retrieval-Augmented Generation (RAG) pattern using Llama Stack. It guides you through setting up the necessary components, loading test data from an S3 bucket, and querying the RAG system to generate responses based on retrieved context.\n",
+                (
+                    "This notebook demonstrates how to implement and test a Retrieval-Augmented Generation (RAG) "
+                    "pattern using Llama Stack. It guides you through setting up the necessary components, "
+                    "loading test data from an S3 bucket, and querying the RAG system to generate responses "
+                    "based on retrieved context.\n"
+                ),
                 "\n",
-                "&#x26A0;&#xFE0F; **Important**: Before running this notebook, you must first run the corresponding **indexing.ipynb** notebook to populate the vector store with document embeddings. The indexing process prepares the knowledge base that this notebook queries.\n",
+                (
+                    "&#x26A0;&#xFE0F; **Important**: Before running this notebook, you must first run the "
+                    "corresponding **indexing.ipynb** notebook to populate the vector store with document "
+                    "embeddings. The indexing process prepares the knowledge base that this notebook "
+                    "queries.\n"
+                ),
                 "\n",
                 "### &#x1F4CB; Contents \n",
                 "This notebook contains the following sections:\n",
@@ -788,7 +905,10 @@ def rag_templates_optimization(
             cell_type="code",
             source=[
                 "!pip install boto3 | tail -n 1\n",
-                "!pip install -U --no-cache-dir git+https://github.com/LukaszCmielowski/pipelines-components.git@rhoai_autorag | tail -n 1\n",
+                (
+                    "!pip install -U --no-cache-dir "
+                    "git+https://github.com/LukaszCmielowski/pipelines-components.git@rhoai_autorag | tail -n 1\n"
+                ),
                 "!pip install 'ai4rag' | tail -n 1",
             ],
         ),
@@ -799,7 +919,10 @@ def rag_templates_optimization(
                 "\n",
                 "## Prepare LlamaStackClient\n",
                 "\n",
-                "The Llama Stack client is the core interface for interacting with the Llama Stack API. This section initializes the client by:\n",
+                (
+                    "The Llama Stack client is the core interface for interacting with the Llama Stack API. "
+                    "This section initializes the client by:\n"
+                ),
                 "- Retrieving API credentials from environment variables or prompting for them\n",
                 "- Establishing a connection to the Llama Stack endpoint\n",
                 "\n",
@@ -807,7 +930,10 @@ def rag_templates_optimization(
                 "- `LLAMA_STACK_CLIENT_API_KEY`: Your authentication key for the Llama Stack API\n",
                 "- `LLAMA_STACK_CLIENT_BASE_URL`: The base URL of your Llama Stack instance\n",
                 "\n",
-                "&#x1F4A1; **Tip**: In OpenShift AI Workbench, you can add these as environment variables or data connections to avoid entering them manually each time.",
+                (
+                    "&#x1F4A1; **Tip**: In OpenShift AI Workbench, you can add these as environment variables or "
+                    "data connections to avoid entering them manually each time."
+                ),
             ],
         ),
         "LS_CLIENT": NotebookCell(
@@ -824,8 +950,14 @@ def rag_templates_optimization(
                 "logging.getLogger('httpx').propagate = False\n",
                 "\n",
                 'if not os.getenv("LLAMA_STACK_CLIENT_API_KEY") or not os.getenv("LLAMA_STACK_CLIENT_BASE_URL"):\n',
-                '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass("Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n',
-                '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass("Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n',
+                (
+                    '    os.environ["LLAMA_STACK_CLIENT_API_KEY"] = getpass.getpass('
+                    '"Please enter \'LLAMA_STACK_CLIENT_API_KEY\': ")\n'
+                ),
+                (
+                    '    os.environ["LLAMA_STACK_CLIENT_BASE_URL"] = getpass.getpass('
+                    '"Please enter \'LLAMA_STACK_CLIENT_BASE_URL\': ")\n'
+                ),
                 "\n",
                 "client = LlamaStackClient(\n",
                 '    base_url=os.getenv("LLAMA_STACK_CLIENT_BASE_URL"),\n',
@@ -840,7 +972,10 @@ def rag_templates_optimization(
                 "\n",
                 "## Initialize RAG Components\n",
                 "\n",
-                "This section sets up all the components needed for the RAG pattern: foundation model, vector store, retriever, and the RAG pattern itself.",
+                (
+                    "This section sets up all the components needed for the RAG pattern: foundation model, vector "
+                    "store, retriever, and the RAG pattern itself."
+                ),
             ],
         ),
         "MD_3_1": NotebookCell(
@@ -881,9 +1016,15 @@ def rag_templates_optimization(
             source=[
                 "### Initialize Vector Store Client\n",
                 "\n",
-                "The vector store is responsible for storing and retrieving document embeddings. This section sets up:\n",
+                (
+                    "The vector store is responsible for storing and retrieving document embeddings. "
+                    "This section sets up:\n"
+                ),
                 "- **Embedding Model**: Converts text into vector representations for semantic search\n",
-                "- **Vector Database**: Stores embeddings with configurable distance metrics (cosine, euclidean, etc.)\n",
+                (
+                    "- **Vector Database**: Stores embeddings with configurable distance metrics "
+                    "(cosine, euclidean, etc.)\n"
+                ),
                 "- **Collection**: A named collection where document vectors are stored and can be reused\n",
                 "\n",
                 "The vector store enables semantic similarity search to find relevant context for user queries.",
@@ -917,7 +1058,10 @@ def rag_templates_optimization(
                 "### Initialize Retriever\n",
                 "\n",
                 "The retriever finds the most relevant document chunks for a given query. Configuration includes:\n",
-                "- **Retrieval Method**: The algorithm used to find relevant documents (e.g., similarity search, hybrid search)\n",
+                (
+                    "- **Retrieval Method**: The algorithm used to find relevant documents (e.g., similarity "
+                    "search, hybrid search)\n"
+                ),
                 "- **Number of Chunks**: How many document chunks to retrieve and include in the context\n",
                 "\n",
                 "The retriever acts as the bridge between user questions and the knowledge base.",
@@ -962,7 +1106,10 @@ def rag_templates_optimization(
                 "\n",
                 "### Query RAG Pattern\n",
                 "\n",
-                "This section executes the RAG workflow by submitting test questions to the system and generating responses based on retrieved context.",
+                (
+                    "This section executes the RAG workflow by submitting test questions to the system and "
+                    "generating responses based on retrieved context."
+                ),
             ],
         ),
         "TEST_RESPONSE": NotebookCell(
@@ -982,7 +1129,12 @@ def rag_templates_optimization(
                 "\n",
                 "## Next steps\n",
                 "\n",
-                "The following sections provide optional next steps for loading test data, running queries, and evaluating the RAG pattern's performance. These steps are useful for systematic testing and benchmarking, but can be skipped if you prefer to interact with the RAG system directly using the pattern configured above.",
+                (
+                    "The following sections provide optional next steps for loading test data, running queries, "
+                    "and evaluating the RAG pattern's performance. These steps are useful for systematic testing "
+                    "and benchmarking, but can be skipped if you prefer to interact with the RAG system directly "
+                    "using the pattern configured above."
+                ),
             ],
         ),
         "MD_4_1": NotebookCell(
@@ -992,7 +1144,10 @@ def rag_templates_optimization(
                 "\n",
                 "### Load Test Data\n",
                 "\n",
-                "This section prepares the test environment and loads benchmark questions from S3 storage. The test data is used to evaluate the RAG system's performance.",
+                (
+                    "This section prepares the test environment and loads benchmark questions from S3 storage. "
+                    "The test data is used to evaluate the RAG system's performance."
+                ),
             ],
         ),
         "LOAD_DATA_IMPORTS": NotebookCell(
@@ -1015,18 +1170,32 @@ def rag_templates_optimization(
             source=[
                 "### Configure S3 Credentials\n",
                 "\n",
-                "To load test data from S3-compatible object storage, you need to provide credentials. If you're using OpenShift AI, these can be configured as data connections.\n",
+                (
+                    "To load test data from S3-compatible object storage, you need to provide credentials. "
+                    "If you're using OpenShift AI, these can be configured as data connections.\n"
+                ),
                 "\n",
-                "&#x1F4CC; **Action**: Provide the credentials for your S3 instance if they are not already set in the notebook environment.\n",
+                (
+                    "&#x1F4CC; **Action**: Provide the credentials for your S3 instance if they are not already set "
+                    "in the notebook environment.\n"
+                ),
                 "\n",
-                "&#x1F4A1; **Tip**: In the project, open **Connections** and add an **S3 compatible object storage connection** to a bucket you will use for documents and test data. Open **Workbenches**, edit your workbench, and attach the S3 connection you created so the notebook can read from the bucket. Save and restart the workbench if prompted.",
+                (
+                    "&#x1F4A1; **Tip**: In the project, open **Connections** and add an **S3 compatible object "
+                    "storage connection** to a bucket you will use for documents and test data. Open **Workbenches**, "
+                    "edit your workbench, and attach the S3 connection you created so the notebook can read from "
+                    "the bucket. Save and restart the workbench if prompted."
+                ),
             ],
         ),
         "AWS_ENV": NotebookCell(
             cell_type="markdown",
             source=[
                 "```python\n",
-                'required_vars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", "AWS_DEFAULT_REGION", "AWS_S3_BUCKET"]\n',
+                (
+                    'required_vars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", '
+                    '"AWS_DEFAULT_REGION", "AWS_S3_BUCKET"]\n'
+                ),
                 "missing = [var for var in required_vars if not os.environ.get(var)]\n",
                 "if missing:\n",
                 '    raise ValueError(f"Missing required environment variables: {{missing}}")\n',
@@ -1035,7 +1204,11 @@ def rag_templates_optimization(
         ),
         "MD_4_3": NotebookCell(
             cell_type="markdown",
-            source="### Initialize S3 Client\n\nCreates an S3 client session using the provided credentials. This client is used to download test data from the specified S3 bucket.",
+            source=(
+            "### Initialize S3 Client\n\n"
+            "Creates an S3 client session using the provided credentials. This client is used to download "
+            "test data from the specified S3 bucket."
+        ),
         ),
         "S3_CLIENT": NotebookCell(
             cell_type="markdown",
@@ -1057,7 +1230,10 @@ def rag_templates_optimization(
             source=[
                 "### Load Benchmark Data\n",
                 "\n",
-                "Downloads and loads the benchmark test data from S3. The benchmark file should be a JSON file containing:\n",
+                (
+                    "Downloads and loads the benchmark test data from S3. The benchmark file should be a JSON "
+                    "file containing:\n"
+                ),
                 "- **question**: The test question to ask the RAG system\n",
                 "- **correct_answers**: The expected answers for evaluation\n",
                 "- **correct_answer_document_ids**: IDs of documents that contain the correct information\n",
@@ -1069,7 +1245,10 @@ def rag_templates_optimization(
             cell_type="markdown",
             source=[
                 "```python\n",
-                "from kfp_components.components.data_processing.autorag.test_data_loader.component import test_data_loader\n",
+                (
+                    "from kfp_components.components.data_processing.autorag.test_data_loader.component import "
+                    "test_data_loader\n"
+                ),
                 "\n",
                 "\n",
                 'step_output_dir = Path("./step_outputs")\n',
@@ -1110,11 +1289,17 @@ def rag_templates_optimization(
             source=[
                 "### Build Evaluation Data\n",
                 "\n",
-                "This section transforms the RAG system's inference responses into a structured format for evaluation. It combines:\n",
+                (
+                    "This section transforms the RAG system's inference responses into a structured format "
+                    "for evaluation. It combines:\n"
+                ),
                 "- **Benchmark Data**: The original test questions and expected answers\n",
                 "- **Inference Responses**: The actual responses generated by the RAG system\n",
                 "\n",
-                "The resulting evaluation data structure allows for systematic comparison between expected and actual outputs, enabling metric calculation for assessing the RAG system's performance.",
+                (
+                    "The resulting evaluation data structure allows for systematic comparison between expected "
+                    "and actual outputs, enabling metric calculation for assessing the RAG system's performance."
+                ),
             ],
         ),
         "BUILD_EVAL_DATA": NotebookCell(
@@ -1145,7 +1330,11 @@ def rag_templates_optimization(
             source=[
                 "### Evaluate Response\n",
                 "\n",
-                "This section evaluates the quality of the RAG system's responses by comparing them against the expected answers from the benchmark data. Evaluation metrics may include accuracy, relevance, and retrieval precision.",
+                (
+                    "This section evaluates the quality of the RAG system's responses by comparing them "
+                    "against the expected answers from the benchmark data. Evaluation metrics may include "
+                    "accuracy, relevance, and retrieval precision."
+                ),
             ],
         ),
         "EVALUATE_RESPONSE": NotebookCell(
@@ -1156,7 +1345,10 @@ def rag_templates_optimization(
                 "from ai4rag.evaluator.base_evaluator import MetricType\n",
                 "\n",
                 "evaluator = UnitxtEvaluator()\n",
-                "evaluator.evaluate_metrics(evaluation_data=evaluation_data, metrics=(MetricType.ANSWER_CORRECTNESS, MetricType.FAITHFULNESS, MetricType.CONTEXT_CORRECTNESS))\n",
+                (
+                    "evaluator.evaluate_metrics(evaluation_data=evaluation_data, metrics="
+                    "(MetricType.ANSWER_CORRECTNESS, MetricType.FAITHFULNESS, MetricType.CONTEXT_CORRECTNESS))\n"
+                ),
                 "```",
             ],
         ),
@@ -1167,7 +1359,13 @@ def rag_templates_optimization(
                 "\n",
                 "## Summary\n",
                 "\n",
-                "This notebook successfully demonstrates a complete RAG pattern implementation using Llama Stack, from initializing the foundation model and vector store to querying the system with test data. The evaluation framework allows you to measure the quality of generated responses against benchmark answers using multiple metrics including answer correctness, faithfulness, and context correctness.",
+                (
+                    "This notebook successfully demonstrates a complete RAG pattern implementation using "
+                    "Llama Stack, from initializing the foundation model and vector store to querying the "
+                    "system with test data. The evaluation framework allows you to measure the quality of "
+                    "generated responses against benchmark answers using multiple metrics including answer "
+                    "correctness, faithfulness, and context correctness."
+                ),
             ],
         ),
     }
