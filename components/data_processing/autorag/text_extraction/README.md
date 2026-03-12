@@ -13,8 +13,7 @@ using the docling library.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing
-documents_descriptor.json with bucket, prefix, and documents list. |
+| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing documents_descriptor.json with bucket, prefix, and documents list. |
 | `extracted_text` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact where the extracted text content will be stored. |
 
 ## Metadata 🗂️

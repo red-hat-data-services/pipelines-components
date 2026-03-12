@@ -13,8 +13,7 @@ secret) and downloads a JSON test data file from the provided bucket and path to
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `test_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket that contains the test
-data file. |
+| `test_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket that contains the test data file. |
 | `test_data_path` | `str` | `None` | S3 object key to the JSON test data file. |
 | `test_data` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact that receives the downloaded file. |
 
