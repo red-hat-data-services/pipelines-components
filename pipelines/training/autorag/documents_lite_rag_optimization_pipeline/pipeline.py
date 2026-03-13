@@ -1,11 +1,23 @@
 from kfp import dsl
 from kfp.kubernetes import use_secret_as_env
-from kfp_components.components.data_processing.autorag.documents_discovery import documents_discovery
-from kfp_components.components.data_processing.autorag.test_data_loader import test_data_loader
-from kfp_components.components.data_processing.autorag.text_extraction import text_extraction
-from kfp_components.components.training.autorag.leaderboard_evaluation import leaderboard_evaluation
-from kfp_components.components.training.autorag.rag_templates_optimization.component import rag_templates_optimization
-from kfp_components.components.training.autorag.search_space_preparation.component import search_space_preparation
+from kfp_components.components.data_processing.autorag.documents_discovery import (
+    documents_discovery,
+)
+from kfp_components.components.data_processing.autorag.test_data_loader import (
+    test_data_loader,
+)
+from kfp_components.components.data_processing.autorag.text_extraction import (
+    text_extraction,
+)
+from kfp_components.components.training.autorag.leaderboard_evaluation import (
+    leaderboard_evaluation,
+)
+from kfp_components.components.training.autorag.rag_templates_optimization.component import (
+    rag_templates_optimization,
+)
+from kfp_components.components.training.autorag.search_space_preparation.component import (
+    search_space_preparation,
+)
 
 SUPPORTED_OPTIMIZATION_METRICS = frozenset({"faithfulness", "answer_correctness", "context_correctness"})
 
@@ -115,6 +127,8 @@ def documents_lite_rag_optimization_pipeline(
             "metric": optimization_metric,
             "max_number_of_rag_patterns": optimization_max_rag_patterns,
         },
+        test_data_key=test_data_key,
+        input_data_key=input_data_key,
     )
 
     leaderboard_evaluation(
