@@ -11,7 +11,7 @@ Validates that datasets follow chat template format (messages/conversations with
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `train_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for training dataset (JSONL format) |
 | `eval_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output artifact for evaluation dataset (JSONL format) |
 | `dataset_uri` | `str` | `None` | Dataset URI (hf://, s3://, https://, pvc:// or absolute path) |

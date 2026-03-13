@@ -8,13 +8,12 @@ A Universal LLM Evaluator component using EleutherAI's lm-evaluation-harness.
 
 Supports two types of evaluation:
 
-1. Benchmark evaluation: Standard lm-eval tasks (arc_easy, mmlu, gsm8k, etc.) 2. Custom holdout evaluation: When
-eval_dataset is provided, evaluates on your held-out data
+1. Benchmark evaluation: Standard lm-eval tasks (arc_easy, mmlu, gsm8k, etc.) 2. Custom holdout evaluation: When eval_dataset is provided, evaluates on your held-out data
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `output_metrics` | `dsl.Output[dsl.Metrics]` | `None` | Output metrics artifact with evaluation scores. |
 | `output_results` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing full evaluation results JSON. |
 | `output_samples` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing logged evaluation samples. |

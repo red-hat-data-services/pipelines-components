@@ -6,17 +6,15 @@
 
 Automl Data Loader component.
 
-Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data. The component reads data in chunks to
-efficiently handle large files without loading the entire dataset into memory at once.
+Loads tabular (CSV) data from S3 in batches, sampling up to 1GB of data. The component reads data in chunks to efficiently handle large files without loading the entire dataset into memory at once.
 
-The Tabular Data Loader is typically the first step in the AutoML pipeline. It streams CSV data from an S3 bucket,
-optionally samples it using one of the supported strategies, and writes the result to an output dataset artifact.
-Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
+The Tabular Data Loader is typically the first step in the AutoML pipeline. It streams CSV data from an S3 bucket, optionally samples it using one of the supported strategies, and writes the result to an output dataset artifact. Authentication uses AWS-style credentials provided via environment
+variables (e.g. from a Kubernetes secret).
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `file_key` | `str` | `None` | S3 object key of the CSV file. |
 | `bucket_name` | `str` | `None` | S3 bucket name containing the file. |
 | `full_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the sampled data. |
@@ -27,7 +25,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', sample_config=dict)` | Contains a sample configuration dictionary. |
 
 ## Metadata 🗂️

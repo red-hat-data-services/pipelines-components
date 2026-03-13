@@ -6,21 +6,17 @@
 
 Splits a tabular (CSV) dataset into train and test sets for AutoML workflows.
 
-The Train Test Split component takes a single CSV dataset and splits it into training and test sets using scikit-learn's
-`train_test_split`. For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is
-**stratified** by the label column by default, so that class proportions are preserved in both splits. The component
-writes the train and test CSVs to the output artifacts and returns a sample row (from the test set) and the split
-configuration.
+The Train Test Split component takes a single CSV dataset and splits it into training and test sets using scikit-learn's `train_test_split`. For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is **stratified** by the label column by default, so that class
+proportions are preserved in both splits. The component writes the train and test CSVs to the output artifacts and returns a sample row (from the test set) and the split configuration.
 
-By default, the split configuration uses: - `test_size`: 0.3 (30% of data for testing) - `random_state`: 42 (for
-reproducibility) - `stratify`: True for "binary" and "multiclass" tasks, otherwise None
+By default, the split configuration uses: - `test_size`: 0.3 (30% of data for testing) - `random_state`: 42 (for reproducibility) - `stratify`: True for "binary" and "multiclass" tasks, otherwise None
 
 You can override these by providing the `split_config` dictionary with the corresponding keys.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `dataset` | `dsl.Input[dsl.Dataset]` | `None` | Input CSV dataset to split. |
 | `label_column` | `str` | `None` | Name of the label/target column. |
 | `sampled_train_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the train split. |
@@ -31,7 +27,7 @@ You can override these by providing the `split_config` dictionary with the corre
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', sample_row=str, split_config=dict)` | Contains a sample row and a split configuration dictionary. |
 
 ## Metadata 🗂️

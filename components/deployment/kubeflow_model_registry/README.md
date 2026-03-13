@@ -6,13 +6,12 @@
 
 Register model to Kubeflow Model Registry with full provenance tracking.
 
-Uses the upstream model artifact (input_model) produced by training, or falls back to PVC path if no artifact is
-provided.
+Uses the upstream model artifact (input_model) produced by training, or falls back to PVC path if no artifact is provided.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `pvc_mount_path` | `str` | `None` | PVC mount path for workspace storage. |
 | `input_model` | `dsl.Input[dsl.Model]` | `None` | Model artifact from training step. |
 | `input_metrics` | `dsl.Input[dsl.Metrics]` | `None` | Training metrics. |
@@ -35,7 +34,7 @@ provided.
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` |  |
 
 ## Metadata 🗂️

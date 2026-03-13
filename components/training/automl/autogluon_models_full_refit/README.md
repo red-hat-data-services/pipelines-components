@@ -6,31 +6,22 @@
 
 Refit a specific AutoGluon model on the full training dataset.
 
-This component takes a trained AutoGluon TabularPredictor, loaded from predictor_path, and refits a specific model,
-identified by model_name, on the full training data. By default AutoGluon refit_full uses the predictor's training and
-validation data; the test_dataset is used for evaluation and for writing metrics. The refitted model is saved with the
-suffix "_FULL" appended to model_name.
+This component takes a trained AutoGluon TabularPredictor, loaded from predictor_path, and refits a specific model, identified by model_name, on the full training data. By default AutoGluon refit_full uses the predictor's training and validation data; the test_dataset is used for evaluation and for
+writing metrics. The refitted model is saved with the suffix "_FULL" appended to model_name.
 
-Artifacts are written under model_artifact.path in a directory named <model_name>_FULL (e.g. LightGBM_BAG_L1_FULL). The
-layout is:
+Artifacts are written under model_artifact.path in a directory named <model_name>_FULL (e.g. LightGBM_BAG_L1_FULL). The layout is:
 
-- model_artifact.path / <model_name>_FULL / predictor / TabularPredictor (predictor.pkl inside); clone with only the
-refitted model. - model_artifact.path / <model_name>_FULL / metrics / metrics.json (evaluation results; leaderboard
-component reads this via display_name/metrics/metrics.json). - model_artifact.path / <model_name>_FULL / metrics /
-feature_importance.json - model_artifact.path / <model_name>_FULL / metrics / confusion_matrix.json (classification
-only). - model_artifact.path / <model_name>_FULL / notebooks / automl_predictor_notebook.ipynb
+- model_artifact.path / <model_name>_FULL / predictor / TabularPredictor (predictor.pkl inside); clone with only the refitted model. - model_artifact.path / <model_name>_FULL / metrics / metrics.json (evaluation results; leaderboard component reads this via display_name/metrics/metrics.json). -
+model_artifact.path / <model_name>_FULL / metrics / feature_importance.json - model_artifact.path / <model_name>_FULL / metrics / confusion_matrix.json (classification only). - model_artifact.path / <model_name>_FULL / notebooks / automl_predictor_notebook.ipynb
 
-Artifact metadata: display_name (<model_name>_FULL), context (data_config, task_type, label_column, model_config,
-location, metrics), and context.location.notebook (path to the notebook). Supported problem types: regression, binary,
-multiclass; any other raises ValueError.
+Artifact metadata: display_name (<model_name>_FULL), context (data_config, task_type, label_column, model_config, location, metrics), and context.location.notebook (path to the notebook). Supported problem types: regression, binary, multiclass; any other raises ValueError.
 
-This component is typically used in a two-stage training pipeline where models are first trained on sampled data for
-exploration, then the best candidates are refitted on the full dataset for optimal performance.
+This component is typically used in a two-stage training pipeline where models are first trained on sampled data for exploration, then the best candidates are refitted on the full dataset for optimal performance.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `model_name` | `str` | `None` | Name of the model to refit (must exist in predictor); refitted model saved with "_FULL" suffix. |
 | `test_dataset` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) for evaluation and metrics; format should match initial training data. |
 | `predictor_path` | `str` | `None` | Path to the trained TabularPredictor containing model_name. |
@@ -45,7 +36,7 @@ exploration, then the best candidates are refitted on the full dataset for optim
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', model_name=str)` | NamedTuple with model_name (refitted name with "_FULL" suffix); artifacts written to model_artifact. |
 
 ## Metadata 🗂️

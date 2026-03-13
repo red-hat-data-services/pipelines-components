@@ -2,25 +2,22 @@
 
 ## Overview 🧾
 
-This component processes various types of data including structured, semi-structured, and unstructured formats while
-applying complex transformations and business rules to ensure data quality and consistency across the entire pipeline
-workflow.
+This component processes various types of data including structured, semi-structured, and unstructured formats while applying complex transformations and business rules to ensure data quality and consistency across the entire pipeline workflow.
 
-This component demonstrates a multiline overview section. It handles various types of input data and applies
-transformations based on configurable rules.
+This component demonstrates a multiline overview section. It handles various types of input data and applies transformations based on configurable rules.
 
 The component is designed for flexibility and can be used in multiple pipeline scenarios.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `input_data` | `str` | `None` | The data to process. |
 
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` | The processed data. |
 
 ## Usage Examples 🧪

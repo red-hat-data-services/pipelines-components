@@ -9,14 +9,14 @@ This component trains a linear regression model used for testing subcategory REA
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `features` | `str` | `None` | Path to the features dataset. |
 | `target` | `str` | `None` | Name of the target column. |
 
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `str` | Path to the trained model artifact. |
 
 ## Usage Examples 🧪

@@ -9,7 +9,7 @@ This pipeline orchestrates the daily ingestion of data from an external source i
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `source_path` | `str` | `None` | Path to the data source. |
 | `batch_size` | `int` | `100` | Number of records per batch. |
 

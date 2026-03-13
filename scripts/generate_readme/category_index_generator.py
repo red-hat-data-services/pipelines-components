@@ -13,7 +13,7 @@ from scripts.generate_readme.constants import (
     SUBCATEGORY_README_TEMPLATE,
 )
 from scripts.generate_readme.metadata_parser import MetadataParser
-from scripts.generate_readme.utils import format_title
+from scripts.generate_readme.utils import format_title, wrap_text
 
 logger = logging.getLogger(__name__)
 
@@ -101,9 +101,13 @@ class _BaseIndexGenerator:
 
             link = f"./{item_dir.name}/README.md"
 
+            # .j2 templates (scripts/generate_readme/templates) format the line in specific way.
+            # to be compliant with markdownlint we need to take into account whole line (not only `overview` part).
+            # added 10% margin just to be sure (better to be shorter than sorry)
+            max_index_overview_line_length = int(MAX_LINE_LENGTH - (len(formatted_name) + len(link)) * 1.1)
             return {
                 "name": formatted_name,
-                "overview": overview[:MAX_LINE_LENGTH],
+                "overview": wrap_text(overview, max_index_overview_line_length),
                 "link": link,
             }
 

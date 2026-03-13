@@ -6,14 +6,13 @@
 
 Evaluate multiple AutoGluon models and generate a leaderboard.
 
-This component aggregates evaluation results from a list of Model artifacts (reading pre-computed metrics from JSON) and
-generates an HTML-formatted leaderboard ranking the models by their performance metrics. Each model artifact is expected
-to contain metrics at model.path / model.metadata["display_name"] / metrics / metrics.json.
+This component aggregates evaluation results from a list of Model artifacts (reading pre-computed metrics from JSON) and generates an HTML-formatted leaderboard ranking the models by their performance metrics. Each model artifact is expected to contain metrics at model.path /
+model.metadata["display_name"] / metrics / metrics.json.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| --------- | ---- | ------- | ----------- |
 | `models` | `List[dsl.Model]` | `None` | List of Model artifacts with "display_name" in metadata and metrics at model.path/model_name/metrics/metrics.json. |
 | `eval_metric` | `str` | `None` | Metric name for ranking (e.g. "accuracy", "root_mean_squared_error"); leaderboard sorted by it descending. |
 | `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output artifact for the HTML-formatted leaderboard (model names and metrics). |
@@ -21,7 +20,7 @@ to contain metrics at model.path / model.metadata["display_name"] / metrics / me
 ## Outputs 📤
 
 | Name | Type | Description |
-|------|------|-------------|
+| ---- | ---- | ----------- |
 | Output | `NamedTuple('outputs', best_model=str)` |  |
 
 ## Metadata 🗂️
