@@ -72,6 +72,7 @@ packages = [
     "kfp_components.components.deployment",
     "kfp_components.components.evaluation",
     "kfp_components.components.training",
+    "kfp_components.components.training.finetuning",
     "kfp_components.pipelines",
     "kfp_components.pipelines.training",
     "kfp_components.pipelines.training.autorag",
