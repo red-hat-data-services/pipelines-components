@@ -1,31 +1,26 @@
-"""SFT Minimal (Supervised Fine-Tuning) Training Pipeline.
+"""LoRA Minimal (Low-Rank Adaptation) Training Pipeline.
 
-A 4-stage pipeline for standard supervised fine-tuning:
+A minimal 4-stage pipeline for parameter-efficient fine-tuning:
 1. Dataset Download
-2. SFT Training (instructlab-training backend)
+2. LoRA Training (unsloth backend)
 3. Evaluation with lm-eval
 4. Model Registry
 
-
-SFT is the standard approach for adapting pre-trained language models
-to new tasks or domains using labeled training data.
+LoRA enables efficient fine-tuning by training low-rank adapter matrices
+instead of full model weights, dramatically reducing compute and memory.
+This minimal version provides a streamlined workflow for quick testing
+and development.
 """
-
-import os
-import sys
 
 import kfp
 import kfp.kubernetes
 from kfp import dsl
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
+# Import reusable components
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.kubeflow_model_registry import (
-    kubeflow_model_registry as model_registry,
-)
+from components.deployment.kubeflow_model_registry import kubeflow_model_registry
 from components.evaluation.lm_eval import universal_llm_evaluator
-from components.training.finetuning import train_model
+from components.training.finetuning_algorithms.lora import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -33,13 +28,13 @@ from components.training.finetuning import train_model
 PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
-PIPELINE_NAME = "sft-minimal-pipeline"
+PIPELINE_NAME = "lora-minimal-pipeline"
 # =============================================================================
 
 
 @dsl.pipeline(
     name=PIPELINE_NAME,
-    description="SFT minimal pipeline: standard supervised fine-tuning using instructlab-training",
+    description="LoRA Minimal pipeline: parameter-efficient fine-tuning using unsloth backend",
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
             size=PVC_SIZE,
@@ -52,65 +47,71 @@ PIPELINE_NAME = "sft-minimal-pipeline"
         ),
     ),
 )
-def sft_minimal_pipeline(
+def lora_minimal_pipeline(
     # =========================================================================
     # KEY PARAMETERS (Required/Important) - Sorted by step
     # =========================================================================
     phase_01_dataset_man_data_uri: str,
     phase_01_dataset_man_data_split: float = 0.9,
     phase_02_train_man_train_batch: int = 128,
-    phase_02_train_man_epochs: int = 1,
-    phase_02_train_man_gpu: int = 1,
-    phase_02_train_man_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    phase_02_train_man_tokens: int = 10000,
-    phase_02_train_man_workers: int = 4,
-    phase_03_eval_man_tasks: list = ["arc_easy"],
+    phase_02_train_man_train_epochs: int = 2,
+    phase_02_train_man_train_gpu: int = 1,
+    phase_02_train_man_train_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+    phase_02_train_man_train_tokens: int = 32000,
+    # TODO: LoRA (unsloth backend) only supports single-node training.
+    # Uncomment when unsloth/training_hub add multi-node LoRA support.
+    # phase_02_train_man_train_workers: int = 1,
+    phase_02_train_man_lora_r: int = 16,
+    phase_02_train_man_lora_alpha: int = 32,
+    phase_03_eval_man_eval_tasks: list = ["arc_easy"],
     phase_04_registry_man_address: str = "",
-    phase_04_registry_man_reg_name: str = "sft-model",
-    phase_04_registry_man_version: str = "1.0.0",
+    phase_04_registry_man_reg_name: str = "lora-model",
+    phase_04_registry_man_reg_version: str = "1.0.0",
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
     phase_01_dataset_opt_subset: int = 0,
-    phase_02_train_opt_env_vars: str = (
-        "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, "
-        "NCCL_DEBUG=INFO, NCCL_P2P_DISABLE=1, "
-        "INSTRUCTLAB_NCCL_TIMEOUT_MS=60000"
-    ),
-    phase_02_train_opt_learning_rate: float = 5e-6,
+    phase_02_train_opt_learning_rate: float = 2e-4,
     phase_02_train_opt_max_seq_len: int = 8192,
-    phase_02_train_opt_fsdp_sharding: str = "FULL_SHARD",
-    phase_02_train_opt_use_liger: bool = False,
+    phase_02_train_opt_use_liger: bool = True,
+    phase_02_train_opt_lora_dropout: float = 0.0,
+    phase_02_train_opt_lora_target_modules: str = "",
+    phase_02_train_opt_lora_load_in_4bit: bool = True,
+    phase_02_train_opt_lora_load_in_8bit: bool = False,
     phase_04_registry_opt_port: int = 8080,
 ):
-    """SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
+    """LoRA Minimal Training Pipeline - Parameter-efficient fine-tuning.
 
-    A 4-stage ML pipeline for fine-tuning language models:
+    A minimal 4-stage ML pipeline for fine-tuning language models with LoRA:
 
     1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-    2) SFT Training - Fine-tunes using instructlab-training backend
+    2) LoRA Training - Fine-tunes using unsloth backend (low-rank adapters)
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
     4) Model Registry - Registers trained model to Kubeflow Model Registry
+
     Args:
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url)
         phase_01_dataset_man_data_split: Train/eval split (0.9 = 90% train/10% eval, 1.0 = no split, all for training)
-        phase_02_train_man_train_batch: Effective batch size (samples per optimizer step). Start with 128
-        phase_02_train_man_epochs: Number of training epochs. 1 is often sufficient
-        phase_02_train_man_gpu: GPUs per worker. KEEP AT 1 to avoid /dev/shm issues
-        phase_02_train_man_model: Base model (HuggingFace ID or path)
-        phase_02_train_man_tokens: Max tokens per GPU (memory cap). 10000 for SFT
-        phase_02_train_man_workers: Number of training pods. 4 pods × 1 GPU = 4 total GPUs
-        phase_03_eval_man_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
+        phase_02_train_man_train_batch: Effective batch size (samples per optimizer step)
+        phase_02_train_man_train_epochs: Number of training epochs. LoRA typically needs 2-3
+        phase_02_train_man_train_gpu: GPUs per worker
+        phase_02_train_man_train_model: Base model (HuggingFace ID or path)
+        phase_02_train_man_train_tokens: Max tokens per GPU (memory cap). 32000 for LoRA
+        phase_02_train_man_lora_r: [LoRA] Rank of the low-rank matrices (4, 8, 16, 32, 64)
+        phase_02_train_man_lora_alpha: [LoRA] Scaling factor (typically 2x lora_r)
+        phase_03_eval_man_eval_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
         phase_04_registry_man_address: Model Registry address (empty = skip registration)
-        phase_04_registry_man_version: Semantic version (major.minor.patch)
         phase_04_registry_man_reg_name: Model name in registry
+        phase_04_registry_man_reg_version: Semantic version (major.minor.patch)
         phase_01_dataset_opt_subset: Limit to first N examples (0 = all)
-        phase_02_train_opt_env_vars: Env vars (KEY=VAL,...) with NCCL timeout and memory optimization
-        phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
+        phase_02_train_opt_learning_rate: Learning rate. 2e-4 recommended for LoRA
         phase_02_train_opt_max_seq_len: Max sequence length in tokens
-        phase_02_train_opt_fsdp_sharding: FSDP strategy (FULL_SHARD, HYBRID_SHARD, NO_SHARD)
         phase_02_train_opt_use_liger: Enable Liger kernel optimizations
-        phase_04_registry_opt_port: Model Registry server port.
+        phase_02_train_opt_lora_dropout: [LoRA] Dropout rate for LoRA layers
+        phase_02_train_opt_lora_target_modules: [LoRA] Modules to apply LoRA (empty=auto-detect)
+        phase_02_train_opt_lora_load_in_4bit: [QLoRA] Enable 4-bit quantization (cannot use with 8-bit)
+        phase_02_train_opt_lora_load_in_8bit: [QLoRA] Enable 8-bit quantization (cannot use with 4-bit)
+        phase_04_registry_opt_port: Model registry server port
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -136,45 +137,43 @@ def sft_minimal_pipeline(
     )
 
     # =========================================================================
-    # Stage 2: SFT Training
+    # Stage 2: LoRA Training
     # =========================================================================
     training_task = train_model(
         pvc_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         dataset=dataset_download_task.outputs["train_dataset"],
-        # Model - SFT specific
-        training_base_model=phase_02_train_man_model,
-        training_algorithm="SFT",  # Hardcoded for SFT pipeline
-        training_backend="instructlab-training",  # Hardcoded for SFT
-        training_unfreeze_rank_ratio=0.0,  # Not used by SFT
+        # Model
+        training_base_model=phase_02_train_man_train_model,
         # Hyperparameters
         training_effective_batch_size=phase_02_train_man_train_batch,
-        training_max_tokens_per_gpu=phase_02_train_man_tokens,
+        training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        training_target_patterns="",  # Not used by SFT
         training_seed=42,
-        training_num_epochs=phase_02_train_man_epochs,
-        # SFT optimizations
+        training_num_epochs=phase_02_train_man_train_epochs,
+        # LoRA-specific parameters
+        training_lora_r=phase_02_train_man_lora_r,
+        training_lora_alpha=phase_02_train_man_lora_alpha,
+        training_lora_dropout=phase_02_train_opt_lora_dropout,
+        training_lora_target_modules=phase_02_train_opt_lora_target_modules,
+        # QLoRA parameters
+        training_lora_load_in_4bit=phase_02_train_opt_lora_load_in_4bit,
+        training_lora_load_in_8bit=phase_02_train_opt_lora_load_in_8bit,
+        # Optimizations
         training_use_liger=phase_02_train_opt_use_liger,
-        training_use_processed_dataset=False,
-        training_unmask_messages=False,
-        # LR scheduler
+        # Learning rate scheduler
         training_lr_scheduler="cosine",
-        training_lr_scheduler_kwargs="",
-        # Saving (SFT-specific)
+        training_lr_warmup_steps=0,
+        # Saving
         training_checkpoint_at_epoch=True,
-        training_save_final_checkpoint=False,  # Not used by SFT
-        training_save_samples=0,
-        training_accelerate_full_state_at_epoch=False,
-        training_fsdp_sharding_strategy=phase_02_train_opt_fsdp_sharding,
-        # Environment
-        training_envs=phase_02_train_opt_env_vars,
         # Resources
         training_resource_cpu_per_worker="4",
-        training_resource_gpu_per_worker=phase_02_train_man_gpu,
-        training_resource_memory_per_worker="64Gi",
+        training_resource_gpu_per_worker=phase_02_train_man_train_gpu,
+        training_resource_memory_per_worker="32Gi",
         training_resource_num_procs_per_worker="auto",
-        training_resource_num_workers=phase_02_train_man_workers,
+        # TODO: LoRA (unsloth backend) only supports single-node training.
+        # Hardcoded to 1 until unsloth/training_hub add multi-node LoRA support.
+        training_resource_num_workers=1,
     )
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")
@@ -189,13 +188,20 @@ def sft_minimal_pipeline(
         optional=False,
     )
 
+    kfp.kubernetes.use_secret_as_env(
+        task=training_task,
+        secret_name="oci-pull-secret-model-download",
+        secret_key_to_env={"OCI_PULL_SECRET_MODEL_DOWNLOAD": "OCI_PULL_SECRET_MODEL_DOWNLOAD"},
+        optional=True,
+    )
+
     # =========================================================================
     # Stage 3: Evaluation
     # =========================================================================
     eval_task = universal_llm_evaluator(
         model_artifact=training_task.outputs["output_model"],
         eval_dataset=dataset_download_task.outputs["eval_dataset"],
-        task_names=phase_03_eval_man_tasks,
+        task_names=phase_03_eval_man_eval_tasks,
         batch_size="auto",
         limit=int(-1),
         log_samples=True,
@@ -222,7 +228,7 @@ def sft_minimal_pipeline(
     # =========================================================================
     # Stage 4: Model Registry
     # =========================================================================
-    model_registry_task = model_registry(
+    model_registry_task = kubeflow_model_registry(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         input_model=training_task.outputs["output_model"],
         input_metrics=training_task.outputs["output_metrics"],
@@ -231,7 +237,7 @@ def sft_minimal_pipeline(
         registry_address=phase_04_registry_man_address,
         registry_port=phase_04_registry_opt_port,
         model_name=phase_04_registry_man_reg_name,
-        model_version=phase_04_registry_man_version,
+        model_version=phase_04_registry_man_reg_version,
         model_format_name="pytorch",
         model_format_version="2.9",
         model_description="",
@@ -248,6 +254,6 @@ def sft_minimal_pipeline(
 
 if __name__ == "__main__":
     kfp.compiler.Compiler().compile(
-        pipeline_func=sft_minimal_pipeline,
+        pipeline_func=lora_minimal_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )

@@ -64,9 +64,17 @@ def universal_llm_evaluator(
     """
     import json
     import logging
+    import multiprocessing
     import os
     import random
     import time
+
+    # vLLM V1 engine (v0.16+) spawns EngineCore as a subprocess using its own
+    # multiprocessing context, ignoring Python's default start method.
+    # Both settings are needed: set_start_method for general multiprocessing,
+    # and the env var for vLLM's internal process spawning.
+    multiprocessing.set_start_method("spawn", force=True)
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
     import torch
 
