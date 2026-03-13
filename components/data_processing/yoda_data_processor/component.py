@@ -41,7 +41,7 @@ def prepare_yoda_dataset(
 
     dataset = dataset.map(add_yoda_prefix)
 
-    # Split the dataset into train and eval sets
+    # Split the dataset into train and eval setsd
     print(
         f"Splitting dataset with {len(dataset)} rows into train ({train_split_ratio:.1%}) "
         f"and eval ({(1-train_split_ratio):.1%}) sets"
