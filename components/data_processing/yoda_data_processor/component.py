@@ -32,7 +32,7 @@ def prepare_yoda_dataset(
     dataset = dataset.rename_column("translation_extra", "completion")
     dataset = dataset.remove_columns(["translation"])
 
-    # Add prefix to prompts
+    # Add prefix to promptsfff
     print("Adding Yoda speak prefix to prompts")
 
     def add_yoda_prefix(example):
