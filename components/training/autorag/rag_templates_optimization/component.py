@@ -1,5 +1,5 @@
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from kfp import dsl
 
@@ -85,9 +85,11 @@ def rag_templates_optimization(
 
     import os
     from collections import namedtuple
-    from json import dump as json_dump, load as json_load
+    from json import dump as json_dump
+    from json import load as json_load
     from pathlib import Path
     from string import Formatter
+    from typing import Any, Literal, Self
 
     import pandas as pd
     import yaml as yml
@@ -109,9 +111,7 @@ def rag_templates_optimization(
 
     MAX_NUMBER_OF_RAG_PATTERNS = 8
     METRIC = "faithfulness"
-    SUPPORTED_OPTIMIZATION_METRICS = frozenset(
-        {"faithfulness", "answer_correctness", "context_correctness"}
-    )
+    SUPPORTED_OPTIMIZATION_METRICS = frozenset({"faithfulness", "answer_correctness", "context_correctness"})
 
     class NotebookCell:
         """Represents a single cell in a Jupyter notebook.
@@ -175,9 +175,7 @@ def rag_templates_optimization(
                     for _, field_name, _, _ in Formatter().parse(line):
                         if field_name is None:
                             continue
-                        line_mapping[field_name] = placeholders_mapping.get(
-                            field_name, ""
-                        )
+                        line_mapping[field_name] = placeholders_mapping.get(field_name, "")
 
                     new_source.append(line.format(**line_mapping))
                     self.source = new_source
@@ -287,22 +285,16 @@ def rag_templates_optimization(
                 "chroma_teamplate.ipynb",
             ],
         ) -> "Notebook":
-            """
-            Load a Jupyter notebook from a file.
+            """Load a Jupyter notebook from a file.
 
-            Parameters
-            ----------
-            path : str | Path
-                Input file path to the .ipynb file.
+            Args:
+                notebook_name: One of the allowed template names.
 
-            Returns
-            -------
-            Notebook
-                A new Notebook instance populated with the loaded cells and metadata.
+            Returns:
+                Notebook: A new Notebook instance populated with the loaded cells and metadata.
 
-            Examples
-            --------
-            >>> nb = Notebook.load("existing_notebook.ipynb")
+            Examples:
+                >>> nb = Notebook.load("existing_notebook.ipynb")
             """
             with open(Path(embedded_artifact.path) / notebook_name, "r") as f:
                 nb_dict = json_load(f)
@@ -393,9 +385,7 @@ def rag_templates_optimization(
 
         em = settings.get("embedding", {})
         mapping["EMBEDDING_MODEL_ID"] = em.get("model_id", "")
-        mapping["EMBEDDING_PARAMS"] = em.get(
-            "embedding_params", {"embedding_dimension": 768}
-        )
+        mapping["EMBEDDING_PARAMS"] = em.get("embedding_params", {"embedding_dimension": 768})
         mapping["DISTANCE_METRIC"] = em.get("distance_metric", "")
 
         vs = settings.get("vector_store", {})
@@ -433,7 +423,7 @@ def rag_templates_optimization(
         """Generate a filled notebook from templates and output.json.
 
         Args:
-            templates_dict: Dictionary of NotebookCell templates (e.g., INDEXING_CELLS_TEMPLATES).
+            notebook_template: One of the allowed template names.
             output_data: The parsed output.json data.
             output_notebook_path: Path where to save the generated notebook.
             test_data_key: Path to test data file within bucket used as input to AI4RAG.
@@ -467,14 +457,10 @@ def rag_templates_optimization(
     class TmpEventHandler(BaseEventHandler):
         """Exists temporarily only for the purpose of satisying type hinting checks"""
 
-        def on_status_change(
-            self, level: LogLevel, message: str, step: str | None = None
-        ) -> None:
+        def on_status_change(self, level: LogLevel, message: str, step: str | None = None) -> None:
             pass
 
-        def on_pattern_creation(
-            self, payload: dict, evaluation_results: list, **kwargs
-        ) -> None:
+        def on_pattern_creation(self, payload: dict, evaluation_results: list, **kwargs) -> None:
             pass
 
     def load_as_langchain_doc(path: str | Path) -> list[Document]:
@@ -502,11 +488,7 @@ def rag_templates_optimization(
 
         elif path.is_file():
             with path.open("r", encoding="utf-8") as doc:
-                documents.append(
-                    Document(
-                        page_content=doc.read(), metadata={"document_id": path.stem}
-                    )
-                )
+                documents.append(Document(page_content=doc.read(), metadata={"document_id": path.stem}))
 
         return documents
 
@@ -537,15 +519,11 @@ def rag_templates_optimization(
             )
         client = Client(
             generation_model=OpenAI(api_key=chat_model_token, base_url=chat_model_url),
-            embedding_model=OpenAI(
-                api_key=embedding_model_token, base_url=embedding_model_url
-            ),
+            embedding_model=OpenAI(api_key=embedding_model_token, base_url=embedding_model_url),
         )
         in_memory_vector_store_scenario = True
 
-    def construct_model_instance(
-        loader, node: yml.MappingNode
-    ) -> BaseEmbeddingModel | BaseFoundationModel:
+    def construct_model_instance(loader, node: yml.MappingNode) -> BaseEmbeddingModel | BaseFoundationModel:
         """Instructs yml.Loader on how to construct "!Model" tag."""
         mapping = loader.construct_mapping(node, deep=True)
 
@@ -553,28 +531,18 @@ def rag_templates_optimization(
             case {"type_": "embedding", **id_to_params}:
                 model_id, params = id_to_params.popitem()
                 if in_memory_vector_store_scenario:
-                    return OpenAIEmbeddingModel(
-                        client=client.embedding_model, model_id=model_id, params=params
-                    )
+                    return OpenAIEmbeddingModel(client=client.embedding_model, model_id=model_id, params=params)
                 else:
-                    return LSEmbeddingModel(
-                        client=client.llama_stack, model_id=model_id, params=params
-                    )
+                    return LSEmbeddingModel(client=client.llama_stack, model_id=model_id, params=params)
 
             case {"type_": "generation", **id_to_params}:
                 model_id, params = id_to_params.popitem()
                 if in_memory_vector_store_scenario:
-                    return OpenAIFoundationModel(
-                        client=client.generation_model, model_id=model_id, params=params
-                    )
+                    return OpenAIFoundationModel(client=client.generation_model, model_id=model_id, params=params)
                 else:
-                    return LSFoundationModel(
-                        client=client.llama_stack, model_id=model_id, params=params
-                    )
+                    return LSFoundationModel(client=client.llama_stack, model_id=model_id, params=params)
             case _:
-                raise ValueError(
-                    f"Cannot load the yml-serialized !Model tag: {mapping}"
-                )
+                raise ValueError(f"Cannot load the yml-serialized !Model tag: {mapping}")
 
     yml.add_constructor("!Model", construct_model_instance, Loader=yml.SafeLoader)
 
@@ -594,16 +562,11 @@ def rag_templates_optimization(
         search_space = yml.safe_load(f)
 
     search_space = AI4RAGSearchSpace(
-        params=[
-            Parameter(param, "C", values=values)
-            for param, values in search_space.items()
-        ]
+        params=[Parameter(param, "C", values=values) for param, values in search_space.items()]
     )
 
     event_handler = TmpEventHandler()
-    max_rag_patterns = optimization_settings.get(
-        "max_number_of_rag_patterns", MAX_NUMBER_OF_RAG_PATTERNS
-    )
+    max_rag_patterns = optimization_settings.get("max_number_of_rag_patterns", MAX_NUMBER_OF_RAG_PATTERNS)
     optimizer_settings = GAMOptSettings(max_evals=int(max_rag_patterns))
 
     benchmark_data = pd.read_json(Path(test_data))
@@ -634,17 +597,11 @@ def rag_templates_optimization(
         for ev in eval_data_list:
             answer_contexts = []
             if getattr(ev, "contexts", None) and getattr(ev, "context_ids", None):
-                answer_contexts = [
-                    {"text": t, "document_id": doc_id}
-                    for t, doc_id in zip(ev.contexts, ev.context_ids)
-                ]
+                answer_contexts = [{"text": t, "document_id": doc_id} for t, doc_id in zip(ev.contexts, ev.context_ids)]
             scores = {}
             q_scores = (evaluation_result.scores or {}).get("question_scores") or {}
             for key in q_scores:
-                if (
-                    isinstance(q_scores[key], dict)
-                    and getattr(ev, "question_id", None) in q_scores[key]
-                ):
+                if isinstance(q_scores[key], dict) and getattr(ev, "question_id", None) in q_scores[key]:
                     scores[key] = q_scores[key][ev.question_id]
             out.append(
                 {
@@ -660,9 +617,7 @@ def rag_templates_optimization(
     rag_patterns_dir = Path(rag_patterns.path)
     evaluation_data_list = getattr(rag_exp.results, "evaluation_data", [])
 
-    def _build_pattern_json(
-        evaluation_result, iteration: int, max_combinations: int
-    ) -> dict:
+    def _build_pattern_json(evaluation_result, iteration: int, max_combinations: int) -> dict:
         """Build pattern.json with flat schema (name, iteration, settings, scores, final_score)."""
         idx = evaluation_result.indexing_params or {}
         rp = evaluation_result.rag_params or {}
@@ -697,9 +652,7 @@ def rag_templates_optimization(
         if not embedding_model_id and hasattr(rp.get("embedding_model"), "model_id"):
             embedding_model_id = getattr(rp.get("embedding_model"), "model_id", None)
         # generation model_id: from rag_params.generation (ai4rag) or flat foundation_model
-        generation_model_id = (
-            generation.get("model_id") if isinstance(generation, dict) else None
-        )
+        generation_model_id = generation.get("model_id") if isinstance(generation, dict) else None
         if not generation_model_id and isinstance(rp.get("foundation_model"), str):
             generation_model_id = rp.get("foundation_model")
         if not generation_model_id and hasattr(rp.get("foundation_model"), "model_id"):
@@ -711,13 +664,10 @@ def rag_templates_optimization(
             "duration_seconds": getattr(evaluation_result, "execution_time", 0) or 0,
             "settings": {
                 "vector_store": {
-                    "datasource_type": idx.get("vector_store", {}).get(
-                        "datasource_type"
-                    )
+                    "datasource_type": idx.get("vector_store", {}).get("datasource_type")
                     or rp.get("vector_store", {}).get("datasource_type")
                     or "ls_milvus",
-                    "collection_name": getattr(evaluation_result, "collection", "")
-                    or "",
+                    "collection_name": getattr(evaluation_result, "collection", "") or "",
                 },
                 "chunking": {
                     "method": chunking.get("method", "recursive"),
@@ -727,13 +677,9 @@ def rag_templates_optimization(
                 "embedding": {
                     "model_id": embedding_model_id or "",
                     "distance_metric": (
-                        embeddings.get("distance_metric", "cosine")
-                        if isinstance(embeddings, dict)
-                        else "cosine"
+                        embeddings.get("distance_metric", "cosine") if isinstance(embeddings, dict) else "cosine"
                     ),
-                    "embedding_params": embeddings.get(
-                        "embedding_params", {"embedding_dimension": 768}
-                    ),
+                    "embedding_params": embeddings.get("embedding_params", {"embedding_dimension": 768}),
                 },
                 "retrieval": {
                     "method": retrieval_method,
@@ -745,9 +691,7 @@ def rag_templates_optimization(
                 },
                 "generation": {
                     "model_id": generation_model_id or "",
-                    "context_template_text": generation.get(
-                        "context_template_text", "{document}"
-                    ),
+                    "context_template_text": generation.get("context_template_text", "{document}"),
                     "user_message_text": generation.get(
                         "user_message_text",
                         (
@@ -769,9 +713,7 @@ def rag_templates_optimization(
         }
 
     evaluations_list = list(rag_exp.results.evaluations)
-    max_combinations = (
-        getattr(rag_exp.results, "max_combinations", len(evaluations_list)) or 24
-    )
+    max_combinations = getattr(rag_exp.results, "max_combinations", len(evaluations_list)) or 24
 
     rag_patterns.metadata["name"] = "rag_patterns_artifact"
     rag_patterns.metadata["uri"] = rag_patterns.uri
@@ -780,9 +722,7 @@ def rag_templates_optimization(
         patt_dir = rag_patterns_dir / eval.pattern_name
         patt_dir.mkdir(parents=True, exist_ok=True)
 
-        pattern_data = _build_pattern_json(
-            eval, iteration=i, max_combinations=max_combinations
-        )
+        pattern_data = _build_pattern_json(eval, iteration=i, max_combinations=max_combinations)
         if llama_stack_vector_database_id == "chroma":
             generate_notebook_from_templates(
                 "chroma",
@@ -807,23 +747,17 @@ def rag_templates_optimization(
             )
 
         # Flat schema: scores = per-metric aggregates (mean, ci_low, ci_high); final_score
-        pattern_data["scores"] = (getattr(eval, "scores", None) or {}).get(
-            "scores"
-        ) or {}
+        pattern_data["scores"] = (getattr(eval, "scores", None) or {}).get("scores") or {}
         pattern_data["final_score"] = getattr(eval, "final_score", None)
         rag_patterns.metadata["metadata"]["patterns"].append(pattern_data)
-        with (patt_dir / "pattern.json").open(
-            "w+", encoding="utf-8"
-        ) as pattern_details:
+        with (patt_dir / "pattern.json").open("w+", encoding="utf-8") as pattern_details:
             json_dump(pattern_data, pattern_details, indent=2)
 
         eval_data = evaluation_data_list[i] if i < len(evaluation_data_list) else []
         try:
             q_scores = (eval.scores or {}).get("question_scores") or {}
             if q_scores and all(isinstance(q_scores.get(k), dict) for k in q_scores):
-                evaluation_result_list = (
-                    ExperimentResults.create_evaluation_results_json(eval_data, eval)
-                )
+                evaluation_result_list = ExperimentResults.create_evaluation_results_json(eval_data, eval)
             else:
                 evaluation_result_list = _evaluation_result_fallback(eval_data, eval)
         except (KeyError, TypeError):
