@@ -257,15 +257,12 @@ def autogluon_models_full_refit(
             cell["source"] = new_source
         return notebook
 
-    if sample_row:
-        try:
-            sample_row_list = json.loads(sample_row)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"sample_row must be valid JSON array: {e}")
-        if not isinstance(sample_row_list, list):
-            raise ValueError("sample_row must be a JSON array list of row objects).")
-    else:
-        sample_row_list = []
+    try:
+        sample_row_list = json.loads(sample_row)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"sample_row must be valid JSON array: {e}")
+    if not isinstance(sample_row_list, list):
+        raise ValueError("sample_row must be a JSON array list of row objects).")
 
     # remove label column from sample row
     sample_row_formatted = [
