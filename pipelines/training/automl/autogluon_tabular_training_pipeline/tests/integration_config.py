@@ -1,8 +1,10 @@
 """RHOAI integration test config: load .env and build config from environment.
 
-Used by conftest.py (fixtures) and test_pipeline_integration.py (skipif) so
-skip logic and fixtures share one source of truth. Import this module instead
-of conftest to avoid resolving the repo-root conftest when running tests.
+`.env` is loaded inside `get_rhoai_config` / `get_dspa_config` (not at import
+time) so repository import-guard checks pass. Used by conftest.py (fixtures)
+and test_pipeline_integration.py (skipif) so skip logic and fixtures share one
+source of truth. Import this module instead of conftest to avoid resolving the
+repo-root conftest when running tests.
 
 Authentication: set RHOAI_TOKEN (e.g. a service account token for Jenkins/CI;
 long-lived, no oc or kubeconfig required).
@@ -11,12 +13,14 @@ long-lived, no oc or kubeconfig required).
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 
-# Load .env from repo root (cwd) and from this directory.
-# Load tests/.env last with override=True so it takes precedence (e.g. RHOAI_CREATE_DSPA).
-load_dotenv()
-load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
+def _ensure_dotenv_loaded() -> None:
+    """Load .env from repo root (cwd) and from this directory (import guard: not at module scope)."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
+
 
 RHOAI_URL_ENV = "RHOAI_URL"
 RHOAI_KFP_URL_ENV = "RHOAI_KFP_URL"
@@ -53,6 +57,7 @@ def get_rhoai_config():
     All required vars must be set, including RHOAI_TOKEN (use a service account
     token for Jenkins/CI; long-lived, no oc or kubeconfig needed).
     """
+    _ensure_dotenv_loaded()
     url = os.environ.get(RHOAI_URL_ENV)
     kfp_url = os.environ.get(RHOAI_KFP_URL_ENV)
     token = os.environ.get(RHOAI_TOKEN_ENV)
@@ -83,13 +88,13 @@ def get_rhoai_config():
 
 
 def get_dspa_config():
-    """
-    Return DataSciencePipelinesApplication creation config from env, or None if disabled.
+    """Return DataSciencePipelinesApplication creation config from env, or None if disabled.
 
     When RHOAI_CREATE_DSPA is set to a truthy value, returns a dict with:
     - create: True
     - api_group, api_version, plural: CRD identity (with defaults for Open Data Hub / RHOAI)
     """
+    _ensure_dotenv_loaded()
     raw = (os.environ.get(RHOAI_CREATE_DSPA_ENV) or "").strip().lower().strip("'\"")
     if raw not in ("1", "true", "yes"):
         return None
@@ -103,7 +108,6 @@ def get_dspa_config():
         "ready_wait_timeout": int(os.environ.get(DSPA_READY_WAIT_TIMEOUT_ENV) or "600"),
         "ready_buffer_seconds": int(os.environ.get(DSPA_READY_BUFFER_SECONDS_ENV) or "30"),
     }
-
 
 
 # Single source of truth for skipif: tests run only when this is not None.

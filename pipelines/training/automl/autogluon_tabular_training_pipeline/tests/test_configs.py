@@ -138,9 +138,7 @@ def resolve_config_to_pipeline_arguments(
     location = uploaded_datasets.get(config.dataset_path)
     if not location:
         return None
-    return config.get_pipeline_arguments(
-        location["bucket"], location["key"], secret_name
-    )
+    return config.get_pipeline_arguments(location["bucket"], location["key"], secret_name)
 
 
 # ---------------------------------------------------------------------------

@@ -15,11 +15,23 @@ from datetime import datetime, timezone
 
 import pytest
 
-from integration_config import RHOAI_INTEGRATION_CONFIG
-from test_configs import get_test_configs_for_run, resolve_config_to_pipeline_arguments
+
+def _session_rhoai_integration_config():
+    """Lazy import so import-guard allows only stdlib at module scope."""
+    from integration_config import RHOAI_INTEGRATION_CONFIG
+
+    return RHOAI_INTEGRATION_CONFIG
+
+
+def _session_configs_for_run():
+    from test_configs import get_test_configs_for_run
+
+    return get_test_configs_for_run()
+
 
 # Configs to run this session (all, or filtered by RHOAI_TEST_CONFIG_TAGS).
-CONFIGS_FOR_RUN = get_test_configs_for_run()
+RHOAI_INTEGRATION_CONFIG = _session_rhoai_integration_config()
+CONFIGS_FOR_RUN = _session_configs_for_run()
 
 # Pipeline display name in KFP (from pipeline decorator)
 PIPELINE_DISPLAY_NAME = "autogluon-tabular-training-pipeline"
@@ -57,10 +69,7 @@ def _run_succeeded(detail):
 
 
 def _find_artifacts_in_s3(s3_client, bucket, prefix):
-    """
-    List object keys under prefix; return lists of keys ending in .pkl, .ipynb,
-    and keys containing 'leaderboard' or 'html_artifact'.
-    """
+    """List object keys under prefix; return lists of keys ending in .pkl, .ipynb, and keys containing 'leaderboard' or 'html_artifact'."""  # noqa: E501
     pkl_keys = []
     ipynb_keys = []
     leaderboard_keys = []
@@ -83,7 +92,10 @@ def _find_artifacts_in_s3(s3_client, bucket, prefix):
 @pytest.mark.integration
 @pytest.mark.skipif(
     RHOAI_INTEGRATION_CONFIG is None,
-    reason="RHOAI integration env not set (set RHOAI_URL, RHOAI_TOKEN, S3 vars; use SA token for Jenkins; see .env.template)",
+    reason=(
+        "RHOAI integration env not set (set RHOAI_URL, RHOAI_TOKEN, S3 vars;"
+        "use SA token for Jenkins; see .env.template)"
+    ),
 )
 @pytest.mark.parametrize("test_config", CONFIGS_FOR_RUN, ids=[c.id for c in CONFIGS_FOR_RUN])
 class TestAutogluonPipelineIntegration:
@@ -106,31 +118,21 @@ class TestAutogluonPipelineIntegration:
         if test_config.problem_type == "timeseries":
             pytest.skip("Timeseries not yet supported by pipeline or test data")
         config = rhoai_integration_config
-        arguments = resolve_config_to_pipeline_arguments(
-            test_config, uploaded_datasets, config["s3_secret_name"]
-        )
+        from test_configs import resolve_config_to_pipeline_arguments
+
+        arguments = resolve_config_to_pipeline_arguments(test_config, uploaded_datasets, config["s3_secret_name"])
         if not arguments:
             pytest.skip(f"Dataset not available for path: {test_config.dataset_path}")
 
-        run_id, detail = _run_pipeline_and_wait(
-            kfp_client, compiled_pipeline_path, arguments, pipeline_run_timeout
-        )
-        assert _run_succeeded(detail), (
-            f"Pipeline run {run_id} did not succeed; state={getattr(detail, 'run', detail)}"
-        )
+        run_id, detail = _run_pipeline_and_wait(kfp_client, compiled_pipeline_path, arguments, pipeline_run_timeout)
+        assert _run_succeeded(detail), f"Pipeline run {run_id} did not succeed; state={getattr(detail, 'run', detail)}"
 
         if s3_client and config.get("s3_bucket_artifacts"):
             bucket = config["s3_bucket_artifacts"]
             prefix = f"{PIPELINE_DISPLAY_NAME}/{run_id}"
-            pkl_keys, ipynb_keys, leaderboard_keys = _find_artifacts_in_s3(
-                s3_client, bucket, prefix
-            )
-            assert len(pkl_keys) >= 1, (
-                f"Expected at least one .pkl model artifact under {prefix}; found {pkl_keys}"
-            )
-            assert len(ipynb_keys) >= 1, (
-                f"Expected at least one .ipynb notebook under {prefix}; found {ipynb_keys}"
-            )
+            pkl_keys, ipynb_keys, leaderboard_keys = _find_artifacts_in_s3(s3_client, bucket, prefix)
+            assert len(pkl_keys) >= 1, f"Expected at least one .pkl model artifact under {prefix}; found {pkl_keys}"
+            assert len(ipynb_keys) >= 1, f"Expected at least one .ipynb notebook under {prefix}; found {ipynb_keys}"
             assert len(leaderboard_keys) >= 1, (
                 f"Expected leaderboard/html artifact under {prefix}; found {leaderboard_keys}"
             )
