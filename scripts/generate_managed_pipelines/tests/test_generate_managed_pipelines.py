@@ -8,6 +8,7 @@ from ..generate_managed_pipelines import (
     ManagedPipelineEntry,
     ManagedPipelineMetadataError,
     STABILITY_VALUES,
+    managed_pipeline_entry_from_dir,
 )
 
 
@@ -23,7 +24,7 @@ def test_from_managed_pipeline_dir_success(tmp_path: Path):
         "stability": "alpha",
         "managed": True,
     }
-    entry = ManagedPipelineEntry.from_managed_pipeline_dir(
+    entry = managed_pipeline_entry_from_dir(
         dir_path=pipe_dir,
         repo_root=repo,
         metadata=metadata,
@@ -55,7 +56,7 @@ def test_from_managed_pipeline_dir_invalid_metadata_raises(tmp_path: Path, metad
     (pipe_dir / "pipeline.py").touch()
 
     with pytest.raises(ManagedPipelineMetadataError):
-        ManagedPipelineEntry.from_managed_pipeline_dir(
+        managed_pipeline_entry_from_dir(
             dir_path=pipe_dir,
             repo_root=repo,
             metadata=metadata,

@@ -47,64 +47,6 @@ class ManagedPipelineEntry:
     path: str
     stability: str
 
-    @classmethod
-    def from_managed_pipeline_dir(
-        cls,
-        *,
-        dir_path: Path,
-        repo_root: Path,
-        metadata: dict,
-    ) -> ManagedPipelineEntry:
-        """Build an entry; raises :class:`ManagedPipelineMetadataError` if metadata is invalid.
-
-        ``description`` may be empty if neither ``metadata.yaml`` nor ``pipeline.py`` provides text.
-        """
-        label = _pipeline_dir_label(dir_path, repo_root)
-
-        raw_name = metadata.get("name")
-        if not isinstance(raw_name, str) or not raw_name.strip():
-            raise ManagedPipelineMetadataError(
-                f"{label}: metadata 'name' must be a non-empty string",
-                pipeline_dir=dir_path,
-            )
-
-        raw_stability = metadata.get("stability")
-        if not isinstance(raw_stability, str) or not raw_stability.strip():
-            raise ManagedPipelineMetadataError(
-                f"{label}: metadata 'stability' must be a non-empty string",
-                pipeline_dir=dir_path,
-            )
-        stability = raw_stability.strip()
-        if stability not in STABILITY_VALUES:
-            raise ManagedPipelineMetadataError(
-                f"{label}: metadata 'stability' must be one of {sorted(STABILITY_VALUES)}, got {stability!r}",
-                pipeline_dir=dir_path,
-            )
-
-        try:
-            rel_path = dir_path.relative_to(repo_root)
-        except ValueError as e:
-            raise ManagedPipelineMetadataError(
-                f"{label}: pipeline directory must be under repository root {repo_root}",
-                pipeline_dir=dir_path,
-            ) from e
-        path_str = f"{rel_path.as_posix()}/{PIPELINE_PY}"
-        if not path_str.strip():
-            raise ManagedPipelineMetadataError(
-                f"{label}: could not build pipeline path",
-                pipeline_dir=dir_path,
-            )
-
-        pipeline_py = dir_path / PIPELINE_PY
-        description = _resolve_pipeline_description(metadata, pipeline_py)
-
-        return cls(
-            name=raw_name.strip(),
-            description=description,
-            path=path_str,
-            stability=stability,
-        )
-
 
 def _resolve_pipeline_description(metadata: dict, pipeline_py: Path) -> str:
     """Prefer non-empty ``description`` from metadata; else decorator/docstring from ``pipeline.py``."""
@@ -116,6 +58,63 @@ def _resolve_pipeline_description(metadata: dict, pipeline_py: Path) -> str:
         function_name=metadata.get("name") if isinstance(metadata.get("name"), str) else None,
     )
     return from_decorator or ""
+
+
+def managed_pipeline_entry_from_dir(
+    *,
+    dir_path: Path,
+    repo_root: Path,
+    metadata: dict,
+) -> ManagedPipelineEntry:
+    """Build a :class:`ManagedPipelineEntry`; raises :class:`ManagedPipelineMetadataError` if metadata is invalid.
+
+    ``description`` may be empty if neither ``metadata.yaml`` nor ``pipeline.py`` provides text.
+    """
+    label = _pipeline_dir_label(dir_path, repo_root)
+
+    raw_name = metadata.get("name")
+    if not isinstance(raw_name, str) or not raw_name.strip():
+        raise ManagedPipelineMetadataError(
+            f"{label}: metadata 'name' must be a non-empty string",
+            pipeline_dir=dir_path,
+        )
+
+    raw_stability = metadata.get("stability")
+    if not isinstance(raw_stability, str) or not raw_stability.strip():
+        raise ManagedPipelineMetadataError(
+            f"{label}: metadata 'stability' must be a non-empty string",
+            pipeline_dir=dir_path,
+        )
+    stability = raw_stability.strip()
+    if stability not in STABILITY_VALUES:
+        raise ManagedPipelineMetadataError(
+            f"{label}: metadata 'stability' must be one of {sorted(STABILITY_VALUES)}, got {stability!r}",
+            pipeline_dir=dir_path,
+        )
+
+    try:
+        rel_path = dir_path.relative_to(repo_root)
+    except ValueError as e:
+        raise ManagedPipelineMetadataError(
+            f"{label}: pipeline directory must be under repository root {repo_root}",
+            pipeline_dir=dir_path,
+        ) from e
+    path_str = f"{rel_path.as_posix()}/{PIPELINE_PY}"
+    if not path_str.strip():
+        raise ManagedPipelineMetadataError(
+            f"{label}: could not build pipeline path",
+            pipeline_dir=dir_path,
+        )
+
+    pipeline_py = dir_path / PIPELINE_PY
+    description = _resolve_pipeline_description(metadata, pipeline_py)
+
+    return ManagedPipelineEntry(
+        name=raw_name.strip(),
+        description=description,
+        path=path_str,
+        stability=stability,
+    )
 
 
 def load_metadata(metadata_path: Path) -> dict | None:
@@ -176,7 +175,7 @@ def collect_managed_pipelines(repo_root: Path) -> list[ManagedPipelineEntry]:
             continue
 
         result.append(
-            ManagedPipelineEntry.from_managed_pipeline_dir(
+            managed_pipeline_entry_from_dir(
                 dir_path=dir_path,
                 repo_root=repo_root,
                 metadata=metadata,
