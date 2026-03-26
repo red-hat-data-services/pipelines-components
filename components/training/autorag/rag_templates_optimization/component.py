@@ -20,7 +20,6 @@ def rag_templates_optimization(
     test_data: dsl.InputPath(dsl.Artifact),
     search_space_prep_report: dsl.InputPath(dsl.Artifact),
     rag_patterns: dsl.Output[dsl.Artifact],
-    autorag_run_artifact: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset],
     chat_model_url: Optional[str] = None,
     chat_model_token: Optional[str] = None,
@@ -45,8 +44,6 @@ def rag_templates_optimization(
 
         rag_patterns: kfp-enforced argument specifying an output artifact. Provided by kfp backend automatically.
 
-        autorag_run_artifact: kfp-enforced argument specifying an output artifact. Provided by kfp backend atomatically.
-
         embedded_artifact: kfp-enforced argument to allow access of base64 encoded dir with notebook templates.
 
         chat_model_url: Inference endpoint URL for the chat/generation model (OpenAI-compatible).
@@ -70,7 +67,6 @@ def rag_templates_optimization(
     Returns:
         rag_patterns: Folder containing all generated RAG patterns (each subdir: pattern.json,
             indexing_notebook.ipynb, inference_notebook.ipynb).
-        autorag_run_artifact: Run log and experiment status (TODO).
     """
     # ChromaDB (via ai4rag) requires sqlite3 >= 3.35; RHEL9 base image has older sqlite.
     # Patch stdlib sqlite3 with pysqlite3-binary before any ai4rag import.
@@ -824,8 +820,6 @@ def rag_templates_optimization(
             evaluation_result_list = _evaluation_result_fallback(eval_data, eval)
         with (patt_dir / "evaluation_results.json").open("w+", encoding="utf-8") as f:
             json_dump(evaluation_result_list, f, indent=2)
-
-    # TODO autorag_run_artifact
 
 
 if __name__ == "__main__":

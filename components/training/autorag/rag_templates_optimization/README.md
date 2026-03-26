@@ -16,7 +16,6 @@ Carries out the iterative RAG optimization process.
 | `test_data` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to test data used for evaluating RAG pattern quality. |
 | `search_space_prep_report` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to a .yml file containig short report on the experiment's first phase (search space preparation). |
 | `rag_patterns` | `dsl.Output[dsl.Artifact]` | `None` | kfp-enforced argument specifying an output artifact. Provided by kfp backend automatically. |
-| `autorag_run_artifact` | `dsl.Output[dsl.Artifact]` | `None` | kfp-enforced argument specifying an output artifact. Provided by kfp backend atomatically. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | kfp-enforced argument to allow access of base64 encoded dir with notebook templates. |
 | `chat_model_url` | `Optional[str]` | `None` | Inference endpoint URL for the chat/generation model (OpenAI-compatible). Required for in-memory scenario. |
 | `chat_model_token` | `Optional[str]` | `None` | Optional API token for the chat model endpoint. Omit if deployment has no auth. |

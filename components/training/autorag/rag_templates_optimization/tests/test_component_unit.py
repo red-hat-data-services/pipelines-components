@@ -140,9 +140,8 @@ class TestSSLFallbackRagTemplatesOptimization:
 
     def _make_output_artifacts(self):
         rag_patterns = mock.MagicMock()
-        autorag_run_artifact = mock.MagicMock()
         embedded_artifact = mock.MagicMock()
-        return rag_patterns, autorag_run_artifact, embedded_artifact
+        return rag_patterns, embedded_artifact
 
     @mock.patch.dict(
         "os.environ",
@@ -182,7 +181,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -191,7 +190,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                 )
 
@@ -242,7 +240,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -251,7 +249,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                 )
 
@@ -280,7 +277,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["openai"] = _make_openai_module()
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(ConnectionRefusedError):
@@ -289,7 +286,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                 )
 
@@ -316,7 +312,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["openai"] = _make_openai_module()
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(LSAPIConnectionError):
@@ -325,7 +321,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                 )
 
@@ -362,7 +357,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -371,7 +366,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                     chat_model_url="http://chat.example.com",
                     chat_model_token="chat-token",
@@ -418,7 +412,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -427,7 +421,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                     chat_model_url="http://chat.example.com",
                     chat_model_token="chat-token",
@@ -457,7 +450,7 @@ class TestSSLFallbackRagTemplatesOptimization:
         mocks["llama_stack_client"] = _make_llama_stack_client_module()
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, autorag_run_artifact, embedded_artifact = self._make_output_artifacts()
+        rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(OAIAPIConnectionError):
@@ -466,7 +459,6 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    autorag_run_artifact=autorag_run_artifact,
                     embedded_artifact=embedded_artifact,
                     chat_model_url="http://chat.example.com",
                     chat_model_token="chat-token",
