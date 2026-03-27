@@ -59,7 +59,7 @@ This component is typically used in a two-stage training pipeline where models a
   - training
   - automl
   - autogluon-full-refit
-- **Last Verified**: 2026-03-12 19:53:22+00:00
+- **Last Verified**: 2026-03-25 16:45:48+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski

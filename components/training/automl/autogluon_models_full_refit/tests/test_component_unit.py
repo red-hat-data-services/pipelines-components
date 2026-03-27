@@ -192,10 +192,10 @@ class TestAutogluonModelsFullRefitUnitTests:
         mock_predictor_clone.evaluate.assert_called_once_with(mock_dataset_df)
         mock_predictor_clone.feature_importance.assert_called_once_with(mock_dataset_df)
 
-        # Verify clone was called with correct parameters (path is model_name_FULL/predictor)
+        # Verify clone was called with the temporary work path (not the final predictor path)
         mock_predictor.clone.assert_called_once()
         call_kw = mock_predictor.clone.call_args[1]
-        assert Path(call_kw["path"]) == Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "predictor"
+        assert Path(call_kw["path"]) == Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "predictor_work"
         assert call_kw["return_clone"] is True
         assert call_kw["dirs_exist_ok"] is True
 
@@ -205,8 +205,11 @@ class TestAutogluonModelsFullRefitUnitTests:
         # Verify set_model_best was called with correct model
         mock_predictor_clone.set_model_best.assert_called_once_with(model="LightGBM_BAG_L1_FULL", save_trainer=True)
 
-        # Verify save_space was called
-        mock_predictor_clone.save_space.assert_called_once()
+        # Verify clone_for_deployment was called with the final predictor path (not the work path)
+        mock_predictor_clone.clone_for_deployment.assert_called_once_with(
+            path=Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "predictor",
+            dirs_exist_ok=True,
+        )
 
         # Verify metrics files were written (under model_name_FULL/metrics/)
         metrics_dir = Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "metrics"
@@ -404,7 +407,7 @@ class TestAutogluonModelsFullRefitUnitTests:
         mock_predictor_clone.delete_models.side_effect = lambda **kw: call_order.append("delete_models")
         mock_predictor_clone.refit_full.side_effect = lambda **kw: call_order.append("refit_full")
         mock_predictor_clone.set_model_best.side_effect = lambda **kw: call_order.append("set_model_best")
-        mock_predictor_clone.save_space.side_effect = lambda: call_order.append("save_space")
+        mock_predictor_clone.clone_for_deployment.side_effect = lambda **kw: call_order.append("clone_for_deployment")
         mock_predictor_clone.evaluate.side_effect = lambda df: (call_order.append("evaluate"), {"r2": 0.9})[1]
         mock_predictor_clone.feature_importance.side_effect = lambda df: (
             call_order.append("feature_importance"),
@@ -446,9 +449,9 @@ class TestAutogluonModelsFullRefitUnitTests:
             "delete_models",
             "refit_full",
             "set_model_best",
-            "save_space",
             "evaluate",
             "feature_importance",
+            "clone_for_deployment",
         ]
 
     @mock.patch("autogluon.core.metrics.confusion_matrix")
@@ -548,6 +551,54 @@ class TestAutogluonModelsFullRefitUnitTests:
                 extra_train_data_path="",
                 notebooks=mock_notebooks,
             )
+
+    @mock.patch("shutil.rmtree")
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_clone_for_deployment_uses_work_dir_and_cleans_up(
+        self, mock_predictor_class, mock_read_csv, mock_rmtree, mock_notebooks, tmp_path
+    ):
+        """Clone writes to predictor_work, clone_for_deployment writes to predictor, work dir is removed."""
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor_class.load.return_value = mock_predictor
+        mock_predictor_clone.evaluate.return_value = {"r2": 0.9}
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_read_csv.return_value = mock.MagicMock()
+
+        model_output_dir = str(tmp_path / "model_output")
+        Path(model_output_dir).mkdir()
+        mock_model_artifact = mock.MagicMock()
+        mock_model_artifact.path = model_output_dir
+        mock_model_artifact.metadata = {}
+
+        autogluon_models_full_refit.python_func(
+            model_name="LightGBM_BAG_L1",
+            test_dataset=mock.MagicMock(path="/tmp/test.csv"),
+            predictor_path="/tmp/predictor",
+            sampling_config={},
+            split_config={},
+            model_config={},
+            pipeline_name=PIPELINE_NAME,
+            run_id=RUN_ID,
+            sample_row=SAMPLE_ROW,
+            model_artifact=mock_model_artifact,
+            notebooks=mock_notebooks,
+        )
+
+        work_path = Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "predictor_work"
+        final_path = Path(model_output_dir) / "LightGBM_BAG_L1_FULL" / "predictor"
+
+        # clone() must write to work path, clone_for_deployment() must write to final path
+        clone_path = mock_predictor.clone.call_args[1]["path"]
+        assert Path(clone_path) == work_path
+        mock_predictor_clone.clone_for_deployment.assert_called_once_with(path=final_path, dirs_exist_ok=True)
+
+        # work dir must be cleaned up after clone_for_deployment
+        mock_rmtree.assert_called_once_with(work_path, ignore_errors=True)
 
     def test_component_imports_correctly(self):
         """Test that the component can be imported and has required attributes."""
