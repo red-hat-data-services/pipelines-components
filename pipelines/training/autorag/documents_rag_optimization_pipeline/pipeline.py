@@ -11,6 +11,9 @@ from kfp_components.components.data_processing.autorag.test_data_loader import (
 from kfp_components.components.data_processing.autorag.text_extraction import (
     text_extraction,
 )
+from kfp_components.components.deployment.autorag.build_responses_request_bodies.component import (
+    prepare_responses_api_requests,
+)
 from kfp_components.components.training.autorag.leaderboard_evaluation import (
     leaderboard_evaluation,
 )
@@ -52,7 +55,8 @@ def documents_rag_optimization_pipeline(
 
     The system integrates with llama-stack API for inference and vector database operations,
     producing optimized RAG patterns as artifacts that can be deployed and used for production
-    RAG applications.
+    RAG applications. After optimization, request JSON bodies for Llama Stack ``/v1/responses`` are
+    emitted per pattern (``prepare_responses_api_requests``).
 
     Args:
         test_data_secret_name: Name of the Kubernetes secret holding S3-compatible credentials for
@@ -142,7 +146,6 @@ def documents_rag_optimization_pipeline(
     hpo_task.set_caching_options(False)
     hpo_task.set_cpu_request("2").set_memory_request("8Gi")
 
-
     use_secret_as_env(
         mps_task,
         llama_stack_secret_name,
@@ -153,6 +156,20 @@ def documents_rag_optimization_pipeline(
     )
     use_secret_as_env(
         hpo_task,
+        llama_stack_secret_name,
+        {
+            "LLAMA_STACK_CLIENT_BASE_URL": "LLAMA_STACK_CLIENT_BASE_URL",
+            "LLAMA_STACK_CLIENT_API_KEY": "LLAMA_STACK_CLIENT_API_KEY",
+        },
+    )
+
+    prepare_responses_api_requests_task = prepare_responses_api_requests(
+        rag_patterns=hpo_task.outputs["rag_patterns"],
+    )
+    prepare_responses_api_requests_task.set_caching_options(False)
+    prepare_responses_api_requests_task.set_cpu_request("500m").set_memory_request("2Gi")
+    use_secret_as_env(
+        prepare_responses_api_requests_task,
         llama_stack_secret_name,
         {
             "LLAMA_STACK_CLIENT_BASE_URL": "LLAMA_STACK_CLIENT_BASE_URL",

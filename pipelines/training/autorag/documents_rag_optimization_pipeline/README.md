@@ -9,7 +9,8 @@ Automated system for building and optimizing Retrieval-Augmented Generation (RAG
 The Documents RAG Optimization Pipeline is an automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications within Red Hat OpenShift AI. It leverages Kubeflow Pipelines to orchestrate the optimization workflow, using the ai4rag optimization engine to systematically
 explore RAG configurations and identify the best performing parameter settings based on an upfront-specified quality metric.
 
-The system integrates with llama-stack API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications.
+The system integrates with llama-stack API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. After optimization, request JSON bodies for Llama Stack ``/v1/responses`` are emitted per pattern
+(``prepare_responses_api_requests``).
 
 ## Inputs 📥
 
@@ -48,7 +49,7 @@ The system integrates with llama-stack API for inference and vector database ope
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-01-23 14:57:32+00:00
+- **Last Verified**: 2026-03-25 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski

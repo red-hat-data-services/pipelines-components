@@ -163,12 +163,8 @@ class TestTextExtractionUnitTests:
         assert second_call_kwargs["verify"] is False
 
 
-import json
-import sys
 from pathlib import Path
 from unittest import mock
-
-from ..component import text_extraction
 
 mocked_env_variables = {
     "AWS_ACCESS_KEY_ID": "test_key",

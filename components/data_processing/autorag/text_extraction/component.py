@@ -34,7 +34,6 @@ def text_extraction(
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PaginatedPipelineOptions, PdfPipelineOptions
     from docling.document_converter import (
-        AsciiDocFormatOption,
         DocumentConverter,
         HTMLFormatOption,
         MarkdownFormatOption,

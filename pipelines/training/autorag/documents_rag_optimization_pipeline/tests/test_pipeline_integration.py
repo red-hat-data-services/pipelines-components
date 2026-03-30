@@ -7,7 +7,7 @@ When not set, tests are skipped. You can set vars via a .env file (see .env.exam
 
 Scenarios:
 - Run pipeline with required parameters, validate success and optional artifacts
-  (leaderboard HTML, rag_patterns, .ipynb notebooks) in S3 when configured.
+  (leaderboard HTML, rag_patterns, .ipynb notebooks, v1_responses_body.json) in S3 when configured.
 """
 
 import secrets
@@ -60,15 +60,16 @@ def _run_succeeded(detail):
 
 
 def _find_artifacts_in_s3(s3_client, bucket, prefix):
-    """List object keys under prefix
+    """List object keys under prefix.
 
     Returns:
-        lists of keys for leaderboard HTML,
-        rag_patterns (directories/artifacts), and .ipynb notebooks.
+        Tuple of key lists: leaderboard HTML, .ipynb notebooks, rag/pattern-related paths,
+        and ``v1_responses_body.json`` files from ``prepare_responses_api_requests``.
     """
     html_keys = []
     ipynb_keys = []
     pattern_keys = []
+    responses_body_keys = []
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
@@ -78,11 +79,13 @@ def _find_artifacts_in_s3(s3_client, bucket, prefix):
                     html_keys.append(key)
                 elif key.endswith(".ipynb"):
                     ipynb_keys.append(key)
+                elif "v1_responses_body.json" in key:
+                    responses_body_keys.append(key)
                 elif "rag_patterns" in key or "pattern" in key.lower():
                     pattern_keys.append(key)
     except Exception:
         pass
-    return html_keys, ipynb_keys, pattern_keys
+    return html_keys, ipynb_keys, pattern_keys, responses_body_keys
 
 
 def _pipeline_arguments_from_config(config):
@@ -114,7 +117,10 @@ class TestDocumentsRagOptimizationPipelineIntegration:
         pipeline_run_timeout,
         s3_client,
     ):
-        """Run pipeline; assert success and optional presence of artifacts in S3."""
+        """Run pipeline; assert success and optional presence of artifacts in S3.
+
+        Counts leaderboard HTML, notebooks, pattern paths, and Llama Stack request body JSON files.
+        """
         if not kfp_client:
             pytest.skip("Integration prerequisites not available")
         config = docrag_integration_config
@@ -130,12 +136,19 @@ class TestDocumentsRagOptimizationPipelineIntegration:
             f"Pipeline run {run_id} did not succeed; state={getattr(getattr(detail, 'run', detail), 'state', detail)}"
         )
 
+        responses_body_keys: list = []
+        artifact_bucket: str | None = None
         if s3_client and config.get("s3_bucket_artifacts"):
-            bucket = config["s3_bucket_artifacts"]
+            artifact_bucket = config["s3_bucket_artifacts"]
             prefix = f"{PIPELINE_DISPLAY_NAME}/{run_id}"
-            html_keys, ipynb_keys, pattern_keys = _find_artifacts_in_s3(s3_client, bucket, prefix)
-            assert len(html_keys) >= 1 or len(ipynb_keys) >= 1 or len(pattern_keys) >= 1, (
-                f"Expected at least one artifact (leaderboard, .ipynb, or rag_patterns) "
-                f"under {prefix}; found html={len(html_keys)}, ipynb={len(ipynb_keys)}, "
-                f"pattern={len(pattern_keys)}"
+            html_keys, ipynb_keys, pattern_keys, responses_body_keys = _find_artifacts_in_s3(
+                s3_client, artifact_bucket, prefix
+            )
+            assert (
+                len(html_keys) >= 1 or len(ipynb_keys) >= 1 or len(pattern_keys) >= 1 or len(responses_body_keys) >= 1
+            ), (
+                f"Expected at least one artifact (leaderboard, .ipynb, rag_patterns, or "
+                f"v1_responses_body.json) under {prefix}; found html={len(html_keys)}, "
+                f"ipynb={len(ipynb_keys)}, pattern={len(pattern_keys)}, "
+                f"responses_body={len(responses_body_keys)}"
             )
