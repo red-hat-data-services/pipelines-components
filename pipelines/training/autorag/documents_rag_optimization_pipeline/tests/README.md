@@ -7,7 +7,7 @@ This directory contains unit and integration tests for the Documents RAG Optimiz
 | Test file | Type | Description |
 | --------- | ------ | ------------- |
 | `test_pipeline_unit.py` | Unit | Pipeline structure and interface (no cluster). |
-| `test_pipeline_integration.py` | Integration | Runs the pipeline on a RHOAI cluster and validates success (and optional S3 artifacts). |
+| `test_pipeline_integration.py` | Integration | Runs the pipeline on RHOAI and optionally checks generated artifacts in S3. |
 
 Unit tests run with the default test suite. Integration tests are **skipped** unless the required environment variables are set (see below).
 
@@ -83,6 +83,12 @@ To assert that run artifacts (leaderboard HTML, notebooks, rag_patterns) are pre
 | -------- | ----------- |
 | `RHOAI_PIPELINE_RUN_TIMEOUT` | Timeout in seconds for waiting on a run (default `3600`). |
 | `KFP_VERIFY_SSL` | Set to `false` to skip TLS verification for self-signed certs. |
+
+### 5. Optional: Llama Stack response-body artifact in S3
+
+If S3 settings from [§3](#3-optional-artifact-validation-in-s3) are set, the integration test
+checks that generated artifacts are present under the run prefix, including
+`v1_responses_body.json`.
 
 ## Test layout
 

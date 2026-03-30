@@ -113,10 +113,29 @@ def autogluon_models_full_refit(
     """  # noqa: E501
     import json
     import os
+    import shutil
     from pathlib import Path
 
     import pandas as pd
     from autogluon.tabular import TabularPredictor
+
+    # Input validation
+    for param, value in (
+        ("model_name", model_name),
+        ("predictor_path", predictor_path),
+        ("pipeline_name", pipeline_name),
+        ("run_id", run_id),
+        ("sample_row", sample_row),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise TypeError(f"{param} must be a non-empty string.")
+
+    if sampling_config is not None and not isinstance(sampling_config, dict):
+        raise TypeError("sampling_config must be a dictionary or None.")
+    if split_config is not None and not isinstance(split_config, dict):
+        raise TypeError("split_config must be a dictionary or None.")
+    if model_config is not None and not isinstance(model_config, dict):
+        raise TypeError("model_config must be a dictionary or None.")
 
     sampling_config = sampling_config or {}
     split_config = split_config or {}
@@ -148,16 +167,17 @@ def autogluon_models_full_refit(
         "predictor": f"{model_name_full}/predictor/predictor.pkl",
     }
 
-    # clone the predictor to the output artifact path and delete unnecessary models
-    predictor_clone = predictor.clone(path=output_path / "predictor", return_clone=True, dirs_exist_ok=True)
+    # Use a temporary working dir so clone_for_deployment can write to the final path without src==dst conflict
+    work_path = output_path / "predictor_work"
+    predictor_clone = predictor.clone(path=work_path, return_clone=True, dirs_exist_ok=True)
     predictor_clone.delete_models(models_to_keep=[model_name])
 
     # refit on training + validation data, optionally with extra training data
     predictor_clone.refit_full(model=model_name, train_data_extra=extra_train_df)
 
     predictor_clone.set_model_best(model=model_name_full, save_trainer=True)
-    predictor_clone.save_space()
 
+    # Evaluate before clone_for_deployment since it strips training artifacts
     eval_results = predictor_clone.evaluate(test_dataset_df)
     model_artifact.metadata["context"]["metrics"] = {"test_data": eval_results}
     feature_importance = predictor_clone.feature_importance(test_dataset_df)
@@ -183,6 +203,10 @@ def autogluon_models_full_refit(
         with (output_path / "metrics" / "confusion_matrix.json").open("w") as f:
             json.dump(confusion_matrix_res.to_dict(), f)
 
+    # Clone for deployment to the final predictor path (src=work_path != dst, so no shutil conflict)
+    predictor_clone.clone_for_deployment(path=output_path / "predictor", dirs_exist_ok=True)
+    shutil.rmtree(work_path, ignore_errors=True)
+
     # Notebook generation
 
     # NOTE: The generated notebook expects that a connection secret is available in the environment where it is run.
@@ -198,8 +222,6 @@ def autogluon_models_full_refit(
             notebook_file = "classification_notebook.ipynb"
         case _:
             raise ValueError(f"Invalid problem type: {problem_type}")
-
-    import os
 
     with open(os.path.join(notebooks.path, notebook_file), "r", encoding="utf-8") as f:
         notebook = json.load(f)
@@ -239,7 +261,12 @@ def autogluon_models_full_refit(
             cell["source"] = new_source
         return notebook
 
-    sample_row_list = json.loads(sample_row)
+    try:
+        sample_row_list = json.loads(sample_row)
+    except json.JSONDecodeError as e:
+        raise TypeError(f"sample_row must be valid JSON array: {e}") from e
+    if not isinstance(sample_row_list, list):
+        raise ValueError("sample_row must be a JSON array list of row objects).")
 
     # remove label column from sample row
     sample_row_formatted = [

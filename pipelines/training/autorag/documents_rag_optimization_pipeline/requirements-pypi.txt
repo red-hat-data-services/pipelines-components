@@ -1,4 +1,4 @@
-ai4rag==0.5.0
+ai4rag@git+https://github.com/IBM/ai4rag.git@update/llama_stack_version
 docling[ort]==2.73.1
 xlrd==2.0.1
 odfpy==1.4.1

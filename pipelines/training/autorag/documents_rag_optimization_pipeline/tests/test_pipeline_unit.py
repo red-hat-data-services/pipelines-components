@@ -21,3 +21,4 @@ class TestDocumentsRagOptimizationPipelineUnit:
         assert "input_data_bucket_name" in inputs
         assert "input_data_key" in inputs
         assert "llama_stack_secret_name" in inputs
+        assert "responses_request_default_question" not in inputs
