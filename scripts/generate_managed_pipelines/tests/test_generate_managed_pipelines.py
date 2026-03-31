@@ -34,6 +34,29 @@ def test_from_managed_pipeline_dir_success(tmp_path: Path):
     assert entry.stability == "Development Preview"
     assert entry.path == "pipelines/training/p/pipeline.py"
     assert isinstance(entry.description, str)
+    assert entry.description == ""
+
+
+def test_from_managed_pipeline_dir_success_with_pipeline_description(tmp_path: Path):
+    """Build entry with description extracted from @dsl.pipeline(description=...)."""
+    repo = tmp_path
+    pipe_dir = repo / "pipelines" / "training" / "p"
+    pipe_dir.mkdir(parents=True)
+    (pipe_dir / "pipeline.py").write_text(
+        'from kfp import dsl\n\n@dsl.pipeline(description="keyword description")\ndef p():\n    pass\n'
+    )
+
+    metadata = {
+        "name": "my_pipeline",
+        "stability": "alpha",
+        "managed": True,
+    }
+    entry = managed_pipeline_entry_from_dir(
+        dir_path=pipe_dir,
+        repo_root=repo,
+        metadata=metadata,
+    )
+    assert entry.description == "keyword description"
 
 
 @pytest.mark.parametrize(
