@@ -4,6 +4,7 @@ import inspect
 import json
 import shutil
 import sys
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -162,9 +163,6 @@ class TestTextExtractionUnitTests:
         second_call_kwargs = mock_session.client.call_args_list[1][1]
         assert second_call_kwargs["verify"] is False
 
-
-from pathlib import Path
-from unittest import mock
 
 mocked_env_variables = {
     "AWS_ACCESS_KEY_ID": "test_key",
