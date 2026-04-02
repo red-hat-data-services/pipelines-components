@@ -1,5 +1,7 @@
 ---
 extends: default
+ignore: |
+  .tekton/
 rules:
   line-length:
     max: 120
