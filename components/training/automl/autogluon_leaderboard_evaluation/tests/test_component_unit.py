@@ -19,6 +19,24 @@ def isolated_sys_modules():
 from ..component import leaderboard_evaluation  # noqa: E402
 
 
+def _make_models_artifact(
+    base_path: str | Path,
+    model_names: list[str],
+    *,
+    uri: str = "http://example.com/artifacts",
+    metadata: dict | None = None,
+):
+    """Build a mock combined models artifact (path + model_names in metadata)."""
+    m = mock.MagicMock()
+    m.path = str(base_path)
+    m.uri = uri
+    meta = dict(metadata) if metadata is not None else {}
+    if "model_names" not in meta:
+        meta["model_names"] = json.dumps(model_names)
+    m.metadata = meta
+    return m
+
+
 @pytest.fixture()
 def create_model_dir(tmp_path):
     """Factory fixture to create model artifact directories with metrics.json."""
@@ -44,10 +62,10 @@ def html_output_path(tmp_path):
 
 @pytest.fixture()
 def embedded_artifact():
-    """Provide mock embedded artifact pointing to component dir (for leaderboard_html_template.html)."""
-    component_dir = Path(__file__).resolve().parent.parent
+    """Provide mock embedded artifact pointing to shared dir (for leaderboard_html_template.html)."""
+    shared_dir = Path(__file__).resolve().parent.parent.parent / "shared"
     mock_artifact = mock.MagicMock()
-    mock_artifact.path = str(component_dir)
+    mock_artifact.path = str(shared_dir)
     return mock_artifact
 
 
@@ -83,7 +101,7 @@ class TestLeaderboardEvaluationUnitTests:
                     "mean_absolute_error": 0.4,
                     "r2": 0.9,
                     "notebook": "http://example.com/artifacts/Model1/notebooks/automl_predictor_notebook.ipynb",
-                    "predictor": "http://example.com/artifacts/Model1/predictor/predictor.pkl",
+                    "predictor": "http://example.com/artifacts/Model1/predictor",
                 },
             ),
         ]
@@ -92,17 +110,14 @@ class TestLeaderboardEvaluationUnitTests:
         mock_df.sort_values.return_value = mock_df_sorted
         mock_dataframe_class.return_value = mock_df
 
-        mock_model = mock.MagicMock()
-        mock_model.path = model_dir
-        mock_model.uri = "http://example.com/artifacts"
-        mock_model.metadata = {"display_name": "Model1"}
+        models_artifact = _make_models_artifact(model_dir, ["Model1"])
 
         mock_html = mock.MagicMock()
         mock_html.path = html_output_path
         mock_html.metadata = {}
 
         result = leaderboard_evaluation.python_func(
-            models=[mock_model],
+            models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
             embedded_artifact=embedded_artifact,
@@ -119,7 +134,7 @@ class TestLeaderboardEvaluationUnitTests:
         assert (
             call_args[0]["notebook"] == "http://example.com/artifacts/Model1/notebooks/automl_predictor_notebook.ipynb"
         )
-        assert call_args[0]["predictor"] == "http://example.com/artifacts/Model1/predictor/predictor.pkl"
+        assert call_args[0]["predictor"] == "http://example.com/artifacts/Model1/predictor"
 
         # Verify sort
         mock_df.sort_values.assert_called_once_with(by="root_mean_squared_error", ascending=False)
@@ -141,14 +156,19 @@ class TestLeaderboardEvaluationUnitTests:
         assert "uri-link" in html
 
     @mock.patch("pandas.DataFrame")
-    def test_multiple_models(self, mock_dataframe_class, create_model_dir, html_output_path, embedded_artifact):
+    def test_multiple_models(self, mock_dataframe_class, tmp_path, html_output_path, embedded_artifact):
         """Test leaderboard with multiple models and best_model selection."""
         metrics_list = [
             {"root_mean_squared_error": 0.8, "mean_absolute_error": 0.6},
             {"root_mean_squared_error": 0.3, "mean_absolute_error": 0.2},
             {"root_mean_squared_error": 0.5, "mean_absolute_error": 0.4},
         ]
-        model_dirs = [create_model_dir(m, model_name=f"Model{i + 1}") for i, m in enumerate(metrics_list)]
+        combined_root = tmp_path / "combined_models"
+        for i, m in enumerate(metrics_list):
+            name = f"Model{i + 1}"
+            metrics_dir = combined_root / name / "metrics"
+            metrics_dir.mkdir(parents=True)
+            (metrics_dir / "metrics.json").write_text(json.dumps(m))
 
         columns = ["model", "root_mean_squared_error", "mean_absolute_error", "notebook", "predictor"]
         rows = [
@@ -188,20 +208,14 @@ class TestLeaderboardEvaluationUnitTests:
         mock_df.sort_values.return_value = mock_df_sorted
         mock_dataframe_class.return_value = mock_df
 
-        mock_models = []
-        for i, path in enumerate(model_dirs):
-            m = mock.MagicMock()
-            m.path = path
-            m.uri = "http://example.com/artifacts"
-            m.metadata = {"display_name": f"Model{i + 1}"}
-            mock_models.append(m)
+        models_artifact = _make_models_artifact(combined_root, ["Model1", "Model2", "Model3"])
 
         mock_html = mock.MagicMock()
         mock_html.path = html_output_path
         mock_html.metadata = {}
 
         result = leaderboard_evaluation.python_func(
-            models=mock_models,
+            models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
             embedded_artifact=embedded_artifact,
@@ -226,90 +240,27 @@ class TestLeaderboardEvaluationUnitTests:
         assert "Model3" in html
         assert "Model1" in html
 
-    @mock.patch("pandas.DataFrame")
-    def test_round_metrics(self, mock_dataframe_class, create_model_dir, html_output_path, embedded_artifact):
-        """Test that metrics are rounded to 4 decimal places."""
-        metrics = {"rmse": 0.123456789, "accuracy": 0.987654321}
-        model_dir = create_model_dir(metrics, model_name="Model1")
-
-        columns = ["model", "rmse", "accuracy", "notebook", "predictor"]
-        rows = [(1, {"model": "Model1", "rmse": 0.1235, "accuracy": 0.9877, "notebook": "nb", "predictor": "p"})]
-        mock_df_sorted = _make_mock_sorted_df(rows, columns)
-        mock_df = mock.MagicMock()
-        mock_df.sort_values.return_value = mock_df_sorted
-        mock_dataframe_class.return_value = mock_df
-
-        mock_model = mock.MagicMock()
-        mock_model.path = model_dir
-        mock_model.uri = "http://example.com/artifacts"
-        mock_model.metadata = {"display_name": "Model1"}
+    def test_empty_model_names_raises(self, html_output_path, embedded_artifact):
+        """Empty or missing ``model_names`` in artifact metadata raises ``KeyError``."""
+        models_artifact = _make_models_artifact("/tmp/some_path", [], metadata={"model_names": "[]"})
 
         mock_html = mock.MagicMock()
         mock_html.path = html_output_path
         mock_html.metadata = {}
 
-        leaderboard_evaluation.python_func(
-            models=[mock_model],
-            eval_metric="rmse",
-            html_artifact=mock_html,
-            embedded_artifact=embedded_artifact,
-        )
-
-        call_args = mock_dataframe_class.call_args[0][0]
-        assert call_args[0]["rmse"] == 0.1235
-        assert call_args[0]["accuracy"] == 0.9877
-
-    @mock.patch("pandas.DataFrame")
-    def test_round_metrics_preserves_non_numeric(
-        self, mock_dataframe_class, create_model_dir, html_output_path, embedded_artifact
-    ):
-        """Test that non-numeric metric values pass through _round_metrics unchanged."""
-        metrics = {"rmse": 0.123456789, "description": "some_text"}
-        model_dir = create_model_dir(metrics, model_name="Model1")
-
-        columns = ["model", "rmse", "description", "notebook", "predictor"]
-        rows = [
-            (1, {"model": "Model1", "rmse": 0.1235, "description": "some_text", "notebook": "nb", "predictor": "p"})
-        ]
-        mock_df_sorted = _make_mock_sorted_df(rows, columns)
-        mock_df = mock.MagicMock()
-        mock_df.sort_values.return_value = mock_df_sorted
-        mock_dataframe_class.return_value = mock_df
-
-        mock_model = mock.MagicMock()
-        mock_model.path = model_dir
-        mock_model.uri = "http://example.com/artifacts"
-        mock_model.metadata = {"display_name": "Model1"}
-
-        mock_html = mock.MagicMock()
-        mock_html.path = html_output_path
-        mock_html.metadata = {}
-
-        leaderboard_evaluation.python_func(
-            models=[mock_model],
-            eval_metric="rmse",
-            html_artifact=mock_html,
-            embedded_artifact=embedded_artifact,
-        )
-
-        call_args = mock_dataframe_class.call_args[0][0]
-        assert call_args[0]["rmse"] == 0.1235
-        assert call_args[0]["description"] == "some_text"
-
-    def test_missing_display_name_raises(self, html_output_path, embedded_artifact):
-        """Test that missing display_name in metadata raises KeyError."""
-        mock_model = mock.MagicMock()
-        mock_model.path = "/tmp/some_path"
-        mock_model.uri = "http://example.com/artifacts"
-        mock_model.metadata = {}  # No display_name
-
-        mock_html = mock.MagicMock()
-        mock_html.path = html_output_path
-        mock_html.metadata = {}
-
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="model_names"):
             leaderboard_evaluation.python_func(
-                models=[mock_model],
+                models_artifact=models_artifact,
+                eval_metric="rmse",
+                html_artifact=mock_html,
+                embedded_artifact=embedded_artifact,
+            )
+
+        models_artifact_default = _make_models_artifact("/tmp/some_path", [], metadata={})
+
+        with pytest.raises(KeyError, match="model_names"):
+            leaderboard_evaluation.python_func(
+                models_artifact=models_artifact_default,
                 eval_metric="rmse",
                 html_artifact=mock_html,
                 embedded_artifact=embedded_artifact,
@@ -317,15 +268,13 @@ class TestLeaderboardEvaluationUnitTests:
 
     def test_leaderboard_evaluation_rejects_empty_eval_metric(self, embedded_artifact):
         """Test that TypeError is raised when eval_metric is empty or not a string."""
-        mock_model = mock.MagicMock()
-        mock_model.path = "/tmp/model"
-        mock_model.metadata = {"display_name": "Model1"}
+        models_artifact = _make_models_artifact("/tmp/model", ["Model1"])
         mock_html = mock.MagicMock()
         mock_html.path = "/tmp/out.html"
 
         with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
             leaderboard_evaluation.python_func(
-                models=[mock_model],
+                models_artifact=models_artifact,
                 eval_metric="",
                 html_artifact=mock_html,
                 embedded_artifact=embedded_artifact,
@@ -333,50 +282,26 @@ class TestLeaderboardEvaluationUnitTests:
 
         with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
             leaderboard_evaluation.python_func(
-                models=[mock_model],
+                models_artifact=models_artifact,
                 eval_metric="   ",
                 html_artifact=mock_html,
                 embedded_artifact=embedded_artifact,
             )
 
-    def test_leaderboard_evaluation_rejects_empty_models_list(self, embedded_artifact):
-        """Test that TypeError is raised when models is empty or not a list."""
-        mock_html = mock.MagicMock()
-        mock_html.path = "/tmp/out.html"
-
-        with pytest.raises(TypeError, match=r"models must be a non-empty list\."):
-            leaderboard_evaluation.python_func(
-                models=[],
-                eval_metric="root_mean_squared_error",
-                html_artifact=mock_html,
-                embedded_artifact=embedded_artifact,
-            )
-
-        with pytest.raises(TypeError, match=r"models must be a non-empty list\."):
-            leaderboard_evaluation.python_func(
-                models="not_a_list",
-                eval_metric="root_mean_squared_error",
-                html_artifact=mock_html,
-                embedded_artifact=embedded_artifact,
-            )
-
     def test_missing_metrics_file_raises(self, tmp_path, html_output_path, embedded_artifact):
-        """Test that missing metrics.json raises FileNotFoundError."""
+        """Missing metrics.json is skipped; if no models remain, raises ValueError."""
         model_dir = tmp_path / "model_artifact_empty"
         model_dir.mkdir()
 
-        mock_model = mock.MagicMock()
-        mock_model.path = str(model_dir)
-        mock_model.uri = "http://example.com/artifacts"
-        mock_model.metadata = {"display_name": "Model1"}
+        models_artifact = _make_models_artifact(model_dir, ["Model1"])
 
         mock_html = mock.MagicMock()
         mock_html.path = html_output_path
         mock_html.metadata = {}
 
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(ValueError, match="No valid model artifacts found"):
             leaderboard_evaluation.python_func(
-                models=[mock_model],
+                models_artifact=models_artifact,
                 eval_metric="rmse",
                 html_artifact=mock_html,
                 embedded_artifact=embedded_artifact,

@@ -73,3 +73,39 @@ prediction_length=14, top_n=3, )
     - mateusz.switala
   - Reviewers:
     - DorotaDR
+
+<!-- custom-content -->
+### Files stored in user storage
+
+Pipeline outputs are written to the artifact store (S3-compatible storage configured for Kubeflow Pipelines). The layout below matches what components write and what downstream consumers expect when loading the leaderboard or a refitted model.
+
+```text
+<pipeline_name>/
+└── <run_id>/
+    ├── timeseries-leaderboard-evaluation/
+    │   └── <task_id>/
+    │       └── html_artifact                     # HTML leaderboard (model names + metrics)
+    ├── autogluon-timeseries-models-full-refit/
+    │   ├── <task_id>/
+    │   │   └── model_artifact/
+    │   │       └── <ModelName>_FULL/            # e.g. ETS_FULL (one per top-N model)
+    │   │           ├── model.json               # Model metadata (name, base_model, location, metrics)
+    │   │           ├── predictor/               # AutoGluon TimeSeriesPredictor files
+    │   │           │   ├── predictor.pkl
+    │   │           │   └── predictor_metadata.json
+    │   │           ├── metrics/
+    │   │           │   └── metrics.json         # Evaluation metrics on test data
+    │   │           └── notebooks/
+    │   │               └── automl_predictor_notebook.ipynb   # Jupyter notebook for inference
+    │   └── <task_id>/
+    │           └── model_artifact/
+    │               └── <ModelName>_FULL/ 
+    │                   └── ...
+    └── timeseries-data-loader/
+        └── <task_id>/
+            └── sampled_test_dataset/            # Test split (S3 artifact)
+```
+
+- **timeseries-leaderboard-evaluation**: Contains the HTML leaderboard artifact summarizing all refitted model results.
+- **autogluon-timeseries-models-full-refit**: Each top-N model is refitted in a parallel task. Each task writes a `<ModelName>_FULL/` subdirectory containing the saved TimeSeriesPredictor, metrics, pre-filled inference notebook, and a `model.json` with model metadata.
+- **timeseries-data-loader**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.

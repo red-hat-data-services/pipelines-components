@@ -2,7 +2,9 @@ from typing import List, Optional
 
 from kfp import dsl
 from kfp_components.components.data_processing.automl.timeseries_data_loader import timeseries_data_loader
-from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
+from kfp_components.components.training.automl.autogluon_timeseries_leaderboard_evaluation import (
+    timeseries_leaderboard_evaluation,
+)
 from kfp_components.components.training.automl.autogluon_timeseries_models_full_refit import (
     autogluon_timeseries_models_full_refit,
 )
@@ -128,6 +130,8 @@ def autogluon_timeseries_training_pipeline(
         id_column=id_column,
         timestamp_column=timestamp_column,
     )
+    data_loader_task.set_caching_options(False)
+    data_loader_task.set_cpu_request("2").set_memory_request("8Gi")
 
     # Configure S3 secret for data loader
     from kfp.kubernetes import use_secret_as_env
@@ -157,6 +161,8 @@ def autogluon_timeseries_training_pipeline(
         prediction_length=prediction_length,
         known_covariates_names=known_covariates_names,
     )
+    selection_task.set_caching_options(False)
+    selection_task.set_cpu_request("4").set_memory_request("16Gi")
 
     # Stage 3: Model Refitting
     # Refit each top model on full training dataset in parallel
@@ -174,13 +180,17 @@ def autogluon_timeseries_training_pipeline(
             extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
             sample_rows=data_loader_task.outputs["sample_rows"],
         )
+        refit_task.set_caching_options(False)
+        refit_task.set_cpu_request("2").set_memory_request("8Gi")
 
     # Stage 4: Leaderboard Evaluation
     # Generate leaderboard from all refitted models
-    leaderboard_evaluation(
+    leaderboard_task = timeseries_leaderboard_evaluation(
         models=dsl.Collected(refit_task.outputs["model_artifact"]),
         eval_metric=selection_task.outputs["eval_metric_name"],
     )
+    leaderboard_task.set_caching_options(False)
+    leaderboard_task.set_cpu_request("1").set_memory_request("4Gi")
 
 
 if __name__ == "__main__":

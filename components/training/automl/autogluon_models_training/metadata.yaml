@@ -1,5 +1,5 @@
 ---
-name: autogluon_models_selection
+name: autogluon_models_training
 stability: alpha  # New component without proven track record
 dependencies:
   kubeflow:
@@ -8,5 +8,4 @@ dependencies:
 tags:
   - training
   - automl
-  - autogluon-models-selection
-lastVerified: 2026-03-12T19:53:22Z
+lastVerified: 2026-03-30T15:09:22Z

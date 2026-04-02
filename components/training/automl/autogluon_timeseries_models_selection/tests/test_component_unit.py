@@ -97,7 +97,12 @@ class TestTimeseriesModelsSelectionUnitTests:
             verbosity=2,
             known_covariates_names=None,
         )
-        mock_predictor.fit.assert_called_once_with(train_data=train_ts, presets="medium_quality", time_limit=600)
+        mock_predictor.fit.assert_called_once_with(
+            train_data=train_ts,
+            presets="medium_quality",
+            time_limit=600,
+            excluded_model_types=["Chronos", "Toto", "Chronos2"],
+        )
         mock_predictor.leaderboard.assert_called_once_with(test_ts)
 
         assert result.top_models == ["DeepAR", "TFT"]

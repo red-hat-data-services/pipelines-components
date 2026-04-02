@@ -130,6 +130,8 @@ def autogluon_timeseries_models_selection(
             train_data=train_ts,
             presets=DEFAULT_PRESETS,
             time_limit=DEFAULT_TIME_LIMIT,
+            # exclude deep learning models pretrained on large time series datasets
+            excluded_model_types=["Chronos", "Toto", "Chronos2"],
         )
     except Exception as e:
         logger.error(f"Training failed: {str(e)}")

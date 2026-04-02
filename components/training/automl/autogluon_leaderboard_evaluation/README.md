@@ -4,19 +4,24 @@
 
 ## Overview 🧾
 
-Evaluate multiple AutoGluon models and generate a leaderboard.
+Evaluate refitted AutoGluon models and generate a leaderboard.
 
-This component aggregates evaluation results from a list of Model artifacts (reading pre-computed metrics from JSON) and generates an HTML-formatted leaderboard ranking the models by their performance metrics. Each model artifact is expected to contain metrics at model.path /
-model.metadata["display_name"] / metrics / metrics.json.
+This component reads pre-computed metrics from a combined models artifact produced by ``autogluon_models_training`` and generates an HTML-formatted leaderboard ranking the models by their performance metric.
+
+The artifact layout expected under ``models_artifact.path``::
+
+models_artifact.path / <model_name>_FULL / metrics / metrics.json predictor / predictor.pkl notebooks / automl_predictor_notebook.ipynb
+
+``models_artifact.metadata["model_names"]`` must contain the list of refitted model display names (e.g. ``["LightGBM_BAG_L1_FULL", ...]``).
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `models` | `List[dsl.Model]` | `None` | List of Model artifacts with "display_name" in metadata and metrics at model.path/model_name/metrics/metrics.json. |
-| `eval_metric` | `str` | `None` | Metric name for ranking (e.g. "accuracy", "root_mean_squared_error"); leaderboard sorted by it descending. |
-| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output artifact for the HTML-formatted leaderboard (model names and metrics). |
-| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Artifact]` | `None` | Embedded component files (injected by runtime from embedded_artifact_path); provides leaderboard_html_template.html. |
+| `models_artifact` | `dsl.Input[dsl.Model]` | `None` | Combined Model artifact from ``autogluon_models_training`` with ``metadata["model_names"]`` and per-model subdirectories. |
+| `eval_metric` | `str` | `None` | Metric name for ranking (e.g. ``"accuracy"``, ``"root_mean_squared_error"``); leaderboard sorted descending (AutoGluon uses higher-is-better convention). |
+| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output artifact for the HTML-formatted leaderboard. |
+| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Artifact]` | `None` | Embedded component files injected by the KFP runtime; provides ``leaderboard_html_template.html``. |
 
 ## Outputs 📤
 

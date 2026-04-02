@@ -1,0 +1,12 @@
+---
+name: timeseries_leaderboard_evaluation
+stability: alpha
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+tags:
+  - leaderboard
+  - automl
+  - timeseries
+lastVerified: 2026-03-31T00:00:00Z

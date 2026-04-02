@@ -6,8 +6,7 @@ _NOTEBOOKS_DIR = str(pathlib.Path(__file__).parent / "notebook_templates")
 
 
 @dsl.component(
-    base_image="registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9@sha256:f9844dc150592a9f196283b3645dda92bd80dfdb3d467fa8725b10267ea5bdbc",
-    # noqa: E501
+    base_image="registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9@sha256:f9844dc150592a9f196283b3645dda92bd80dfdb3d467fa8725b10267ea5bdbc",  # noqa: E501
     packages_to_install=["autogluon.timeseries==1.5.0"],
     embedded_artifact_path=_NOTEBOOKS_DIR,
 )
@@ -31,9 +30,8 @@ def autogluon_timeseries_models_full_refit(
     This component takes a model selected during the selection phase and
     refits it on the full training dataset (selection + extra train data)
     for improved performance. The refitted model is optimized and saved
-    for deployment.
-
-    The component uses a simplified/mocked implementation for demonstration.
+    for deployment. Each model directory contains a ``model.json`` file
+    with model metadata (name, base model, location, metrics).
 
     Args:
         model_name: Name of the model to refit.
@@ -53,6 +51,8 @@ def autogluon_timeseries_models_full_refit(
     """
     import json
     import logging
+    import math
+    import os
     from pathlib import Path
 
     import pandas as pd
@@ -68,8 +68,8 @@ def autogluon_timeseries_models_full_refit(
     try:
         predictor = TimeSeriesPredictor.load(predictor_path)
     except Exception as e:
-        logger.error(f"Failed to load predictor: {str(e)}")
-        raise ValueError(f"Could not load predictor from {predictor_path}: {str(e)}") from e
+        logger.error("Failed to load predictor: %s", e)
+        raise ValueError(f"Could not load predictor from {predictor_path}: {e}") from e
     logger.debug(
         "Loaded selection predictor from %s; selection_train=%s extra_train=%s",
         predictor_path,
@@ -139,19 +139,25 @@ def autogluon_timeseries_models_full_refit(
     predictor_refit.fit(
         train_data=full_train_ts_df,
         **additional_fit_params,
+        # exclude deep learning models pretrained on large time series datasets
+        excluded_model_types=[
+            "Chronos",
+            "Chronos2",
+            "Toto",
+        ],
     )
 
     try:
         predictor_refit.save()
     except Exception as e:
-        logger.error(f"Failed to save predictor: {str(e)}")
-        raise ValueError(f"Could not save predictor to {predictor_output}: {str(e)}") from e
+        logger.error("Failed to save predictor: %s", e)
+        raise ValueError(f"Could not save predictor to {predictor_output}: {e}") from e
 
     try:
         metrics = predictor_refit.evaluate(test_ts_df, metrics=list(AVAILABLE_METRICS.keys()))
     except Exception as e:
-        logger.error(f"Evaluation failed: {str(e)}")
-        raise ValueError(f"Failed to evaluate model: {str(e)}") from e
+        logger.error("Evaluation failed: %s", e)
+        raise ValueError(f"Failed to evaluate model: {e}") from e
     logger.debug("Evaluation metrics: %s", metrics)
 
     # Save additional metadata about the selected model
@@ -172,8 +178,12 @@ def autogluon_timeseries_models_full_refit(
     metrics_path = output_path / "metrics"
     metrics_path.mkdir(parents=True, exist_ok=True)
 
-    # Convert metrics to JSON-serializable format
-    metrics_dict = {k: float(v) if hasattr(v, "item") else v for k, v in metrics.items()}
+    # Convert metrics to JSON-serializable format; drop NaN/Inf which break Protobuf Struct serialization
+    metrics_dict = {
+        k: float(v) if hasattr(v, "item") else v
+        for k, v in metrics.items()
+        if not (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))
+    }
 
     with open(metrics_path / "metrics.json", "w") as f:
         json.dump(metrics_dict, f, indent=2)
@@ -181,8 +191,6 @@ def autogluon_timeseries_models_full_refit(
     # Notebook generation
 
     notebook_file = "timeseries_notebook.ipynb"
-
-    import os
 
     with open(os.path.join(notebooks.path, notebook_file), "r", encoding="utf-8") as f:
         notebook = json.load(f)
@@ -239,6 +247,23 @@ def autogluon_timeseries_models_full_refit(
     notebook_path.mkdir(parents=True, exist_ok=True)
     with (notebook_path / "automl_predictor_notebook.ipynb").open("w", encoding="utf-8") as f:
         json.dump(notebook, f)
+
+    # Write model.json alongside predictor/, metrics/, notebooks/
+    model_metadata = {
+        "name": model_name_full,
+        "base_model": model_name,
+        "location": {
+            "model_directory": model_name_full,
+            "predictor": f"{model_name_full}/predictor",
+            "metrics": f"{model_name_full}/metrics",
+            "notebooks": f"{model_name_full}/notebooks",
+        },
+        "metrics": {
+            "test_data": metrics_dict,
+        },
+    }
+    with (output_path / "model.json").open("w", encoding="utf-8") as f:
+        json.dump(model_metadata, f, indent=2)
 
     # Set artifact metadata
     model_artifact.metadata["display_name"] = model_name_full

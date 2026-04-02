@@ -19,22 +19,16 @@ Training datasets are stored on a PVC workspace (not S3 artifacts) so that all p
 written to an S3 artifact) from the *train portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.csv`` (30%, used for model selection) and ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both train CSVs are
 written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column.
 
-2. **Model Selection**: Trains multiple AutoGluon models on the *selection train* data using AutoGluon's ensembling approach (stacking with 3 levels and bagging with 2 folds). The component automatically trains various model types including neural networks, tree-based models (XGBoost, LightGBM,
-CatBoost), and linear models. All models are evaluated on the test set and ranked by performance. The top N models are selected for the refitting stage.
+2. **Model Training & Refitting**: Trains multiple AutoGluon models on the *selection train* data using stacking (1 level) and bagging (4 folds). All models are evaluated on the test set and ranked by performance. The top N models are selected and refitted sequentially on the full training data via
+``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and optimized for deployment. All model artifacts are stored under a single output artifact, avoiding a ``ParallelFor`` loop in the pipeline.
 
-3. **Model Refitting**: Refits each of the top N selected models on the predictor's training and validation data, augmented with the *extra train* split via ``refit_full(train_data_extra=...)``. This stage runs in parallel (with parallelism of 2) to efficiently retrain multiple models. Each refitted
-model is saved with a "_FULL" suffix and optimized for deployment by removing unnecessary models and files.
-
-4. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model artifacts (each refit component writes metrics to model_artifact.path / model_name_FULL / metrics). The leaderboard component reads these pre-computed metrics and generates an HTML-formatted leaderboard ranking
-models by their performance metrics for comparison and selection.
+3. **Leaderboard Evaluation**: Reads pre-computed metrics from the combined models artifact and generates an HTML-formatted leaderboard ranking models by their performance metrics for comparison and selection.
 
 **Two-Stage Training Benefits:**
 
 - **Efficient Exploration:** Initial model training uses a smaller selection-train split with efficient ensembling rather than expensive hyperparameter optimization.
 
 - **Optimal Performance:** Final models are refitted (``refit_full``) on the predictor's training and validation data plus the extra-train split, maximizing the amount of data seen during the final fit.
-
-- **Parallel Efficiency:** Top models are refitted in parallel to minimize total pipeline execution time.
 
 - **Production-Ready:** Refitted models are AutoGluon Predictors optimized and ready for deployment.
 
@@ -59,7 +53,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 | `train_data_file_key` | `str` | `None` | S3 object key of the CSV file (features and target column). |
 | `label_column` | `str` | `None` | Name of the target/label column in the dataset. |
 | `task_type` | `str` | `None` | "binary", "multiclass", or "regression"; drives metrics and model types. |
-| `top_n` | `int` | `3` | Number of top models to select and refit (default: 3); positive integer. |
+| `top_n` | `int` | `3` | Number of top models to select and refit (default: 3); positive integer from range [1, 10]. |
 
 ## Metadata 🗂️
 
@@ -74,7 +68,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
   - pipeline
   - automl
   - autogluon-tabular-training-pipeline
-- **Last Verified**: 2026-03-12 19:53:22+00:00
+- **Last Verified**: 2026-03-30 15:09:22+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
@@ -93,41 +87,43 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
     ├── leaderboard-evaluation/
     │   └── <task_id>/
     │       └── html_artifact                     # HTML leaderboard (model names + metrics)
-    ├── autogluon-models-full-refit/
-    │   └── <task_id>/                           # one per top-N model
-    │       └── model_artifact/
-    │           └── <ModelName>_FULL/            # e.g. LightGBM_BAG_L1_FULL
-    │               ├── predictor/               # AutoGluon TabularPredictor files
-    │               ├── metrics/
-    │               │   ├── metrics.json         # model evaluation metrics (eval_metric, etc.)
-    │               │   ├── feature_importance.json
-    │               │   └── confusion_matrix.json  # for classification tasks only
-    │               └── notebooks/
-    │                   └── automl_predictor_notebook.ipynb   # Jupyter notebook for inference & exploration
+    ├── autogluon-models-training/
+    │   └── <task_id>/
+    │       └── models_artifact/
+    │           ├── <ModelName>_FULL/            # e.g. LightGBM_BAG_L1_FULL (one per top-N model)
+    │           │   ├── model.json               # Model metadata (name, location, metrics)
+    │           │   ├── predictor/               # AutoGluon TabularPredictor files
+    │           │   ├── metrics/
+    │           │   │   ├── metrics.json         # model evaluation metrics (eval_metric, etc.)
+    │           │   │   ├── feature_importance.json
+    │           │   │   └── confusion_matrix.json  # for classification tasks only
+    │           │   └── notebooks/
+    │           │       └── automl_predictor_notebook.ipynb   # Jupyter notebook for inference & exploration
+    │           └── <ModelName>_FULL/
+    │               └──  ...
     └── automl-data-loader/
         └── <task_id>/
             └── sampled_test_dataset/            # Test split (S3 artifact)
 ```
 
 - **leaderboard-evaluation**: Contains the HTML leaderboard artifact summarizing all model results.
-- **autogluon-models-full-refit**: Each top-N model refit task writes its model artifact here, under `<ModelName>_FULL`, including the saved TabularPredictor and associated metrics.
+- **autogluon-models-training**: All top-N refitted model artifacts are written under a single task, each under its own `<ModelName>_FULL/` subdirectory,
+including the saved TabularPredictor, metrics, pre-filled inference notebook, and a `model.json` with model metadata (name, location paths, evaluation metrics).
 - **automl-data-loader**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.
-
-*Note*: There is one `autogluon-models-full-refit/<task_id>/model_artifact/<ModelName>_FULL` directory for each selected top-N model (parallel execution). Each contains an independently saved and refitted AutoGluon predictor.
 
 For loading:
 
-- Load a refitted model for deployment or notebook exploration using `TabularPredictor.load(<.../model_artifact/<ModelName>_FULL>/predictor)`.
+- Load a refitted model for deployment or notebook exploration using `TabularPredictor.load(<.../models_artifact/<ModelName>_FULL/predictor>)`.
 - Model metrics and feature importances are always at `metrics/` under each model directory.
 - The leaderboard HTML is at `leaderboard-evaluation/<task_id>/html_artifact`.
 
 ### Model Artifact metadata
 
-Each refit task writes a Model artifact whose `metadata` is set by the autogluon_models_full_refit component. Downstream components (e.g. leaderboard evaluation) and consumers can rely on this structure:
+The `autogluon-models-training` component writes a single Model artifact (`models_artifact`) covering all top-N refitted models. Downstream components (e.g. leaderboard evaluation) and consumers can rely on this structure:
 
 | Key | Type | Description |
 | ----- | ------ | ----------- |
-| `display_name` | `str` | Model name with `_FULL` suffix (e.g. `"LightGBM_BAG_L1_FULL"`). Used by the leaderboard to identify the model and to resolve metrics at `model.path / display_name / metrics / metrics.json`. |
+| `model_names` | `str` (JSON) | JSON-encoded list of refitted model names with `_FULL` suffix, e.g. `'["LightGBM_BAG_L1_FULL", "CatBoost_BAG_L1_FULL"]'`. |
 | `context` | `dict` | Run and model context (see below). |
 
 **`context`** contains:
@@ -137,15 +133,22 @@ Each refit task writes a Model artifact whose `metadata` is set by the autogluon
 | `data_config` | `dict` | `sampling_config` and `split_config` from the data loader component. |
 | `task_type` | `str` | Problem type: `"regression"`, `"binary"`, or `"multiclass"`. |
 | `label_column` | `str` | Name of the target/label column. |
-| `model_config` | `dict` | Model training configuration (e.g. preset, eval_metric, time limit) from the selection stage. |
-| `location` | `dict` | Paths relative to the artifact root: `model_directory` (e.g. `"LightGBM_BAG_L1_FULL"`), `predictor` (e.g. `"LightGBM_BAG_L1_FULL/predictor/predictor.pkl"`), `notebook` (e.g. `"LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"`). |
-| `metrics` | `dict` | Evaluation results on the test dataset: `test_data` holds the AutoGluon evaluation dict (metric names and values, e.g. `root_mean_squared_error`, `r2` for regression). |
+| `model_config` | `dict` | Training configuration: `preset`, `eval_metric`, `time_limit`. |
+| `models` | `list[dict]` | Per-model location and metrics (one entry per top-N model). |
 
-Example (regression):
+Each entry in **`context.models`** contains:
+
+| Key | Type | Description |
+| ----- | ------ | ----------- |
+| `name` | `str` | Model name with `_FULL` suffix (e.g. `"LightGBM_BAG_L1_FULL"`). |
+| `location` | `dict` | Paths relative to `models_artifact.path`: `model_directory`, `predictor`, `notebook`. |
+| `metrics` | `dict` | `test_data` — evaluation results dict from `evaluate_predictions` (metric names → values). |
+
+Example (regression, top_n=2):
 
 ```json
 {
-  "display_name": "LightGBM_BAG_L1_FULL",
+  "model_names": "[\"LightGBM_BAG_L1_FULL\", \"CatBoost_BAG_L1_FULL\"]",
   "context": {
     "data_config": {
       "sampling_config": {"n_samples": 10000},
@@ -153,18 +156,31 @@ Example (regression):
     },
     "task_type": "regression",
     "label_column": "price",
-    "model_config": {"eval_metric": "r2", "time_limit": 300},
-    "location": {
-      "model_directory": "LightGBM_BAG_L1_FULL",
-      "predictor": "LightGBM_BAG_L1_FULL/predictor/predictor.pkl",
-      "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
-    },
-    "metrics": {
-      "test_data": {
-        "root_mean_squared_error": 0.42,
-        "r2": 0.85
+    "model_config": {"preset": "medium_quality", "eval_metric": "r2", "time_limit": 1800},
+    "models": [
+      {
+        "name": "LightGBM_BAG_L1_FULL",
+        "location": {
+          "model_directory": "LightGBM_BAG_L1_FULL",
+          "predictor": "LightGBM_BAG_L1_FULL/predictor",
+          "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+        },
+        "metrics": {
+          "test_data": {"root_mean_squared_error": 0.42, "r2": 0.85}
+        }
+      },
+      {
+        "name": "CatBoost_BAG_L1_FULL",
+        "location": {
+          "model_directory": "CatBoost_BAG_L1_FULL",
+          "predictor": "CatBoost_BAG_L1_FULL/predictor",
+          "notebook": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+        },
+        "metrics": {
+          "test_data": {"root_mean_squared_error": 0.51, "r2": 0.80}
+        }
       }
-    }
+    ]
   }
 }
 ```

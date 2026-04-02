@@ -6,9 +6,8 @@
 
 Refit a single AutoGluon timeseries model on full training data.
 
-This component takes a model selected during the selection phase and refits it on the full training dataset (selection + extra train data) for improved performance. The refitted model is optimized and saved for deployment.
-
-The component uses a simplified/mocked implementation for demonstration.
+This component takes a model selected during the selection phase and refits it on the full training dataset (selection + extra train data) for improved performance. The refitted model is optimized and saved for deployment. Each model directory contains a ``model.json`` file with model metadata
+(name, base model, location, metrics).
 
 ## Inputs 📥
 
@@ -47,3 +46,43 @@ The component uses a simplified/mocked implementation for demonstration.
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
+
+<!-- custom-content -->
+## Artifact Output Structure 📂
+
+The refitted model artifact is written under `model_artifact.path` with the following layout:
+
+```text
+model_artifact/
+└── <ModelName>_FULL/              # e.g. ETS_FULL
+    ├── model.json                 # Model metadata (name, base_model, location, metrics)
+    ├── predictor/                 # AutoGluon TimeSeriesPredictor files
+    │   ├── predictor.pkl
+    │   └── predictor_metadata.json
+    ├── metrics/
+    │   └── metrics.json           # Evaluation results on test data (all available metrics)
+    └── notebooks/
+        └── automl_predictor_notebook.ipynb  # Pre-filled inference notebook
+```
+
+### `model.json`
+
+Each model directory contains a `model.json` file with the model's metadata:
+
+```json
+{
+  "name": "ETS_FULL",
+  "base_model": "ETS",
+  "location": {
+    "model_directory": "ETS_FULL",
+    "predictor": "ETS_FULL/predictor",
+    "metrics": "ETS_FULL/metrics",
+    "notebooks": "ETS_FULL/notebooks"
+  },
+  "metrics": {
+    "test_data": {"MASE": -0.85, "WAPE": -0.12, "RMSE": -150.3}
+  }
+}
+```
+
+This file allows downstream consumers (e.g. the timeseries leaderboard evaluation component) to read model metadata directly from the filesystem.

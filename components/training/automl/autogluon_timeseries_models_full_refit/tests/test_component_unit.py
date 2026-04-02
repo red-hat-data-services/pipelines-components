@@ -223,9 +223,61 @@ class TestTimeseriesModelsFullRefitUnitTests:
         assert "timestamp" in notebook_text
         assert "[]" in notebook_text
 
+        # model.json written alongside predictor/, metrics/, notebooks/
+        model_json_path = model_dir / "model.json"
+        assert model_json_path.exists()
+        model_meta = json.loads(model_json_path.read_text(encoding="utf-8"))
+        assert model_meta["name"] == "DeepAR_FULL"
+        assert model_meta["base_model"] == "DeepAR"
+        assert model_meta["location"]["model_directory"] == "DeepAR_FULL"
+        assert "predictor" in model_meta["location"]
+        assert "metrics" in model_meta["location"]
+        assert "notebooks" in model_meta["location"]
+        assert model_meta["metrics"]["test_data"] == {"MASE": 1.23}
+
         assert model_artifact.metadata["display_name"] == "DeepAR_FULL"
         assert model_artifact.metadata["context"]["pipeline_info"]["pipeline_name"] == "my-pipeline-run"
         assert model_artifact.metadata["context"]["metrics"]["test_data"] == {"MASE": 1.23}
+
+    def test_model_json_matches_artifact_metadata(self, tmp_path):
+        """model.json on disk is consistent with artifact metadata context."""
+        test_dataset, model_artifact = _make_artifacts(tmp_path)
+        notebooks = _write_notebook_template(tmp_path)
+
+        patcher, _, _, _ = _install_autogluon_mocks()
+        with patcher:
+            autogluon_timeseries_models_full_refit.python_func(
+                model_name="DeepAR",
+                test_dataset=test_dataset,
+                predictor_path="/tmp/predictor",
+                sampling_config={},
+                split_config={},
+                model_config={
+                    "prediction_length": 7,
+                    "target": "target",
+                    "id_column": "item_id",
+                    "timestamp_column": "timestamp",
+                    "eval_metric": "MASE",
+                },
+                pipeline_name="pipe-run-1",
+                run_id="run-1",
+                models_selection_train_data_path=str(tmp_path / "selection_train.csv"),
+                extra_train_data_path=str(tmp_path / "extra_train.csv"),
+                sample_rows='[{"target":1}]',
+                notebooks=notebooks,
+                model_artifact=model_artifact,
+            )
+
+        model_dir = Path(model_artifact.path) / "DeepAR_FULL"
+        model_json = json.loads((model_dir / "model.json").read_text(encoding="utf-8"))
+        context = model_artifact.metadata["context"]
+
+        # model.json location matches artifact metadata context location
+        assert model_json["location"] == context["location"]
+        # model.json metrics matches artifact metadata context metrics
+        assert model_json["metrics"]["test_data"] == context["metrics"]["test_data"]
+        # model.json name matches artifact display_name
+        assert model_json["name"] == model_artifact.metadata["display_name"]
 
     def test_full_refit_uses_ensemble_hyperparameters_for_ensemble_model(self, tmp_path):
         """Ensemble models use ensemble_hyperparameters key during fit."""

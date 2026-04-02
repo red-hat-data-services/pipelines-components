@@ -1,38 +1,51 @@
 from pathlib import Path
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 from kfp import dsl
 
-_COMPONENT_DIR = Path(__file__).parent
+_SHARED_DIR = Path(__file__).parent.parent / "shared"
 
 
 @dsl.component(
     base_image="registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9@sha256:f9844dc150592a9f196283b3645dda92bd80dfdb3d467fa8725b10267ea5bdbc",  # noqa: E501
-    embedded_artifact_path=str(_COMPONENT_DIR),
+    embedded_artifact_path=str(_SHARED_DIR),
 )
 def leaderboard_evaluation(
-    models: List[dsl.Model],
+    models_artifact: dsl.Input[dsl.Model],
     eval_metric: str,
     html_artifact: dsl.Output[dsl.HTML],
     embedded_artifact: dsl.EmbeddedInput[dsl.Artifact],
 ) -> NamedTuple("outputs", best_model=str):
-    """Evaluate multiple AutoGluon models and generate a leaderboard.
+    """Evaluate refitted AutoGluon models and generate a leaderboard.
 
-    This component aggregates evaluation results from a list of Model artifacts
-    (reading pre-computed metrics from JSON) and generates an HTML-formatted
-    leaderboard ranking the models by their performance metrics. Each model
-    artifact is expected to contain metrics at
-    model.path / model.metadata["display_name"] / metrics / metrics.json.
+    This component reads pre-computed metrics from a combined models artifact
+    produced by ``autogluon_models_training`` and generates an HTML-formatted
+    leaderboard ranking the models by their performance metric.
+
+    The artifact layout expected under ``models_artifact.path``::
+
+        models_artifact.path /
+          <model_name>_FULL /
+            metrics / metrics.json
+            predictor / predictor.pkl
+            notebooks / automl_predictor_notebook.ipynb
+
+    ``models_artifact.metadata["model_names"]`` must contain the list of
+    refitted model display names (e.g. ``["LightGBM_BAG_L1_FULL", ...]``).
 
     Args:
-        models: List of Model artifacts with "display_name" in metadata and metrics at model.path/model_name/metrics/metrics.json.
-        eval_metric: Metric name for ranking (e.g. "accuracy", "root_mean_squared_error"); leaderboard sorted by it descending.
-        html_artifact: Output artifact for the HTML-formatted leaderboard (model names and metrics).
-        embedded_artifact: Embedded component files (injected by runtime from embedded_artifact_path); provides leaderboard_html_template.html.
+        models_artifact: Combined Model artifact from ``autogluon_models_training``
+            with ``metadata["model_names"]`` and per-model subdirectories.
+        eval_metric: Metric name for ranking (e.g. ``"accuracy"``, ``"root_mean_squared_error"``);
+            leaderboard sorted descending (AutoGluon uses higher-is-better convention).
+        html_artifact: Output artifact for the HTML-formatted leaderboard.
+        embedded_artifact: Embedded component files injected by the KFP runtime;
+            provides ``leaderboard_html_template.html``.
 
     Raises:
         FileNotFoundError: If any model metrics path cannot be found.
-        KeyError: If metadata lacks "display_name" or metrics JSON lacks the eval_metric key.
+        KeyError: If ``metadata["model_names"]`` is missing or metrics JSON lacks
+            the ``eval_metric`` key.
 
     Example:
         from kfp import dsl
@@ -41,92 +54,45 @@ def leaderboard_evaluation(
         )
 
         @dsl.pipeline(name="model-evaluation-pipeline")
-        def evaluation_pipeline(trained_models):
+        def evaluation_pipeline(models_artifact):
             leaderboard = leaderboard_evaluation(
-                models=trained_models,
+                models_artifact=models_artifact,
                 eval_metric="root_mean_squared_error",
             )
             return leaderboard
     """  # noqa: E501
-    import html as html_module
     import json
+    import logging
     from pathlib import Path
 
     import pandas as pd
+    from leaderboard_utils import _build_leaderboard_html, _build_leaderboard_table, _round_metrics
+
+    logger = logging.getLogger(__name__)
 
     # Input validation
     if not isinstance(eval_metric, str) or not eval_metric.strip():
         raise TypeError("eval_metric must be a non-empty string.")
-    if not isinstance(models, list) or len(models) == 0:
-        raise TypeError("models must be a non-empty list.")
-
-    def _build_leaderboard_table(df: pd.DataFrame) -> str:
-        """Build table HTML with Notebook and Predictor as separate columns (raw URI as link text)."""
-        display_cols = [c for c in df.columns if c not in ("notebook", "predictor")]
-        rows = []
-        rows.append(
-            "<thead><tr>"
-            + "".join(f"<th>{html_module.escape(str(c))}</th>" for c in [df.index.name or "rank"] + display_cols)
-            + "<th>Notebook</th><th>Predictor</th></tr></thead><tbody>"
-        )
-        for idx, row in df.iterrows():
-            cells = [f"<td>{html_module.escape(str(idx))}</td>"]
-            for col in display_cols:
-                val = row[col]
-                cells.append(f"<td>{html_module.escape(str(val))}</td>")
-            notebook_uri = html_module.escape(str(row["notebook"]))
-            predictor_uri = html_module.escape(str(row["predictor"]))
-            cells.append(
-                f'<td class="uri-cell">'
-                f'<a href="{notebook_uri}" class="uri-link" data-uri="{notebook_uri}" target="_blank" rel="noopener">URI</a>'  # noqa: E501
-                f'<div class="uri-popover" role="dialog" aria-label="URI" hidden>'
-                f'<pre class="uri-popover-text"></pre>'
-                f'<button type="button" class="uri-popover-close" aria-label="Close">×</button>'
-                f"</div></td>"
-            )
-            cells.append(
-                f'<td class="uri-cell">'
-                f'<a href="{predictor_uri}" class="uri-link" data-uri="{predictor_uri}" target="_blank" rel="noopener">URI</a>'  # noqa: E501
-                f'<div class="uri-popover" role="dialog" aria-label="URI" hidden>'
-                f'<pre class="uri-popover-text"></pre>'
-                f'<button type="button" class="uri-popover-close" aria-label="Close">×</button>'
-                f"</div></td>"
-            )
-            rows.append("<tr>" + "".join(cells) + "</tr>")
-        return "<table>" + "".join(rows) + "</tbody></table>"
-
-    def _build_leaderboard_html(
-        template_path: Path,
-        table_html: str,
-        eval_metric: str,
-        best_model_name: str,
-        num_models: int,
-    ) -> str:
-        """Build leaderboard HTML from embedded template."""
-        with Path(template_path).open("r", encoding="utf-8") as f:
-            template = f.read()
-        return (
-            template.replace("__TABLE_HTML__", table_html)
-            .replace("__NUM_MODELS__", str(num_models))
-            .replace("__EVAL_METRIC__", eval_metric)
-            .replace("__BEST_MODEL_NAME__", best_model_name)
-        )
-
-    def _round_metrics(metrics: dict, decimals: int = 4) -> dict:
-        """Round numeric values in a metrics dict to the given number of decimals."""
-        return {k: round(v, decimals) if isinstance(v, (int, float)) else v for k, v in metrics.items()}
-
-    if not models:
-        raise ValueError("At least one model is required")
+    model_names_raw = models_artifact.metadata.get("model_names", "[]")
+    # KFP/MLMD serializes lists as JSON strings to avoid the {"list": [...]} round-trip bug.
+    model_names = json.loads(model_names_raw) if isinstance(model_names_raw, str) else list(model_names_raw)
+    if not model_names:
+        raise KeyError("models_artifact.metadata must contain a non-empty 'model_names' list.")
 
     results = []
-    for model in models:
-        metrics_path = Path(model.path) / model.metadata["display_name"] / "metrics" / "metrics.json"
+    base_uri = models_artifact.uri.rstrip("/")
+    for display_name in model_names:
+        metrics_path = Path(models_artifact.path) / display_name / "metrics" / "metrics.json"
+        if not metrics_path.exists():
+            logger.warning(
+                "Skipping model '%s': no metrics/metrics.json found. The refit task may have failed for this model.",
+                display_name,
+            )
+            continue
         with metrics_path.open("r") as f:
             eval_results = json.load(f)
-        display_name = model.metadata["display_name"]
-        model_uri = f"{model.uri.rstrip('/')}/{display_name}"
-        predictor_uri = f"{model_uri}/predictor/predictor.pkl"
+        model_uri = f"{base_uri}/{display_name}"
+        predictor_uri = f"{model_uri}/predictor"
         notebook_uri = f"{model_uri}/notebooks/automl_predictor_notebook.ipynb"
         results.append(
             {
@@ -135,6 +101,11 @@ def leaderboard_evaluation(
                 "notebook": notebook_uri,
                 "predictor": predictor_uri,
             }
+        )
+
+    if not results:
+        raise ValueError(
+            "No valid model artifacts found. All models may have failed or produced no metrics/metrics.json output."
         )
 
     # Notice: AutoGluon follows the "higher is better" strategy for all metrics.

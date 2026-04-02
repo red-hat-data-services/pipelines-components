@@ -1,8 +1,7 @@
 from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
 from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
-from kfp_components.components.training.automl.autogluon_models_full_refit import autogluon_models_full_refit
-from kfp_components.components.training.automl.autogluon_models_selection import models_selection
+from kfp_components.components.training.automl.autogluon_models_training import autogluon_models_training
 
 
 @dsl.pipeline(
@@ -12,7 +11,7 @@ from kfp_components.components.training.automl.autogluon_models_selection import
         "first builds and selects top-performing models on sampled data, then refits them "
         "on the full dataset. The pipeline loads data from S3, splits it into train/test sets, "
         "trains multiple AutoGluon models using ensembling (stacking and bagging), selects the "
-        "top N performers, refits each on the complete training data in parallel, and finally "
+        "top N performers, refits each on the complete training data sequentially, and finally "
         "evaluates all refitted models to generate a comprehensive leaderboard with performance metrics."
     ),
     pipeline_config=dsl.PipelineConfig(
@@ -63,24 +62,16 @@ def autogluon_tabular_training_pipeline(
          ``{workspace_path}/datasets/``. For classification tasks the splits are
          stratified by the label column.
 
-    2. **Model Selection**: Trains multiple AutoGluon models on the *selection train*
-       data using AutoGluon's ensembling approach (stacking with 3 levels and bagging
-       with 2 folds). The component automatically trains various model types including
-       neural networks, tree-based models (XGBoost, LightGBM, CatBoost), and linear
-       models. All models are evaluated on the test set and ranked by performance. The
-       top N models are selected for the refitting stage.
+    2. **Model Training & Refitting**: Trains multiple AutoGluon models on the
+       *selection train* data using stacking (1 level) and bagging (4 folds).
+       All models are evaluated on the test set and ranked by performance. The top N
+       models are selected and refitted sequentially on the full training data via
+       ``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and
+       optimized for deployment. All model artifacts are stored under a single output
+       artifact, avoiding a ``ParallelFor`` loop in the pipeline.
 
-    3. **Model Refitting**: Refits each of the top N selected models on the predictor's
-       training and validation data, augmented with the *extra train* split via
-       ``refit_full(train_data_extra=...)``. This stage runs in parallel (with
-       parallelism of 2) to efficiently retrain multiple models. Each refitted model is
-       saved with a "_FULL" suffix and optimized for deployment by removing unnecessary
-       models and files.
-
-    4. **Leaderboard Evaluation**: Aggregates evaluation results from all refitted model
-       artifacts (each refit component writes metrics to model_artifact.path /
-       model_name_FULL / metrics). The leaderboard component reads these pre-computed
-       metrics and generates an HTML-formatted leaderboard ranking models by their
+    3. **Leaderboard Evaluation**: Reads pre-computed metrics from the combined models
+       artifact and generates an HTML-formatted leaderboard ranking models by their
        performance metrics for comparison and selection.
 
     **Two-Stage Training Benefits:**
@@ -91,9 +82,6 @@ def autogluon_tabular_training_pipeline(
     - **Optimal Performance:** Final models are refitted (``refit_full``) on the
       predictor's training and validation data plus the extra-train split, maximizing
       the amount of data seen during the final fit.
-
-    - **Parallel Efficiency:** Top models are refitted in parallel to minimize total
-      pipeline execution time.
 
     - **Production-Ready:** Refitted models are AutoGluon Predictors optimized and ready
       for deployment.
@@ -119,7 +107,7 @@ def autogluon_tabular_training_pipeline(
         train_data_file_key: S3 object key of the CSV file (features and target column).
         label_column: Name of the target/label column in the dataset.
         task_type: "binary", "multiclass", or "regression"; drives metrics and model types.
-        top_n: Number of top models to select and refit (default: 3); positive integer.
+        top_n: Number of top models to select and refit (default: 3); positive integer from range [1, 10].
 
     Returns:
         HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
@@ -169,43 +157,28 @@ def autogluon_tabular_training_pipeline(
         optional=True,  # Mark as optional to not block the pipeline. If needed, error will be raised by component
     )
 
-    # Stage 1: Model Selection
-    # Train multiple models on sampled data and select top N performers
-
-    selection_task = models_selection(
+    # Stage 1 + 2: Model selection and sequential refit of top N models
+    training_task = autogluon_models_training(
         label_column=label_column,
         task_type=task_type,
+        top_n=top_n,
         train_data_path=data_loader_task.outputs["models_selection_train_data_path"],
         test_data=data_loader_task.outputs["sampled_test_dataset"],
-        top_n=top_n,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
+        pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        sample_row=data_loader_task.outputs["sample_row"],
+        sampling_config=data_loader_task.outputs["sample_config"],
+        split_config=data_loader_task.outputs["split_config"],
+        extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
     )
-    selection_task.set_caching_options(False)
-    selection_task.set_cpu_request("2").set_memory_request("8Gi")
-
-    # Stage 2: Model Refitting
-    # Refit each top model on the full training dataset
-
-    with dsl.ParallelFor(items=selection_task.outputs["top_models"], parallelism=2) as model_name:
-        refit_full_task = autogluon_models_full_refit(
-            model_name=model_name,
-            test_dataset=data_loader_task.outputs["sampled_test_dataset"],
-            predictor_path=selection_task.outputs["predictor_path"],
-            sampling_config=data_loader_task.outputs["sample_config"],
-            split_config=data_loader_task.outputs["split_config"],
-            model_config=selection_task.outputs["model_config"],
-            pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
-            run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
-            sample_row=data_loader_task.outputs["sample_row"],
-            extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
-        )
-        refit_full_task.set_caching_options(False)
-        refit_full_task.set_cpu_request("2").set_memory_request("8Gi")
+    training_task.set_caching_options(False)
+    training_task.set_cpu_request("4").set_memory_request("16Gi")
 
     # Generate leaderboard
     leaderboard_evaluation_task = leaderboard_evaluation(
-        models=dsl.Collected(refit_full_task.outputs["model_artifact"]),
-        eval_metric=selection_task.outputs["eval_metric"],
+        models_artifact=training_task.outputs["models_artifact"],
+        eval_metric=training_task.outputs["eval_metric"],
     )
     leaderboard_evaluation_task.set_caching_options(False)
     leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi")
