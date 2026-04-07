@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate that package entries in pyproject.toml are up to date.
 
-This script discovers all Python packages in the components/ and pipelines/
-directories and ensures they are properly listed in pyproject.toml under
-tool.setuptools.packages. Declared parent packages cover their subpackages
-(e.g. kfp_components.components.training covers kfp_components.components.training.finetuning).
+This script discovers Python packages for setuptools: the repo root (kfp_components),
+utils/ (kfp_components.utils), and recursive packages under components/ and pipelines/.
+It ensures they are listed in pyproject.toml under tool.setuptools.packages.
+Declared parent packages cover their subpackages (e.g. kfp_components.components.training
+covers kfp_components.components.training.finetuning).
 
 Usage:
     uv run python -m scripts.validate_package_entries.validate_package_entries
@@ -43,7 +44,7 @@ def _discover_recursive(directory: Path, base_package: str, packages: set[str]) 
 
 
 def discover_packages(repo_root: Path) -> set[str]:
-    """Discover all Python packages in components/ and pipelines/ directories.
+    """Discover Python packages laid out for kfp_components setuptools packages.
 
     Returns a set of package names in the format kfp_components.* based on
     the package-dir mapping in pyproject.toml.
@@ -53,6 +54,11 @@ def discover_packages(repo_root: Path) -> set[str]:
     # Always include the root package
     if (repo_root / "__init__.py").exists():
         packages.add("kfp_components")
+
+    # utils/ maps to kfp_components.utils (see [tool.setuptools.package-dir])
+    utils_dir = repo_root / "utils"
+    if utils_dir.is_dir() and (utils_dir / "__init__.py").exists():
+        packages.add("kfp_components.utils")
 
     # Discover packages in components/
     components_dir = repo_root / "components"

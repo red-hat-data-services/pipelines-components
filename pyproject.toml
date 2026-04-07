@@ -54,6 +54,7 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 [tool.setuptools]
 packages = [
     "kfp_components",
+    "kfp_components.utils",
     "kfp_components.components",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.automl",
@@ -113,6 +114,7 @@ packages = [
 
 [tool.setuptools.package-dir]
 "kfp_components" = "."
+"kfp_components.utils" = "utils"
 "kfp_components.components" = "components"
 "kfp_components.pipelines" = "pipelines"
 

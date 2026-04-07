@@ -36,6 +36,17 @@ class TestDiscoverPackages:
         packages = discover_packages(tmp_path)
         assert "kfp_components" in packages
 
+    def test_discover_utils_package(self, tmp_path: Path):
+        """Test discovery of kfp_components.utils when utils/ is a package."""
+        (tmp_path / "__init__.py").write_text("")
+        utils_dir = tmp_path / "utils"
+        utils_dir.mkdir()
+        (utils_dir / "__init__.py").write_text("")
+
+        packages = discover_packages(tmp_path)
+        assert "kfp_components" in packages
+        assert "kfp_components.utils" in packages
+
     def test_discover_components_packages(self, components_training_structure: Path):
         """Test discovery of component packages."""
         packages = discover_packages(components_training_structure)
