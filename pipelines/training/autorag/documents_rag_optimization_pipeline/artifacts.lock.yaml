@@ -1,0 +1,57 @@
+---
+# Hermeto generic fetcher lockfile (https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md).
+# Pin: docling-project/docling-layout-heron @ main, docling-project/docling-models @ v2.3.0
+# Filenames mirror paths under DOCLING_ARTIFACTS_PATH (parent of docling-project--* dirs).
+metadata:
+  version: "1.0"
+artifacts:
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/.gitattributes"
+    checksum: "sha256:11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361"
+    filename: "docling-project--docling-layout-heron/.gitattributes"
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/README.md"
+    checksum: "sha256:175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6"
+    filename: "docling-project--docling-layout-heron/README.md"
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/config.json"
+    checksum: "sha256:fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d"
+    filename: "docling-project--docling-layout-heron/config.json"
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/docling_heron_400.png"
+    checksum: "sha256:e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e"
+    filename: "docling-project--docling-layout-heron/docling_heron_400.png"
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/model.safetensors"
+    checksum: "sha256:00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c"
+    filename: "docling-project--docling-layout-heron/model.safetensors"
+  - download_url: "https://huggingface.co/docling-project/docling-layout-heron/resolve/main/preprocessor_config.json"
+    checksum: "sha256:cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1"
+    filename: "docling-project--docling-layout-heron/preprocessor_config.json"
+  - download_url: "https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/.gitattributes"
+    checksum: "sha256:360aba3ff7ce75396f13f0a77925fe9e79997e8d4bac064595ebb00c82700386"
+    filename: "docling-project--docling-models/.gitattributes"
+  - download_url: "https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/.gitignore"
+    checksum: "sha256:b44b404189eaff3631c470946e7350c2e88cead304d332a8ad50325e6f56e95d"
+    filename: "docling-project--docling-models/.gitignore"
+  - download_url: "https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/README.md"
+    checksum: "sha256:d17f233378eff1240b623b36da76ee8b40afcca05d505949713bf03f7e00822a"
+    filename: "docling-project--docling-models/README.md"
+  - download_url: "https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/config.json"
+    checksum: "sha256:9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9"
+    filename: "docling-project--docling-models/config.json"
+  - download_url: >-
+      https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors
+    checksum: "sha256:2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9"
+    filename: >-
+      docling-project--docling-models/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors
+  - download_url: >-
+      https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/model_artifacts/tableformer/accurate/tm_config.json
+    checksum: "sha256:984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd"
+    filename: >-
+      docling-project--docling-models/model_artifacts/tableformer/accurate/tm_config.json
+  - download_url: >-
+      https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/model_artifacts/tableformer/fast/tableformer_fast.safetensors
+    checksum: "sha256:3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718"
+    filename: >-
+      docling-project--docling-models/model_artifacts/tableformer/fast/tableformer_fast.safetensors
+  - download_url: >-
+      https://huggingface.co/docling-project/docling-models/resolve/v2.3.0/model_artifacts/tableformer/fast/tm_config.json
+    checksum: "sha256:dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a"
+    filename: >-
+      docling-project--docling-models/model_artifacts/tableformer/fast/tm_config.json

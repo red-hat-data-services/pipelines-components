@@ -63,10 +63,12 @@ spec:
             "path": "pipelines/training/autorag/documents_rag_optimization_pipeline",
             "requirements_files": [
               "requirements-pypi.txt"
-            ]
-            # "requirements_build_files": [
-            #   "build-requirements-pypi.txt"
-            # ]
+            ],
+            {
+              "type": "generic",
+              "path": "pipelines/training/autorag/documents_rag_optimization_pipeline",
+              "lockfile": "artifacts.lock.yaml"
+            },
           }
         ]
     - name: prefetch-log-level

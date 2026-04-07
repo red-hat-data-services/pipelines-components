@@ -8,6 +8,19 @@ COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements
      pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi.txt \
      /tmp/
 
+COPY pipelines/training/autorag/documents_rag_optimization_pipeline/seed_docling_models.py \
+     pipelines/training/autorag/documents_rag_optimization_pipeline/artifacts.lock.yaml \
+     /tmp/
+
 ## TODO: Ensure build isolation
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
+
+# Prefetch Docling models (layout + tableformer) for disconnected runtime; see DOCLING_ARTIFACTS_PATH in text_extraction.
+ARG HERMETO_GENERIC_DEPS=/tmp/hermeto-output/deps/generic
+ENV DOCLING_ARTIFACTS_PATH=/opt/docling-artifacts/models
+RUN if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS}" 2>/dev/null)" ]; then \
+      python3 /tmp/seed_docling_models.py --dest /opt/docling-artifacts/models --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
+    else \
+      python3 /tmp/seed_docling_models.py --dest /opt/docling-artifacts/models --download; \
+    fi

@@ -378,6 +378,7 @@ class TestTextExtractionMultiFormatUnitTests:
                 "docling.datamodel.base_models": mock.MagicMock(InputFormat=mock.MagicMock(PDF="PDF")),
                 "docling.datamodel.pipeline_options": mock.MagicMock(
                     PdfPipelineOptions=mock_pdf_pipeline_options,
+                    ThreadedPdfPipelineOptions=mock_pdf_pipeline_options,
                     PaginatedPipelineOptions=mock.MagicMock(),
                 ),
                 "docling.document_converter": mock.MagicMock(
@@ -396,8 +397,10 @@ class TestTextExtractionMultiFormatUnitTests:
                 extracted_text=extracted_text_artifact,
             )
 
-        assert pdf_pipeline_options_instance.do_ocr is False
-        assert pdf_pipeline_options_instance.do_table_structure is False
+        mock_pdf_pipeline_options.assert_called_once()
+        call_kwargs = mock_pdf_pipeline_options.call_args[1]
+        assert call_kwargs["do_ocr"] is False
+        assert call_kwargs["do_table_structure"] is False
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES)
     def test_txt_file_handling(self, tmp_path):
