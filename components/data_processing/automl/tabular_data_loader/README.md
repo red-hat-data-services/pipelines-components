@@ -220,9 +220,3 @@ The component logs at INFO level:
 
 - Which sampling method is used (including when derived from `task_type`).
 - Number of rows read and the S3 location (`bucket_name`, `file_key`).
-
-## Additional resources 📚
-
-- **AutoML Documentation**: [AutoML README](https://github.com/LukaszCmielowski/architecture-decision-records/blob/autox_arch_docs/documentation/components/automl/README.md)
-- **Components Documentation**: [Components Structure](https://github.com/LukaszCmielowski/architecture-decision-records/blob/autox_arch_docs/documentation/components/automl/components.md)
-- **Issue Tracker**: [GitHub Issues](https://github.com/kubeflow/pipelines-components/issues)
