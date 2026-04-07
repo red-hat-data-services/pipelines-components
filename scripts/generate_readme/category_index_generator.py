@@ -144,7 +144,7 @@ class _BaseIndexGenerator:
             item_info = self._extract_item_info(item_dir)
             if item_info:
                 items.append(item_info)
-        items.sort(key=lambda x: x["name"])
+        items.sort(key=lambda x: (x["name"], x["link"]))
         return items
 
 

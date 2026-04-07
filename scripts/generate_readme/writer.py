@@ -1,5 +1,6 @@
 """README writer for KFP components and pipelines."""
 
+import difflib
 import logging
 import sys
 from pathlib import Path
@@ -14,6 +15,28 @@ from scripts.generate_readme.content_generator import ReadmeContentGenerator
 from scripts.generate_readme.metadata_parser import MetadataParser
 
 logger = logging.getLogger(__name__)
+
+
+def _log_diff(file_path: Path, actual: Optional[str], expected: str) -> None:
+    """Log a unified diff between actual and expected content.
+
+    Args:
+        file_path: Path shown in the diff header.
+        actual: Current file content (None if file doesn't exist).
+        expected: Expected content from the generator.
+    """
+    actual_lines = (actual or "").splitlines(keepends=True)
+    expected_lines = expected.splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        actual_lines,
+        expected_lines,
+        fromfile=f"{file_path} (actual)",
+        tofile=f"{file_path} (expected)",
+    )
+    diff_lines = list(diff)
+    if diff_lines:
+        logger.warning("Diff detected for %s (%d changed lines)", file_path, len(diff_lines))
+        logger.debug("Diff for %s:\n%s", file_path, "".join(diff_lines))
 
 
 class ReadmeWriter:
@@ -141,6 +164,7 @@ class ReadmeWriter:
         has_diff = self._has_diff(expected_content, actual_content)
         if has_diff:
             logger.warning(f"Out of sync: {index_file}")
+            _log_diff(index_file, actual_content, expected_content)
         return has_diff
 
     def _check_category_index(self, category_content: str) -> bool:
@@ -215,7 +239,6 @@ class ReadmeWriter:
         Returns:
             True if there's a diff, False if content matches.
         """
-        # Include custom content in comparison if it exists
         custom_content = self._extract_custom_content()
         if custom_content:
             readme_content = f"{readme_content}\n{custom_content}"
@@ -224,6 +247,7 @@ class ReadmeWriter:
         has_diff = self._has_diff(readme_content, actual_content)
         if has_diff:
             logger.warning(f"Out of sync: {self.readme_file}")
+            _log_diff(self.readme_file, actual_content, readme_content)
         return has_diff
 
     def _write_readme_file(self, readme_content: str) -> None:

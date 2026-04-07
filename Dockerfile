@@ -17,4 +17,4 @@ RUN uv sync --no-cache --extra test
 
 RUN uv run python -m scripts.generate_managed_pipelines.generate_managed_pipelines
 
-CMD ["python"]
+CMD [".venv/bin/python", "-m", "scripts.init_managed_pipelines.init_managed_pipelines"]

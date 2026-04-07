@@ -1,0 +1,124 @@
+components:
+  comp-documents-discovery:
+    executorLabel: exec-documents-discovery
+    inputDefinitions:
+      artifacts:
+        test_data:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+          description: Optional input artifact containing test data for sampling.
+          isOptional: true
+      parameters:
+        input_data_bucket_name:
+          description: S3 (or compatible) bucket containing input data.
+          parameterType: STRING
+        input_data_path:
+          description: Path to folder with input documents within the bucket.
+          parameterType: STRING
+        sampling_enabled:
+          defaultValue: true
+          description: Whether to enable sampling or not.
+          isOptional: true
+          parameterType: BOOLEAN
+        sampling_max_size:
+          defaultValue: 1.0
+          description: Maximum size of sampled documents (in gigabytes).
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        discovered_documents:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-documents-discovery:
+      container:
+        args:
+          - --executor_input
+          - '{{$}}'
+          - --function_to_execute
+          - documents_discovery
+        command:
+          - sh
+          - -c
+          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'boto3'  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n"
+          - sh
+          - -ec
+          - 'program_path=$(mktemp -d)
+
+
+            printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+            _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+            '
+          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef documents_discovery(\n    input_data_bucket_name: str,\n    input_data_path: str,\n    test_data: dsl.Input[dsl.Artifact] = None,\n    sampling_enabled: bool = True,\n    sampling_max_size: float = 1,\n    discovered_documents: dsl.Output[dsl.Artifact] = None,\n):\n    \"\"\"Documents discovery component.\n\n    Lists available documents from S3, performs sampling if applied and writes a JSON manifest\n    (documents_descriptor.json) with metadata. Does not download document contents.\n\n    Args:\n        input_data_bucket_name: S3 (or compatible) bucket containing input data.\n        input_data_path: Path to folder with input documents within the bucket.\n        test_data: Optional input artifact containing test data for sampling.\n        sampling_enabled: Whether to enable sampling or not.\n        sampling_max_size: Maximum size of sampled documents (in gigabytes).\n        discovered_documents: Output artifact containing the documents descriptor JSON file.\n\n    Environment variables (required when run with pipeline secret injection):\n        AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.\n    \"\"\"\n    import json\n    import logging\n    import os\n    import sys\n    from math import inf\n\n    import boto3\n\n    logger = logging.getLogger(\"Document Loader component logger\")\n    logger.setLevel(logging.INFO)\n    handler = logging.StreamHandler(sys.stdout)\n    logger.addHandler(handler)\n\n    DOCUMENTS_DESCRIPTOR_FILENAME = \"documents_descriptor.json\"\n    SUPPORTED_EXTENSIONS = {\".pdf\", \".docx\", \".pptx\", \".md\", \".html\", \".txt\"}\n    MAX_SIZE_BYTES = float(inf)\n    if sampling_enabled:\n        MAX_SIZE_BYTES = float(sampling_max_size) * 1024**3\n\n    def get_test_data_docs_names() -> list[str]:\n        if test_data is None:\n            return []\n        with open(test_data.path, \"r\") as f:\n            benchmark = json.load(f)\n\n        docs_names = []\n        for question in benchmark:\n            docs_names.extend(question[\"correct_answer_document_ids\"])\n\n        return docs_names\n\n    def build_and_write_descriptor():\n        \"\"\"Validate S3 credentials, list objects, sample, and write JSON descriptor.\"\"\"\n        s3_creds = {\n            k: os.environ.get(k)\n            for k in [\"AWS_ACCESS_KEY_ID\", \"AWS_SECRET_ACCESS_KEY\", \"AWS_S3_ENDPOINT\", \"AWS_DEFAULT_REGION\"]\n        }\n        for k, v in s3_creds.items():\n            if v is None:\n                raise ValueError(\n                    \"%s environment variable not set. Check if kubernetes secret was configured properly\" % k\n                )\n\n        s3_client = boto3.client(\n            \"s3\",\n            endpoint_url=s3_creds[\"AWS_S3_ENDPOINT\"],\n            region_name=s3_creds[\"AWS_DEFAULT_REGION\"],\n            aws_access_key_id=s3_creds[\"AWS_ACCESS_KEY_ID\"],\n            aws_secret_access_key=s3_creds[\"AWS_SECRET_ACCESS_KEY\"],\n        )\n\n        contents = s3_client.list_objects_v2(\n            Bucket=input_data_bucket_name,\n            Prefix=input_data_path,\n        ).get(\"Contents\", [])\n\n        supported_files = [c for c in contents if c[\"Key\"].endswith(tuple(SUPPORTED_EXTENSIONS))]\n        if not supported_files:\n            raise Exception(\"No supported documents found.\")\n\n        test_data_docs_names = get_test_data_docs_names()\n        if test_data_docs_names:\n            supported_files.sort(key=lambda c: c[\"Key\"] not in test_data_docs_names)\n\n        total_size = 0\n        selected = []\n        for file in supported_files:\n            if total_size + file[\"Size\"] > MAX_SIZE_BYTES:\n                continue\n            selected.append(file)\n            total_size += file[\"Size\"]\n\n        documents = []\n        for file_info in selected:\n            key = file_info[\"Key\"]\n            size_bytes = file_info[\"Size\"]\n            documents.append(\n                {\n                    \"key\":
+            key,\n                    \"size_bytes\": size_bytes,\n                }\n            )\n\n        descriptor = {\n            \"bucket\": input_data_bucket_name,\n            \"prefix\": input_data_path,\n            \"documents\": documents,\n            \"total_size_bytes\": total_size,\n            \"count\": len(documents),\n        }\n\n        logger.info(\"Documents descriptor content %s\", descriptor)\n\n        os.makedirs(discovered_documents.path, exist_ok=True)\n        descriptor_path = os.path.join(discovered_documents.path, DOCUMENTS_DESCRIPTOR_FILENAME)\n        with open(descriptor_path, \"w\") as f:\n            json.dump(descriptor, f, indent=2)\n\n        logger.info(\"Documents descriptor written to %s\", descriptor_path)\n\n    build_and_write_descriptor()\n\n"
+        image: registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9@sha256:f9844dc150592a9f196283b3645dda92bd80dfdb3d467fa8725b10267ea5bdbc
+pipelineInfo:
+  name: documents-discovery
+root:
+  dag:
+    outputs:
+      artifacts:
+        discovered_documents:
+          artifactSelectors:
+            - outputArtifactKey: discovered_documents
+              producerSubtask: documents-discovery
+    tasks:
+      documents-discovery:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-documents-discovery
+        inputs:
+          artifacts:
+            test_data:
+              componentInputArtifact: test_data
+          parameters:
+            input_data_bucket_name:
+              componentInputParameter: input_data_bucket_name
+            input_data_path:
+              componentInputParameter: input_data_path
+            sampling_enabled:
+              componentInputParameter: sampling_enabled
+            sampling_max_size:
+              componentInputParameter: sampling_max_size
+        taskInfo:
+          name: documents-discovery
+  inputDefinitions:
+    artifacts:
+      test_data:
+        artifactType:
+          schemaTitle: system.Artifact
+          schemaVersion: 0.0.1
+        description: Optional input artifact containing test data for sampling.
+        isOptional: true
+    parameters:
+      input_data_bucket_name:
+        description: S3 (or compatible) bucket containing input data.
+        parameterType: STRING
+      input_data_path:
+        description: Path to folder with input documents within the bucket.
+        parameterType: STRING
+      sampling_enabled:
+        defaultValue: true
+        description: Whether to enable sampling or not.
+        isOptional: true
+        parameterType: BOOLEAN
+      sampling_max_size:
+        defaultValue: 1.0
+        description: Maximum size of sampled documents (in gigabytes).
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+  outputDefinitions:
+    artifacts:
+      discovered_documents:
+        artifactType:
+          schemaTitle: system.Artifact
+          schemaVersion: 0.0.1
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.15.2
