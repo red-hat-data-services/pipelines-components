@@ -1,6 +1,7 @@
 ---
 # Hermeto generic fetcher lockfile (https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md).
-# Pin: docling-project/docling-layout-heron @ main, docling-project/docling-models @ v2.3.0
+# Pin: docling-project/docling-layout-heron @ main, docling-project/docling-models @ v2.3.0;
+# sqlite-autoconf 3510300 (system libsqlite3 replacement; see install_sqlite_from_source.sh).
 # Filenames mirror paths under DOCLING_ARTIFACTS_PATH (parent of docling-project--* dirs).
 metadata:
   version: "1.0"
@@ -55,3 +56,6 @@ artifacts:
     checksum: "sha256:dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a"
     filename: >-
       docling-project--docling-models/model_artifacts/tableformer/fast/tm_config.json
+  - download_url: "https://sqlite.org/2026/sqlite-autoconf-3510300.tar.gz"
+    checksum: "sha256:81f5be397049b0cae1b167f2225af7646fc0f82e4a9b3c48c9ea3a533e21d77a"
+    filename: "sqlite-autoconf-3510300.tar.gz"

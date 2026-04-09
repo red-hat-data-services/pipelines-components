@@ -44,7 +44,12 @@ def _download(dest: Path) -> None:
 
 
 def _from_hermeto(source: Path, dest: Path) -> None:
-    """Hermeto stores files under deps/generic/ using lockfile ``filename`` (may include subdirs)."""
+    """Hermeto stores files under deps/generic/ using lockfile ``filename`` (may include subdirs).
+
+    Only paths whose first component starts with ``docling-project--`` are copied so other generic
+    artifacts (e.g. SQLite source tarballs) can share the same Hermeto lockfile without landing
+    under ``DOCLING_ARTIFACTS_PATH``.
+    """
     if not source.is_dir():
         print(f"error: Hermeto directory not found: {source}", file=sys.stderr)
         sys.exit(1)
@@ -54,6 +59,8 @@ def _from_hermeto(source: Path, dest: Path) -> None:
         if not path.is_file():
             continue
         rel = path.relative_to(source)
+        if rel.parts and not rel.parts[0].startswith("docling-project--"):
+            continue
         target = dest / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
