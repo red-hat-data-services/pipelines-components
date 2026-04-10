@@ -1,4 +1,3 @@
----
 # PIPELINE DEFINITION
 # Name: documents-rag-optimization-pipeline
 # Description: Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications
@@ -293,21 +292,21 @@ deploymentSpec:
     exec-documents-discovery:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - documents_discovery
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - documents_discovery
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -315,7 +314,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef documents_discovery(\n    input_data_bucket_name: str,\n    input_data_path:\
           \ str = \"\",\n    test_data: dsl.Input[dsl.Artifact] = None,\n    sampling_enabled:\
           \ bool = True,\n    sampling_max_size: float = 1,\n    discovered_documents:\
@@ -386,7 +385,7 @@ deploymentSpec:
           \ DOCUMENTS_DESCRIPTOR_FILENAME)\n    with open(descriptor_path, \"w\")\
           \ as f:\n        json.dump(descriptor, f, indent=2)\n\n    logger.info(\"\
           Documents descriptor written to %s\", descriptor_path)\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -395,21 +394,21 @@ deploymentSpec:
     exec-leaderboard-evaluation:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - leaderboard_evaluation
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - leaderboard_evaluation
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -417,7 +416,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef leaderboard_evaluation(\n    rag_patterns: dsl.InputPath(dsl.Artifact),\n\
           \    html_artifact: dsl.Output[dsl.HTML],\n    optimization_metric: str\
           \ = \"faithfulness\",\n):\n    \"\"\"Build an HTML leaderboard artifact\
@@ -667,7 +666,7 @@ deploymentSpec:
           \    )\n\n    Path(html_artifact.path).parent.mkdir(parents=True, exist_ok=True)\n\
           \    with open(html_artifact.path, \"w\", encoding=\"utf-8\") as f:\n  \
           \      f.write(html_content)\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 1.0
           memoryRequest: 4.294967296
@@ -676,21 +675,21 @@ deploymentSpec:
     exec-prepare-responses-api-requests:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - prepare_responses_api_requests
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_responses_api_requests
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -698,7 +697,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef prepare_responses_api_requests(\n    rag_patterns: dsl.InputPath(dsl.Artifact),\n\
           \    responses_api_artifacts: dsl.Output[dsl.Artifact],\n):\n    \"\"\"\
           Emit one Llama Stack ``POST /v1/responses`` JSON body per RAG pattern directory.\n\
@@ -995,7 +994,7 @@ deploymentSpec:
           readme_path\": str(readme_file),\n            }\n        )\n\n    responses_api_artifacts.metadata[\"\
           name\"] = \"responses_api_artifacts\"\n    responses_api_artifacts.metadata[\"\
           metadata\"] = {\"patterns\": written}\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 0.5
           memoryRequest: 2.147483648
@@ -1004,21 +1003,21 @@ deploymentSpec:
     exec-rag-templates-optimization:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - rag_templates_optimization
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - rag_templates_optimization
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -1026,8 +1025,8 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\n__KFP_EMBEDDED_ARCHIVE_B64 = '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'\n\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\n__KFP_EMBEDDED_ARCHIVE_B64 = 'H4sIAP8y2WkC/+19bXfaSNLofN5foZM5d2NnDeHNTjx7ec6DAds4IGzALzCZQ4QkQCAQi4SxmM0590fcX3h/ya2q7tYbwnYycSb7jNjNGPqlurq6urq6u7oq/Tb99r8vlYdzXdH05U8v8smwz66/mUy+4H/H9Gwml839JD389B0+K9tRltD8T3/NT+69NHOMmV7Mvnt3+L6QKWSP07ncMfwv97efks//+E/67cu3gZP63eEh+3vE/mZy4TmfPcweHeVyR7lCHuf/u6PMT9Lh95z/pjozdNNa7yoHxYbD/4njn8j/RP5vyf9sJltI5P9fQv6r46U1U/qOPluYiqOnjYU7H3zz+X9UKOyQ/+8OM7mjiPw/zGWyP0mZ7zn//6Ly//e/Sa9U3TTtV79Iv/5NkuC3xFL6jrvQIfXVTFlONWs9f3VAeTPdUTTFUSDr988sybZWS1XnEOD3/zZmI8leqsXXWPAXY6aM9Lf2/egfDzPznwPF1o8KB5eV48Lgdj3SZjeumjPvB5OM0WgX1jXjxBzM5PvembnqbTKGdtea1Tsj43JT+HB5Lud67kmud3exUW6PV5ft2kN9UjVq52NncHa4uWxfWNp5a9003t9reS1fn6ub+uzY7bnv3UaltK7nsX5tpJ9l7cG8caSfPSwGM/u4NhtntPPSUd09hlrqSts0VoP8xby+qR42O9N7Xg7aGR3XJidrvQwwOoDv+UmhNrIuaue9Re9OKw/ymF8aNcqlB3kzzdUq1XUDyqr51uHg7BrauVl1by/sXjtrdG/lZS9/ca/dHk6bs0NTc0vrWgXqdtRD2Sg9AL7vgBZIoyM1fzLu5qD+/MTt3cmmOu+ZtQnRI6PfPpi189ahivDnLVM/v7rv5uUN5pfbhxutcvKuNzPtQTnralC2ObvJ9W4Pgb5X77q5h4Uak07lK4usOltbtax828qY1bvN6fBDxzkuj6YrNX/1oOd6i8HZ+mgwO171Os5GO7+4V3LXR7VM76w1hX8TL83RcuZUOxsdNQJpg1szA+NoK7fZhVaxoL8ebPerYLcL2WZezqiz4yXQ11HuWjClYdygneakum7mM5weMu+fNSFY8M/Pa0He8UorZ2ddwGtwPj26yIzNwXnP1M7MSbd90uzd3ZgX7np0dXex6N6u7dq5PAZectTcjavcdt8Nr6yL+lzOyHfObJA7zNTv5IU+uz5qbC7Wut/HnOhjbSNXG5mrTcvPy/t5002zc33Y9PMKeu54Dbyz0AC3RrngNnlZDWj5oSx3bqbaRev0vXvnTt/BeI67swezfnsB/OPMgTbZwewK6HqT9/tsij7ne7fmXDm/OpI7JaLXZfkY6GzavQ7y2oXZzV+NOL2Bz6v5Zqdr1M7GpnKrWVoF5gPUA56dKbcPNszNSaPTfZAn1VzNeP+P8uQBxvrQ7N5dnKuz06lyewNtnix6UO862ztvX7eGjZv3AE9zu7etBeCeubk9hH42gK9vNsArHfXsdNK7Pl7dwBzAudGAOShXaqtmBfA4nz5Am1mcb3qlBviph/WJ+gDlDhsgW6BPxiXMVZwzg3xpNMj1ZjBmGaiDOPN+ZgyYq/cwJyaD3MO9OkEe6eauJr0y9WE0fc/yT+57sx7gdIXzfdUgGcTmIsigjXZ2vK7fyveDs2O3acinLaALzGejDjKs3Hmg/NrZ8aw3l02iW7mQl9sBOTEnHJ1u7tge5GvA93IF5Rf07X5HHx4e68PVdRXbX7NxWANeIFtvT91W/mIMctYczK8wfVxvZ4CvbzKD7MVJyz25gPZX9czDfS/3fqSePQAP3VgAc9q7q43q7ROQwdk1wILxvpnCuJmDXNaEebnoupB3drrutUtOnXjnZAw8MwJ5M1bzDeofjhOOfadz7dYnV7ZcuV41bxvreqe2arhrkOsjRy4XHuqVq1WjncnUJ6cb9ru6apbX8Ltq4+/rzXUBytowvvCvu5Lb62zjbL2uV04mBMuA75MqwMoATJXB7DRWTZinVxvRdhfq1lYywJUNqG8UMtButj4xj2rVTF52C9l6BcveAMwStI+wqg7InAzDF39PnQaU626q0Cbie23juMLatZKNDPWn0aliHx2Af0g4lDOAe83BfMArWwf8G4BX16X6ToNwHWF/CfdGp4Z9LkD+pl5pYF9y9YrqtwfwZYRPdIJ50ca+T225XSjgb9ldQ3unE8iH3yUOt2FDPw6RrtD/jTa5EjCojNxG3K+wzKbeoTJAh8aHMo7VpIbpWarbxvSuDWMHf1sTSHeRVkB/F/sIvwknGAeWjzTsCPhTn5b5LvYL6FgCOmVorAR9sb9d+n7tEM40vtj3GtL0AeknI/2wrsvxKmdySAP4Xah3piv5rOESLQ0Ym0oXYRMvgewi3uhurrEvwD9TTh+oi+0AX3U30F+D07K9znHaZbCsPCOaZbBNxnNdm7VB/Ay81OU06yJfHPJyDH4bx7HGeIPygC4u0InKwFgjfkBn6Pua81WGaOfS+PKxgr7edHMytoH1y1i2alMelqW+nBL/NqhezSH+rJQ4fanspjwyJzTOBtZvIB15W5msGEeNaD6eeLDbCPuKjSGjOdBYZmPMxsrFsaI+cdqr7Lvt5yGfaFAHYFUEzCmnL/EFjhPS0BH9B7mwJng0T6r8twz4X3G+qjpsXtWwP2xOQX8A/wLh5zIelWl8rjjP4Pgjz2gT3saG5q6L/N/FPuQJrkG8uOHjyXgP5g/9NZA3+HhXGnwONGyULTh+UDevTUarRg7za0xOgJzj9TAf+LDBxg5kE5tjU+RB6JOJdIf5X8L8HI0fzfMR4QHyx24wvnVYOer7A44r8VZHzPsrx5/32I/THNHttuHyMhmScQb/6xbyVxtaU0FWXqNsycO/LJdBeeoX0vnOonXu8kxeqDMZdN2TyeDsdKNucF26wnVqoldwPUZZXRt181NYQ1HWTmENxXUb6M/WuffdnOnCmmHWzmS7eydvaG2t1EBHkAuw5mWa0D+Ch3rA5JrXR959Vv0cylKvPsjZhgFrMNuHCJ0FdNRxBvRr0EkON6AnuQMoO7g9BT3TLHyoVFHXB70d/nZKQNOSW6tcA40amw/Yt+B6B2uiVrmCNf4qW5scnsC+5v56enoOOha1gfiqs5sJ6ESImysjnudIm0YGcQzQEHA7ySuglSuoO0A7ytnNopcbox6wafC+a2c3BYAFeJ6u1FzvXp1lYP+RHeP6rJdHD7TXgH1KrQIavgF6ZLuUbUK/ZWNqhOmlIs4Z1G9gvP5xfXbqaqj/GCft3u3VqH12mqlVj9egr3UU0AUg76TdWd9T+xXkA9w73YzVqa/X1c7MKcAO6KqgC3i6SOtmMDMzKu39YK9jyqjvmp3c4Y2awzEeoZ4HOxxcP3EfVkWeWZM+iGNH+ydMr7H0yS6d6xF9a1PNke5q7NS3UA67f1RvlCe1P6o3FprlP1tvfHB7t3KG7Y2B2102pwL8Wgjxa6fkgvxH2ll8v4FzVuD4BXxbzTQmo5GMa3qlu4i0uSF+LeOcu0b+PYQ51766VkfAvxlowx0YJ81BvmV2Z8f3yibAr7jnmakwZsXia+ntf73CI43f4D901vFNjkd+/lm6VBxHX86l3y9LnU61JfflUqP6WarNNf1BOlkZpmbMRwdSS3eWhn6vS3+XzvS5vlQcw5pLZWvu6HPnI29SeuV/64wNW5pbjj6wrKmk6TNrbjtQTbelVunMa3ZlA3ipTCd/lRNpaC2le1114I8N/1FGuqTMNam50OelGuXqs4GuIU425Yw8ZNJSzZFU615f2r/4aKSkiqWuZoCkpBk2ZbtU0dEfHAn+LRWVujIEDKR2XjQbhCCoIClB3HTJIBqtDWfsdyCArY9pEFhttjB1xAcBLhlVFTOlrEaYqAd7RP3910q36Ycyt9f6EmoFoVWh7kohWEjVhb6EOjNlruoMr4E+V8fIFxJyQtw4/Qw88PefH7KnhfLJP8WA2tKugVShgGLMbckZ64CfaVprbNzWiYpBygfRfPPm17burBa/7f1Mf/ffvPGzJSkl/VoD7lBMU1oo6hTIb0NJnpQSSfvRKrOFtXSAhv9aGUsgnGkMlgqQk+pSXkrkpby8KBDo8NAYrWA0YexVKIojo5gIw8tKtfOpQFYUxOVSXygcgGlAIajL06gmpe1HyHG5tFTdtoGHFitgTc6jNlWlnBTlpLycbZIJxrZ9zobqXmrKS40i3AmzPlTClJSfEkX2emFaiuZjSVyAU8qYO1Z4TiCb4bkqAGW1/B6keK0U1kqxWimqlRK1tjvpjw+fVbvGiGU/Z5zU8Wo+1ZeBUeIpWww2NxCQsdH9+R3sLPGoKJISRUI9i4LklKQGYQ5ZUXicZiw/FSFTFJgnkzk4FBe2gvLFkxoAUpQSQIcIjkqlRKnoeMcK+yCov6f89Li57NGND9qptZprTKY1LE03w5TjQ+cXSlGhR4ZDILIMA/KSH6vqLz6RyqWzFM+IVr9a4aoRrklpOyoREWWcZbajL5BP8UeKfmyTq44c0YGRkCowDaAwJqQwIYUJUWRoNfIEP1CU16L0lJ8eW5lnIwXtBchr5DmRlhJp0Z60VzNYQlC48G/QhxdQRlKpVPwCJdGasVPJ4GsP/AXJtFrQyuStV/r83lhac1IABi4ILFpT2NrL1w2xvhxIBq0amOmtFwe0oqtczJASoJLghrnrawvpXStrdFmLKyfK4D8PqUvXGUOfRD2a20KSSgu2RBA2gB0yprXg0zGs/Lx5M7AcK//mzS9S6bYttSsfCBKHDn0AWayj1GfqQrz+8+bNwljoQDQdZTjQaI7iHGG2ANNzxXltS6KE5BdgOMOYB/ANg4UO4VAgpMqOvkXVNDYwbhiOYhQAZwTTgbEvrRwLSTJcKjN9bYHug4gMhBKHWcpiYRoqo1cYFNBxrhgIiosuTipBuYj6qY4Vh7ps6jHA2IW2NkBwN0zQi5WOCWsdVDXHUOGLslTHT84pFcTi8+fT/4IxEQwvERtI/5ZAeTOl1FzK+piGyqWupVRqbqVURR3DumwspZHh/GPsOAv7l7dv4ft4NUhDh9+iVgWdp6U7ZevLewOG7W0co6Sh1n8vx5ZipPLpwjNw4GzxjJKv2ci/DhZlVGQksVYOKFF0o8xT9AddXeFQ9VVYbhzIma9M8xtvqn6WduqmsQKAFcYOzXVkfmBwwXczS1uZuh2SQrpkWqMRUggmsL1aLJYokGDZG1jAWKzPbD/jDQLVgJ1R+hvzGJOYkhXoF0+a2NZ8K5Hj7acTlgvFGQOBuPjFNXYcKYHI2SK/beB0k2Fy2yAe9a1GRrqzUOxYSvMSa2U5D+/L/G8iLz00TBCN4ufex1fGaA5K2MdX+49ApmkWQd5U5iOQEway3FJP+1o0ryNEXxxYlBJs6Ppz6DAwvrQXXNIl6eMrnJwPH18dRNM9kYr6hL7cYoaYKrQzqPrS9llVuOLyrGb2fwnX5wyRhjGrU+m9QG/307AYLJQR6itF6RRUev2HmNy79oyxGoolRfZO/KCBBCSsQAPQ1q3BBFYHsfQeSK61AkkAYgPmN5Dg3tD0YDtpqTbEMq8BA3Z+gmtVe2wMHalUO0AFCOSAqsxh++8LDU1SbLYcQ9Kc79djFRd+HFD+JyxhJSqHC9glRwTVqwAytJABMkskBsllPHwwhljOlXC/BboYyLalrmgu6mjIw7tUtEfQKWURnY6xQFxqDATQBgl3gNrPHHLLfsfevCGRqWjwD7NwpHYRPEAQqAY0V0BbUKeAKg7E2gC5vOIrtj+MTDkB3keSpmkEoJlbUDfozEUHDA4kXTMcRpy1yGAKJWwZYIGlThBmon1qEair4EmQbYUJhSOKZGQshFkMzbTUVu7ZQRmsBI4CMgUzvSZxNIBUswUA/aIFIH4+7Zwr2xMyOnvEeti/V5Y2zOlfP74CtbRfKper7Xb/Q7Xbr1VAXkgsuV0tt6qdQG4gK9+vypXLZk3u+ImV6mnput7pt6pntaYcKnxyXf5QhaK/+Ww1M5iWCVgANuzkEf4acymMJRAPOdiy05xRUVjtQdZ+ABgU4vAiAm6pGMA6N7DD0qvLpbXcG3581eAte9pBcJMCgA0FeNQGuv7OYX7+DKvOixz//ixtnV7FTcEycSQyvV8O5jIgZ4kjXD4fUURoYWFFmzRehybTAMUWk27ijIqYF5GPE5YI2l7oqjE0oBYgwNn+T2XlZ6gS/jdNH0p9w+7bttnXiQ30B/UX6QQ2AtUHVV/QOYqU+i/QHyzzl+gSi/8rj3V1Kq3HOhADqQV7Il5P2gPONfBQTkEpRZrGvmSwwWrXUS8Ewqn8RBm0ZFgL0gxouCFbBxFWRBG9tx/OUVfLJY5eEVsNZ63HBshTUYCdFEsyrP80ooa2x7P2KcOYUyuRHorG0yCt9wJV9reLzWycsLaz9AqlQf8FtSGmLMxJoFu11amd1sqlTrV/U23VTrv901KtXgUxg9ggPCDfx1dAKS8lBj2ayrqzWs6lznKlbxfwScS/pft9GpB+HxsIJOIh6IPT70fkBANOSs4zeIktEX0732cTa49G2S0iclEdS8zTItNO0/x3us3+7m13RlnbfXbM0Z/qbt/Qir70ixfZvx3EQ7F1wNQJANuGFCPlo9D2Y2kl+sEpEMdTtCslXbL48ZWd31Jf8aPPtYVlzJ3+amnGYBdcaOJ6yQnP/uzGO+6bs3SjQyXGEwZre4z3dxROm4bt9JlQtIOlmIyQPBGDGiAKnjAcI0Y27cfMAW9nhF/2aMpsCxcQ0LiSgpD+f//n/9L9lourA50ucVIRj6dD+yhvxB7tf7B+pLIOSTEo0+r7XY8qd9zrPHl4OQZxift87Vm3lWnJv/zBxXtoLG2/CoyBMQ+c5dGOgDRmY+lf3dgCHu4M2OkC1HXYuixIItF1okNjOlwtafHxT+jSL0BaPMGLHBr6h4sLpqzYQQ0BMEMFAY/1bNd29BlJ8ZXpGHgRQmfuaamK2jZ+l5aruY3zQJFwq6IpphU8tGSMyld/diujSas57ms/YfU+z3r7KS3Fjem/pTY28m/YIwqI/5YuV8sFnsz8O1AuRR/+J/I9WE7KAoA3b2Lu+mCr8m+pbtgBLhNbKyYKDoBchrU0HLz28C6CU0t9CCwCmzTSs/CAe7EwXaQHllOVBduhrKEiLOLSRbspAzvMjSFudvbmlsdBQl3bT4d6JuUI48glI2FbEQoeIolCS4/ZGFPrvCLje+DHhuBHpmxW2AkhNPyn6oCE8XS46AcOOwNfEV4/MFuUFc1H/wSo7w2mX02cCsUUipwrfXnDpHgEpMhWo5ECcRwemAV9PB4u0nkdLAfpt8EJEhLvJAz7hBVjTXaYVZTiltuYrVqgPqgQUO/jq99r8uV1p18pdUqoM3z+uBvF9GwK/91DwQHEIRUJduYPuGZaU6YxvdDeKmbWxpEUJ7HNzyS8OUynKbiGiMnMziNtvMXCM1+LRDWMlT5HLciW9vT0KH0gfUovtOEn/Asc9EBfFguHfZlp9GfszEz64jw4n/bZdKfrEZSK3gJk48GC34OA2BBSxrMtwSXIlzUaX28sXC3Y+gSKPclRxzAlxTuSwm0ukzqmMTNAuGSlsxPsH6i4Cghw2sWAEqCOdY1vI0mEa5bO9hlbG0Yhm4BKQDkSYfa2DPsUmFu6rS6NBUyPNB5Yf9oXBi5iS+uLUn1oPDBaoeSSrCFQyNRp+eTHScCb7FwI++SvTHNxEfznblh97aDv9x+qwXSKnKjv4YF8ETdZ0cn+FmZeHByY7bG6bpykW9DFRn+4mqsRnT1eTBTjkw921iXswyIjUjiuC8Vd9AmeXsfvxwQLUcu0PX0u1VjWLm4MyjSmlyz0+V6kvX1UZoYR3dcvA+ggqDROk71hbAdg5oJyTaW01WxhB1o4IBu3uVMsgMSc26ul3lds1TC4Dv5ScjOiO8Qh3dIVjRmhPTKbUYfUViiyQKhgWV+pxjE68AQI6MKoIEZUEk8jITMnRcKHyRbePgOcJV3nukwgkE5JShq7zkaNJajBpKUmu5QDCYbqpqfNDPHwZKEHrvaFFBcJ/QyX2l5CFhP2Sbg5Ot3hY8+UpWMMsT1+/YesgTITbwKwFRJH7ChtaMwVk2lWqrVcrOJ06D9ZVPksbsy/vXzy9j190ne+QgaGIeySflF1a7fki2PhYogKEQkWRqC43aOg1PquG+Dn2wo+uSf2rq7YRI+1wTvwbOmghL+h9ZpnE3S14LPct97wL85KtdeBHLxx100xrR4z10i/kPR7zOQx9nA+Wr50Wdu6oXvCbiUtdbfvHCOWRM3Lqlyq9QE6atx4DdfFm61Ao6icW8vgRRtPjQV0UmpX+9eturDbITrDb08cBSDvhcGKM7v9P359+cI3laeWoFAqBn/Q2k1jCmTaBIaPrvxVENHEiTYq6NpkZbNLPY9IigrCGwfUdP8kYc12ocxgSmwgWRc+wpLtX5uNdJj/97BDLJ+XOv1Gs1Kt9zvND1X5I5kDIOVC+8DtYr+BfOZWHWn+F8BdmjoSA63ml9LraK3Xv0i0B43FpNo4qVYqNfnsGejsKPscnGKr+oj1cRb2p2tlOcLLUM1Q8RSbjs4XxvZheQxdDlhxZAo6voZ9caAUsMlnOvLe94jAstvtOr8M+cx7HETlV2ZSwk9dWU/JxiRdjj2HZRzQH3rmu31iXP8klzHF3ps3wVYYBTyx9Hwy7BqPGFpEi8YRxC8TQ5Uoel9JGh/MTspEW6JF+2Vuerm1e/zy62VL9sLEW8WYNZUt5fZMMU209/GNz2f4AkAfDnH9vtf91y1pb01jFwXGXDVXoN5EFpgyQsIluKGDoqSJdUExR3iyMJ55t8aEGtNgub4M6vhqaRtkC68QvrwDaM27H9MM6HsbHVtoKA/GbDUDKQgjsMRtvQfBJtWc+hcHoQmDbSok5WWvssUSF9iNAKCB7qzxelVF+2qUv77VPq23Ot5V6RK/HIwbGli/PGwQONuOod6jOILSuiYg4E5jYMGWcambMALAbLjqD3FAcSfJFzbixte2V2kNuz1rnf7zz1SZWWca/3kd5itMXZmPynjHXd7NxqJOf0aMxA4My+fX8geSBdXOebMSOjGkCn06iipKrGS/XetVP0eL8OH1SzVBYtRLl593oqHjFjyK9B5DrBhBlCuzhEjR/yqSeePF0K+X2oM/9fhll/iILYyHb2TG7u1zI/ooiEm0edlSsaUdG4Koaso0p6qnxNMDEpyZZXarZfP9Lptywa0ICEWcfXOHWYPv3heAGhqVAqynQk7dRyy8B4o61efsPhSpIEza/4UvR2gKxz4QRDM20+Q9xv0oGe9LeOaF09vLWo91lLYBOi51fmO1a2zCrxeRDmKMNW49hpov0AbEqY4iyj9XJcL9WJLB63qaL7Ns5xbSRD2OIIaIXKAEYDHK9IkyaWa2LwCxYWbm++1dnB9d4Q0udKIaSC0sd2A9Vmae0vPmTaD8ZalVarQ/B9Yu7GV/W5vw1IhwXyMnDEzlKD6qkBxIAvnidn8OJIZskf2JPRT1uVNc8KDcbdbr1XKn1uRPi4P91wxmL4rybwmznipUau1OSS5XUVC3auVQhaBwJWeBbOAYRxe3xypChUi3ijtIehC1N0E7nkjnipHf20fMwZ4VI79f+HjmZ/8gJv6p4ZNnL/z2UOcno74WOAudXQ7ckCRGE3BxcxK9k2FX6wL5YK22UNQkgx8TcaR9y8KAFfOW+pryHimGZGpIkgdOgTjIGZJEiPA4cjTRjpkfkcASzB+mBMUhSVx6BB6SnzFHRSTzDf1PFqB4pInCBo+59/itbcioYetYMz0yrQGUepOeabtOObG7C7LsoytJOji1o/ZDHuWK3pVijMHWAnSEPmeX4iKN5CRM9vQ50AUGDjZ1K2eYeo+2vWSrZEMKrOAmvgN5tR9jniUIVfz9d/+mBcTZRyDLIo1H3Z8/P8dqi2QocV7gWBmt/Rg3pmmz4efs/Sq+/ha1pdySW2j2GKi51cpLCYhnPB9+UkyE/DqMrTXtZpgTArQoiZkFrqSM0IEAO85aWIuVScbuQenETiPR3J0s7L19JN19EyicxEPS3vj2hvcBFS9NQku3aFd+AN1lQTdtQq9gv2JNLAjzvuf5ochuN/diGROU15XJWXGLsxix9ojuxQjYA2laPNwPz2MGjNnAE9htU0HDFo889liZA8kBwarHWQyyLvJyv2Z+SzNlAm8Z9/ArTF52J4Jz17tqjLELRJlgzKN2tyHwz4T9Xe9CYt/Rf9E7ZnLqwV2l4ACN/JWO+QOhlV0MqVjzto8DPDv6+O2Z77UETwPCdwO48Um//CZzh6eAXVsZ/7SRX9gYNlcU8HkkbLdX+LCH3+VghzjldLQoYc/c7efuLgkRqVYRGz3+FkEVOHs3RuKVUMCFCz+fGi2cVIH9yacPU85qObAix1JtZrzYwPefI529cgLJumLvmVgnNH2IZpDBs5uBPlbuDYu9oFhaZuTl9rWtLwVMqcM9a4uOBIw7V1iOaynR3ShjoWDlc5D0sWdOxhyvlK0liXRS5djDox0GsHg7Ldx9s2Mo6AFbR8ImnYwQdODFAYobuvBY/1g71OiRuP3ITtVn/J18v3XCLnaZp4347SUjHmw5aPhJlaIK+L/f2912pwoVq+126Yy2ZaEXIcgQO2pet6utnfXE+wYxrJG65abcqd51+vifrbrhvW7MnYK3141Q69HN7o6LiYjW5219Y6gcKRpD1mJMWqTWFkGLWymRGrGkLMamfof9ZJz7lV3SWciGJRqbcDudmUWqHNfXolsplEGKNDLu9TlTE595Z9DydMOnLg0Qk+32PbtJ25gZpgJVhIp5II3dwRKmGPsZkdb+iT8d6dpCKoLC6251jk7UuCpAz6JYX8T98iOn/mFiKmgfqjByImoj3btYEPKb6wH0ZgBKTefW2tSpIGjGP5Z09K+H/B5ykfgogwUP9Vt4RFS9KdXjTvXZlU7fGvb5OBSl3+XrxglIr+Zpn87v25/jdWqBT9FHZS94RljcVrYPJH6oL87yo80XownfY6b6PoviTUdmA/TWwb25RVQqdqThDQ0zghMnIiHVlJQT3K8xpTTAiLBj4yCYYiq2a1xlCLrwo3yhmv1QnOpFJLHJSKwPaZ74DXulAKLEMhRUELQq+kX3omvNriXrwB+Hovftpdhny9vVkzsWNgCcjbAiPj0fmiAOyVh9MOPHe7Sb93mDa3BcxdvFCv6efse2Rmxp/oN2+I9t7UXHIS/ANmmxf9kTdYsx3tv8HTGBCJrvrg3NGRcPM993B+w7Qdu9kYv6kPRcXlj0aFExfQt6pid4p7jC/cIBWuCSyT7fwTCrP913jhnZS7+2g64yhZ0sa0Ehrxr6cGWyEzHiTgVPsbA9cYnnPX4g76j42oD727CnxmKBmx9y0UHvBkAgbnnaiuxvmEGx6QYf03N5EXTgMbDu9Zfai4fd0MUNV8WzlqZXEJawwPYfgngjIkyn08yyzytAlwb22FqZSELxNINS/YcXERVP8LlQ7UJShNx12NMIPSNuuKwlUrfPT0wEHP1hofPXj+wkhewkPf95j8HoB06SCV6tYqMu6GuVbEVkXRIHEwgA2IDtuh87CSIKGranus50BY09Ip0EJlZUFfRj1Q0u1TBf/rWC1d9xX4JTPn36xI/V/vhjNJs/0DDJcVDca7RwicdfU3/Nw7QvfykWb+dtP/W67XXocdvr3+Iqe0/bOtX2jpdtfuGvMFr3KvPHJftPdIYPy26r9dh+F2NTD3bVJIxDNNhVtBjq/FOvcnjf+Ysc4oRQ/TS9nYm+r/Er0UkNMM+Srpq2rp9iX914DXzNoxuv8lNvbnwYMBe/zwwHmcXe/vV9rawImtCu60Cf0gZ/j+2lRN3jPFfZCYP89aOnQn18Fb1hi8E2rcCaPNc8xejFiYgLaqyj1id1aWcJSwwuEfa2uPd6FtCO+bbMOyDVgqe6/mrGvaOz7V5kgT3xlmfEUCyP1tIY8ZdCIa2dPc8OL51heDUPTeFR1ltzQf+BtSmAvhhp74lW3CIePQ/B+x667PdpS9POIwLe1ltrO6rAkQX+0oBJ552bBHqiCez4SnHArNLoTQgzT1EVU8XrSuGbXbFt7qFga6iC6uV3XIYX6NLA9ywIQE7RC2rsRA1scskxIZJiadDjBtgZmR4Uehrc92ndD9tvPAbHU/yYWOQAPX7bNSH8bxEAxXDdyHrkdTfGtCC8guy88I+V1ZGuoyOdOJJEWg2jXgz/PJCeklnFGDEWi+fLCbAtZ9FPHwTwGkx2cTUUFeOt+RHY3rtiXgrDnKCBwLaS7vm+C4U2SAcFLZuutjRTXO+sVajKB+IQStUPImoz7NVUw36WrcC3m7F85nDKWcv0am44+G5QJIhZc03pVZH8FBh6B7EFpEGU6UAvHmF0ejUcaS7kVshrRIw3t2qz9yJTohj5fSCGprjnY5Iuye3baqtfbrZa1XJHrrbbBwFE06elWuf89Lq+lSHukgIVX149esRLOXOO/nQwFHtF7rCGK9N0wxY0O45XDREzhLH3t4yZgguq514n9o7lj8dP8d51kOrgGVT7m+Xn2ly3uRV1oD+gW4YIETE5CtZuPf8cWgibCGIxlhG7lBRhFqiF/DTN6d58l5FgWBpBz6KuygNy6W/kBTfEsJD8agrsoptooMBTyMZ2YSoubcOQ5blj6TxneXF/jllMQPEMUZ4l5r33SF6NPh5leM2Ei3MYGIwHEMf0fDoL/yfv3IA8Qno1HzBVFbILwd/9mTG3lpj6t89JXPS/Tvz39Nv/vlQeznU8dniZNlic98yuv5lMvuB/x/RsJpfN/SQ9fM/473/R8c+9l2YObBuK2XfvDt8XMoXscTqXO84VCrm/JbPjrzD/TbtPyya+w/CuXI2FOx98y/l/VGBz/N3RIZvrOTHnD3OHh/mfsofZo6Nc7ihXyMP8P8rl8z9Jme85/011Zuimtd5VDooNh//zxh/UCNLNba5rfxNt/X8bs5FkL9Xiazp8NGagt7y170f/eJiZ/8Qt0lHh4LJyXBjcrkfa7MZVc+b9gMVdxTie5mAm3/cw1iTFAG3N6p2RcYkxZc/lXM89yfXuLjbK7fEK41fWKfb62BmcHWK8Uks7b62bxvt7La/l63N1U58duz33vYtxLOt5rF8b6WdZezBvHOkUm9Q+rs3GGe28dFR3j6GWutI2jdUgfzGvb6qHzc70npczWIzLk7VOcUcB3/OTQm1kXdTOe4venVYe5DGfxaeUN9NcrUJxLf34nLObVff2wu61s0b3Vl728hf32u3htDk7NDUX48hCXYpfWnoAfN9hTFOg0ZGaPxl3cxjf88TtYUzUec/EuKaXPHZo7bx1qFL8z5apn1/dd/PyhuKetg83WuXkXW9m2oNy1tWgbHN2k+vdHgJ9r951cw8LNSadylcWWXW2tmpZ+baVMat3m9Phh45zXB5NVxjHV8/1FoOz9dFgdrzqdZyNdn5xr+Suj2qZ3llrCv8mXpqj5cypdjY6agTSBrdmBsbRVm6zC61iQX892O5XwW4Xss28nFFnx0ugr6PctWBKw7hBO81Jdd3MZzg9ZN4/jNHK4Pl5Lcg7Xmnl7KwLeA3Op0cXmbE5OO+Z2pk56bZPmr27G/PCXY+u7i4W3du1XTuXx8BLjpq7cZXb7rvhlXVRn8sZ+c6ZDXKHmfqdvNBn10eNzcVa9/uYE32sbeRqI3O1afl5eT9vuml2rg+bfl5Bzx1jPNyFBrg1ygW3yctqQMsPZTkQU3f6DsZz3J09mPXbC+AfZw60yQ5mV0DXm7zfZ1P0Oc/jsR7JnRLRi2KhUmxY5LULs5u/GnF6Y8zWfLPTNWpnY1O51SyNxXbF+TtTbh9smJsTiqE7qYpYyjDWh2b37uJcnZ1OldsbaPNk0YN619neefu6NWzcvAd4fpzgm9tD6CfGT77ZAK901LPTSe/6eHUDc4Di/WLcZoybXulirGSMC5zF+aZXMPYvxarG+LaHGBcY+mTsiuX7R+P4NkgG/aE4vnmMhf3nxvFdj+vtDPD1TWaQvThpuScX0P6qnnm47+Xej9SzB+ChGwtgTnt3tVG9fQIyOLsGWDDeN1MYN3OQy5oYp7frQt7Z6brXLjl14p2TMfBMOB42jBOOfadz7dYnV7ZcuV41MV56p4bx6R8w5rqMcdUrVxiDPVOfnG7Y76qITW7j7+vNdQFjn8P42iym+DrbOFuv65WTCcEyMDY6xoHHePAqg9lprJowT682ou0ui10OcDFGe8PAmPMYk9w8qlUzeZnFhYeyNxMWG53FlqfY9IRvhsVbh3LdTRXapFjzLK57Z0Tx1ymGfKeKfXQA/iHhUMY49DUH81mc+u6qAXh1XR6rnnAd8XjtKtSvYZ8LFHe+0nB47HW/PYAvI3yiUw1jtEPfp7bcxjjyNYxzD+2dTlhceREHvmH7ceDXG21yJWBQGbmNuF9hmU29Q2Uwlj2LbT+p8dj0VaS7i7HrYezgb2sC6RRHHujvYh/hN+EE48DykYYdAX/q0zLfxX4BHUtApwyNlaAv9rdL369Z7HoaX+x7DWn6gPSTkX5Y1+V4lTM5pAHGpa5jrOizhku0NGBsKl2ETbwEsot4o7u5xr4A/0w5faAutgN81d1Afw1Oy/Y6x2mXwbLyjGiWwTYZz3Vt1gbxM/BSl9Osi3xxyMsx+G0cxxrjDcoDurhAJyoDY434AZ2h72vOVxminUvjy8cK+nrTzcnYBtYvY9mqTXlYlvpySvzboHo1h/izUuL0pbKb8sic0DgbWL+BdORtZbJiHDWi+XjiwW4j7Cs2hozmQGOZjTEbKxfHivrEaa+y77afh3yiQR2AVREwp5y+xBc4TkhDR/Qf5MKa4NE8qfLfMuB/xfmq6rB5VcP+sDkF/QH8C4Sfy3hUpvG54jyD4488o014Gxuauy7yfxf7kCe4BvHiho8n4z2YP/TXQN7g411p8DnQsFG24PhB3bw2Ga0aOcyvMTkBco7Xw3zgwwYbO5BNbI5NkQehTybSHeZ/CfNzNH40z0eEB8gfu8H41mHlqO8POK7EWx0x768cf95jP05zRLfbhsvLZEjGGfyvW8hfbWhNBVl5jbIlD/+yXAblqV9I5zuL1rnLM3mhzmTQdUNx2XGdmugVXI9RVtdG3fwU1lCUtVNYQ3HdBvrzWPDdnOnCmmHWzmS7eydvaG2t1EBHkAuw5mWa0D+Ch3rA5JrXR959Vv0cylKvPsjZhgFrMNuHCJ0FdNRxBvRr0EkON6AnuQMoO7g9BT3TLHyoVFHXB70d/nZKQNOSW6tcA40amw/Yt+B652Is+iuMRZ+tTQ5PYF9zfz09PQcdi9pAfNXZzQR0IsTNlRHPc6RNIxOJbQ+4neQV0MoV1B2gHeXsZtHLjVEP2DR43ymeffkE8DxdqbnevTrLwP4jO8b1WS+PHmivAfuUWgU0fAP0yHYp24R+y8bUCNNLRZwzqN/AeP3j+uzU1VD/MU7avdurUfvsNFOrHq9BX+sooAtA3km7s76n9ivIB7h3uhmrU1+vq52ZU4Ad0FVBF/B0kdbNYGZmVNr7wV7HlFHfNTu5wxs1h2M8Qj0Pdji4fuI+rIo8syZ9EMeO9k+YXmPpk1061yP61qaaI93V2KlvoRx2/6jeKE9qf1RvLDTLf7be+OD2buUM2xsDt7tsTgX4tRDi107JBfmPtLP4fgPnrMDxC/i2mmlMRiMZ1/RKdxFpc0P8WsY5d438ewhzrn11rY6AfzPQhjswTpqDfMvszo7vlU2AX3HPM1NhzIrF19Lb/3qRW35h4y/9flnqdKot7qRFquFBHDNhostG5pTh6bvNWIcAPCZKOHge2VBISsQpETWLl2Nbd1/MgAlvlGKCpBxE7yMPPE9pBxHfH4HLQ7KcirptYnd+dVOZKVLbUdTpzuDO3NHoyT8FeWxpF1m4JbB4aBM1ef8lrgkWextDX2PkbfwbF2o9HF+aQppTUkokbcVC3xWaFutSXkrkpby8KJBdITABhpeVwiCXflYUxFbgOajL06gmpUVDke8Ir0NVKSdFOSnfecYWyWKCMkB1LzXlpUYRjnglh0qYkvJTosg+3xWyx30AlNXye5DitVJYK8VqpahWStTa7qQgboCNpXKUypSZosxUOUruEBju5SRQl6dsMZf/9CzYP2JLkRPqQxTAo16LfOqw/FSEIFFgz/BwAiBFKQF0iOCoVCrmiQ2blczUA+cl+wYj8H1tTVAcfJEniTgnxmh7xUNph+JRCtFxwM2GMNMTBQehWNRkLUHmLDhYvv3HTqEZlVixAbF5GfznIcXtFkS9UDjWaNR4XDzQXaYSla44ehQFj5zq3ba9uO4c+tY7nXiLljdv4gKdI8wWYHquOGgBKqxq/AIM53BwqzBYTYQQ+MW3u4n0LWp4wwYm4mKbmYMJq9vSyrGQJEM0jsS3eYTIQCzu0aU2iUOfxKH/keLQv1Ts1iRq/V8wav23iUCfxJRPYsonMeWTmPJJTPkkpnwSUz6JKZ/ElE9iyicx5ZOY8klM+SSmfBJTPokpn8SUT2LKJzHlk5jySUz5JKZ8ElM+iSmfxJRPYsonMeV/vJjy3ySU/J8YK363ndcuxyTBkvxchB+xs46T+QvMel10y/fGwmJYEBUiRpORSCp+XEkelIW1w/ZZW9HpUSDG3lbgISeP9hF7iffmDXSfLjxsVMp+CVrBpaRP9XqpUeq3O6Xyh365XqvKHRG7/hMPXQ97mDGiwc+acB8gxFaQTBEvNHGARSz7T5FQ9taQXdUFwYkLzeffSwavYqVb/9bP5VGy8EaSXdDiYdwuUkbvaelW8t4yNBau3HO/BYy7UtA1Ea1f6JLhB/CsbSIB+zYSUBzniYDAmEOUjTI+L8AsDeKsH7YDw+/mGfT5CUR8RgXBCx+3bA1CW9PHmnpOcPnd9UWE+S9p2kf6K9sWAKKN+9/6pr0V5T3kME9Ebn8+fSMrWCBe/PNGNF4PF6Hh6+1ITPhgW35vvjQofEwsU3E+HeVljAzvtfPSt7VJXPgkLnwSFz6JC//s4DLPCQf/PaPAf4Pw72GALJA0+ZUljY6bqy2FBBIR3oXNF78r4rKnYZj3KzsiZCo8DjT3YynCRgWiT6FhC/czDPN2T7VAa8bD5RWsEpquzOGro6b3k5DxfyhkfECf9CRIOxxB/SCYchmJev5oAPlY4F8ZQf7xuPFbGD4VRH5ng2FgLKoej6P35dHhd5wJstnjde2y1bypVaqtaO++OCr8F8ed97+BdhUOIR8aqCfCxz8eNj5MvUjoWp8WxcD3rw4i/zVh6pPA8y8UeD4+1nz0uCmJOZ/EnP9OMefDQi6JN5/Em/8W8eYjXJXEmv9TY81/nfd5sdrG2Ux5ln7+GszM/fg1H1tcQ8ZTB0Je0WRjBw5zMv3DjR/ZZiwMfFoYvEvhpXf4ZeATNPGp/u18qv/tB/X/m/j/Tvx/b/n/zr97n/j//gv5/xZBj17EAfgT/r/R23fU/3f+KJv4/078fyf+vxP/34n/78T/d+L/O/H/nfj/Tvx/J/6/E//fif/vxP934v878f+d+P9O/H//T/P/7V3W/t0zcrDmf8wNuBfF2Pdzpoh2FDNVWo0wU9eCDe61Smf7Xhzkbdfc6BR8tKLHK/gYwhkvrdVojO+MyShD+L71vFn6D9oPJM9AQ3hcYzdfzB+VeKOLqNKVpjAICfiEgD7xmMF6MJ65uBLeMr7d5Ykud1TK/BP+nlYzp/jwg/nhVOYOmvGd6EM0TFqu5vz9cIDM7AXIbAX4M28dUIpbrSwZQtTBN29EWEV2mPrmjT9QeH/O78S3LFSY4UyMsWbgOo5caXD/JJ4nDQQ0nVtrU9dG/DEMmSOHkPfsU35M9+rc3XjgeVXALj/qRDuQtQ0kYDGLzON58bDDXrEhL+XnRVx6R3xr+41Kp9ZqrrHJQkZ7YaB+wZRfMEUF9x+Bzw1fyQbO9xsegMsKpKhAnO/wCDwhTZaRLovkR+sCzbiQ2iYYz9iqf0WWH+GqlLajFg2ULB7V48jgjxT9iBkKNDeTOig30DYYSmNCChNSmLCFTsi7Z3m3u/zyDnf5EZIgkJhBQQDxQ0H4nni+FYJIe6nxmFMECKkKAnrFmIzXpfSUnx5fm+cjAzDxCDVFWkqk/Yc6V+e+n22y0kO586incl9+M47WHxYg/VCu/gd5Jw97FZ8p3Jwi7FZcOBv3e5g4FP+R3YQ/5ncsfvX7gqfFhi30keDLYmQTwcieJ7eYV7fPe1YcMQXmi8rXPjUWln5othsEW4UhHJiGTaaAwXe0wrY3iLvw/5e8Wv7rvVoOepeP+nbfcvAa9TDvpfBHy1/89vnj/Fmu4Le9nnse2WN8nhNe3+Ox9J/wSPpPeRz9cR73GPrrH0F/7ePnfW9ctx87/7FHzh/nX/Co+XssZjt3Yc+OoiP0vIDGhA71uXdSodjxs4pfINHbmLHXQRFnI+J4YMkOGSL10fuybg7TL/+K85G95K6FPtq10DIvTFl5Fm38xTGJ7Z+TPPdRJyEi1SpC6+ROu1W+OPFGLM+b/sg7PArDabMzmwYeBI10tkTZznIlVhVEU9OHqBIHn0AP9LFyb1jMmfjSMiOK9jUoiAImbAiZyZpANeDndIXl+IFH9OUme2MdrHxOJs0xT7eNOXpXspb0goEsq7l/lB0jhQcvHC57zQ09YMdx4ZMsRgh6N84BCq0mPJo/1mtOnw3Z+zs7/uGlz9U7mVodo4V08N0l/u/300Y/+Pwy5N2cUa4/Y2NPT4b8iu1uu1OFytV2u3RW3aqL3LCj5nW72tpZT/j5FmMaqVtuyp3qXaeP/9mqG3zy6BPOf/oZodLe898yes9CQ1SMFIohVzEmLVJri1DFrZToo8s4EhVjU7/DU8jHj9Se++aay0yKMjLkGSIa2NLf7ew4qN1eyb702fwj7+Xj3lw8+oYeoRMNQh60aAMYcuEpnrpK7Kmr/eUP4R99A+/Rir9gCryEZ46rWaAbelL7vLfx274L/Cf9/C0KUBHWFy3wiIxL9ugKkTya/7EezX+np/LJA/m/xgP5uIuRXTLG2yWQ6LC5bkqPVLkQiT4QR2GiSCPjXp+zm8tnelnybmKfdLMUFmL+azzu92RL8B1IY3ewBKZmPyMS2/eRRE5wbKEAgxh1tzpHjkb4zTQFg2F9Ee6jH/GTFCamgl6xFUZORA2vKbkrJiGIbbbAib1Z+D7zx5LQvkMtv4dchD7KYEE3SC2UGtWbUj3ODxJzgtW3hn0+DkXpd/kaJGar3zztk8ej9uf418ICn6KPyl5Q7hfDAuZA4i6QhOejaNPFaMJ3fWb7s7R1s/jk+QEbfn5mjRXxqmRoAouT2/XBjPugIDsEn/H4Bozv0JANR763iWeZG/xQPOq95wqeZkKGp5Nvn2kCrWJ5CiqJU5JiuPhedEtY3NrsBA5eit63/f+cx/qPvdIXXAF5ASKlxenLnqhbjIlr7T9wJxBBL91rQ3PGxcPM933Q7t/G7z6Gihp6eJEtLYpNpJi+o3y2MG7Z/Bx4N7Nc92ancTq/2A7c2HJqvraFwwlUNIQ7bNaCQsEz9eHKZPsimroKbgawPbFl82Ic0IN5DCrAdxv21Fgs8GCHrl8oPAAIzq1L38jZDfMbbrrBmHl8dgTjdA6sez39fUVl2EriGZ5/AuZDNEDBSyEKkkCel/0YEb6wjPgsYAZKvmGXYXvKiy5MEsJkjAzrCxDq06dP3ElE1EHtk3GIv2m84aei/wZU/61LotfeaO4Kz/s69vpIQAQafI/4ueXnxc+NGP4l8XOT+Lk/aPzcbyJtkkC5Xx8o93uIsDgDvxcNnBtYFb2oRxGZ+NVhcr8Jx35ZlNE/HmH020QXDTBLMPbko6FFQ2FFX9v519HYHF8XUPS78G2McWkc21a8uDi+KhcO+bW1HjM1zi9Anh/tsbUyUYsWQbgo1Q+xFTnWEjqiOM4K7bJpYbGnEV0wDIBs6VXgiLm91pe2gIPmjTzOJaWTDNM9e9jHYPQDPgEJXq1i4/mXv5DRbTTvkm/Qr+I6zS6VH/OVF9V4Z7qCLsG3FV7g8RVsK9yIk6x/rUAIOe53muNfHXbQ5qG4yIXYMi7uYLjE43FzvyYE4ZfHBIyP6GM/FcfwdWghff1bXGUviGGn2t4Rw9Av/BXhibzKPIzY/hOd4cOyOz5RbL+LsakHu2oSxiEa7CpaDHX+qfhrvO889hpxQqh+mqKkRSOp+ZXSFFXt46slOQ3dciQaG1/Na+Brwqt5lZ+KrvbSC0LcLtfz6eSfWoLe99sux64+pQ0eeddLiep3zz3vCoOEVdNzOPoq6is1Btu0soDh1Lyzse+yqsY+vHjyDMVZwhKDS4S9Le69ngVOj3kUOs/+RwsaLfmrGb2zAwk7QAv4yAIbXvnF8mgtjRGPCRc61WaBeMNLZxhezUNTPBDx1lwFcASQPvpipL1gfHGLePQOCD14ksdmn7Y07TwioKWftbajZ3i0V10aMOm8u6JATzSBHV8pDphFAMXNYre0wqs/hTXHSzrb5rGof4CjKH7ENNcU7wQJh/MUn3bETtTA8T6a/aX95x7plWOYHhQKAtv3ad0PO+F+DI6n+DGxyAF6/LZrQvjfIgCK4bqR9cjrboyT6PAKstN1c7yf/XDXcTMTR5JoMKQQ6sXwzwPpKZlVjBFj33lbsPX26+mLMl6DyS6uhqJivDU/AtdfrpiX4iFA0N3ztpLundJ4UoudFQUErbA4mimud78sVOUDce+t6gcRtXkBCrphP8vz87ebsXzmcMpZy/RqbjgYIVIkiFlzTelVkfwUGDJD3wLCYpZ0oBePMDrFh400F7yk8hsR482tNey9yJQoRn4fiKEp7vmYpEty+7ba6pebrVa13JFhS34QQDR9Wqp1zk+v61sZwloyUPHl1aNv7b859M5e8UIHhC3Jxbt7xt5bj+gP2KzwXleJFWnLyjsQ+JEZA4HuEHobz2+k2C2Vfw5L22V/fvnPBfk6Sy/3w/vUwOT313h/1os5HggXzic4690Ml3j0xi7mMpvH7AYOC4oNNagzsFIPFcAYCMp+kf0ft8wLFPsLOopOnNImn+STfJJP8kk+ySf5JJ/kk3yST/JJPskn+SSf5JN8kk/yST7JJ/kkn+STfJJP8kk+ySf5JJ/kk3yST/JJPskn+SSfnZ//D2g+RxQAaAEA'\n\
           \nimport base64 as __kfp_b64\nimport io as __kfp_io\nimport os as __kfp_os\n\
           import sys as __kfp_sys\nimport tarfile as __kfp_tarfile\nimport tempfile\
           \ as __kfp_tempfile\n\n# Extract embedded archive at import time to ensure\
@@ -1572,7 +1571,7 @@ deploymentSpec:
           \ / \"evaluation_results.json\").open(\"w+\", encoding=\"utf-8\") as f:\n\
           \            json_dump(evaluation_result_list, f, indent=2)\n\n    # TODO\
           \ autorag_run_artifact\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -1581,21 +1580,21 @@ deploymentSpec:
     exec-search-space-preparation:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - search_space_preparation
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - search_space_preparation
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -1603,7 +1602,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef search_space_preparation(\n    test_data: dsl.Input[dsl.Artifact],\n\
           \    extracted_text: dsl.Input[dsl.Artifact],\n    search_space_prep_report:\
           \ dsl.Output[dsl.Artifact],\n    chat_model_url: Optional[str] = None,\n\
@@ -1812,7 +1811,7 @@ deploymentSpec:
           \ |= selected_models_names\n\n    with open(search_space_prep_report.path,\
           \ \"w\") as report_file:\n        yml.safe_dump(verbose_search_space_repr,\
           \ report_file)\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -1821,21 +1820,21 @@ deploymentSpec:
     exec-test-data-loader:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - test_data_loader
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_data_loader
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -1843,7 +1842,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_data_loader(test_data_bucket_name: str, test_data_path:\
           \ str, test_data: dsl.Output[dsl.Artifact] = None):\n    \"\"\"Download\
           \ test data json file from S3 into a KFP artifact.\n\n    The component\
@@ -1902,7 +1901,7 @@ deploymentSpec:
           \        except JSONDecodeError as e:\n            raise TestDataLoaderException(\"\
           test_data_path must point to a valid JSON file.\") from e\n\n    get_test_data_s3()\n\
           \n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -1911,21 +1910,21 @@ deploymentSpec:
     exec-text-extraction:
       container:
         args:
-          - --executor_input
-          - '{{$}}'
-          - --function_to_execute
-          - text_extraction
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - text_extraction
         command:
-          - sh
-          - -c
-          - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
           \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
-          - sh
-          - -ec
-          - 'program_path=$(mktemp -d)
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
 
 
           printf "%s" "$0" > "$program_path/ephemeral_component.py"
@@ -1933,7 +1932,7 @@ deploymentSpec:
           _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
 
           '
-          - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef text_extraction(\n    documents_descriptor: dsl.Input[dsl.Artifact],\n\
           \    extracted_text: dsl.Output[dsl.Artifact],\n    error_tolerance: Optional[float]\
           \ = None,\n    max_extraction_workers: Optional[int] = None,\n):\n    \"\
@@ -2196,7 +2195,7 @@ deploymentSpec:
           \ completed. Total processed: %d/%d, Errors: %d\",\n        processed_count,\n\
           \        total_docs,\n        total_errors,\n    )\n    raise_if_threshold_exceeded(all_error_details,\
           \ total_docs, error_tolerance)\n\n"
-        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4
+        image: quay.io/rhoai/odh-autorag-rhel9:rhoai-3.4@sha256:06a2892228510011c9081acf73fe140e46bd13e5aad6ecb9721f902ed5418ec5
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -2214,7 +2213,7 @@ root:
         componentRef:
           name: comp-documents-discovery
         dependentTasks:
-          - test-data-loader
+        - test-data-loader
         inputs:
           artifacts:
             test_data:
@@ -2233,7 +2232,7 @@ root:
         componentRef:
           name: comp-leaderboard-evaluation
         dependentTasks:
-          - rag-templates-optimization
+        - rag-templates-optimization
         inputs:
           artifacts:
             rag_patterns:
@@ -2247,7 +2246,7 @@ root:
         componentRef:
           name: comp-prepare-responses-api-requests
         dependentTasks:
-          - rag-templates-optimization
+        - rag-templates-optimization
         inputs:
           artifacts:
             rag_patterns:
@@ -2261,9 +2260,9 @@ root:
         componentRef:
           name: comp-rag-templates-optimization
         dependentTasks:
-          - search-space-preparation
-          - test-data-loader
-          - text-extraction
+        - search-space-preparation
+        - test-data-loader
+        - text-extraction
         inputs:
           artifacts:
             extracted_text:
@@ -2301,8 +2300,8 @@ root:
         componentRef:
           name: comp-search-space-preparation
         dependentTasks:
-          - test-data-loader
-          - text-extraction
+        - test-data-loader
+        - text-extraction
         inputs:
           artifacts:
             extracted_text:
@@ -2337,7 +2336,7 @@ root:
         componentRef:
           name: comp-text-extraction
         dependentTasks:
-          - documents-discovery
+        - documents-discovery
         inputs:
           artifacts:
             documents_descriptor:
@@ -2422,73 +2421,73 @@ platforms:
       executors:
         exec-documents-discovery:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: AWS_ACCESS_KEY_ID
-                  secretKey: AWS_ACCESS_KEY_ID
-                - envVar: AWS_SECRET_ACCESS_KEY
-                  secretKey: AWS_SECRET_ACCESS_KEY
-                - envVar: AWS_S3_ENDPOINT
-                  secretKey: AWS_S3_ENDPOINT
-                - envVar: AWS_DEFAULT_REGION
-                  secretKey: AWS_DEFAULT_REGION
-              optional: false
-              secretNameParameter:
-                componentInputParameter: input_data_secret_name
+          - keyToEnv:
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: AWS_ACCESS_KEY_ID
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: AWS_SECRET_ACCESS_KEY
+            - envVar: AWS_S3_ENDPOINT
+              secretKey: AWS_S3_ENDPOINT
+            - envVar: AWS_DEFAULT_REGION
+              secretKey: AWS_DEFAULT_REGION
+            optional: false
+            secretNameParameter:
+              componentInputParameter: input_data_secret_name
         exec-prepare-responses-api-requests:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: LLAMA_STACK_CLIENT_BASE_URL
-                  secretKey: LLAMA_STACK_CLIENT_BASE_URL
-                - envVar: LLAMA_STACK_CLIENT_API_KEY
-                  secretKey: LLAMA_STACK_CLIENT_API_KEY
-              optional: false
-              secretNameParameter:
-                componentInputParameter: llama_stack_secret_name
+          - keyToEnv:
+            - envVar: LLAMA_STACK_CLIENT_BASE_URL
+              secretKey: LLAMA_STACK_CLIENT_BASE_URL
+            - envVar: LLAMA_STACK_CLIENT_API_KEY
+              secretKey: LLAMA_STACK_CLIENT_API_KEY
+            optional: false
+            secretNameParameter:
+              componentInputParameter: llama_stack_secret_name
         exec-rag-templates-optimization:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: LLAMA_STACK_CLIENT_BASE_URL
-                  secretKey: LLAMA_STACK_CLIENT_BASE_URL
-                - envVar: LLAMA_STACK_CLIENT_API_KEY
-                  secretKey: LLAMA_STACK_CLIENT_API_KEY
-              optional: false
-              secretNameParameter:
-                componentInputParameter: llama_stack_secret_name
+          - keyToEnv:
+            - envVar: LLAMA_STACK_CLIENT_BASE_URL
+              secretKey: LLAMA_STACK_CLIENT_BASE_URL
+            - envVar: LLAMA_STACK_CLIENT_API_KEY
+              secretKey: LLAMA_STACK_CLIENT_API_KEY
+            optional: false
+            secretNameParameter:
+              componentInputParameter: llama_stack_secret_name
         exec-search-space-preparation:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: LLAMA_STACK_CLIENT_BASE_URL
-                  secretKey: LLAMA_STACK_CLIENT_BASE_URL
-                - envVar: LLAMA_STACK_CLIENT_API_KEY
-                  secretKey: LLAMA_STACK_CLIENT_API_KEY
-              optional: false
-              secretNameParameter:
-                componentInputParameter: llama_stack_secret_name
+          - keyToEnv:
+            - envVar: LLAMA_STACK_CLIENT_BASE_URL
+              secretKey: LLAMA_STACK_CLIENT_BASE_URL
+            - envVar: LLAMA_STACK_CLIENT_API_KEY
+              secretKey: LLAMA_STACK_CLIENT_API_KEY
+            optional: false
+            secretNameParameter:
+              componentInputParameter: llama_stack_secret_name
         exec-test-data-loader:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: AWS_ACCESS_KEY_ID
-                  secretKey: AWS_ACCESS_KEY_ID
-                - envVar: AWS_SECRET_ACCESS_KEY
-                  secretKey: AWS_SECRET_ACCESS_KEY
-                - envVar: AWS_S3_ENDPOINT
-                  secretKey: AWS_S3_ENDPOINT
-                - envVar: AWS_DEFAULT_REGION
-                  secretKey: AWS_DEFAULT_REGION
-              optional: false
-              secretNameParameter:
-                componentInputParameter: test_data_secret_name
+          - keyToEnv:
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: AWS_ACCESS_KEY_ID
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: AWS_SECRET_ACCESS_KEY
+            - envVar: AWS_S3_ENDPOINT
+              secretKey: AWS_S3_ENDPOINT
+            - envVar: AWS_DEFAULT_REGION
+              secretKey: AWS_DEFAULT_REGION
+            optional: false
+            secretNameParameter:
+              componentInputParameter: test_data_secret_name
         exec-text-extraction:
           secretAsEnv:
-            - keyToEnv:
-                - envVar: AWS_ACCESS_KEY_ID
-                  secretKey: AWS_ACCESS_KEY_ID
-                - envVar: AWS_SECRET_ACCESS_KEY
-                  secretKey: AWS_SECRET_ACCESS_KEY
-                - envVar: AWS_S3_ENDPOINT
-                  secretKey: AWS_S3_ENDPOINT
-                - envVar: AWS_DEFAULT_REGION
-                  secretKey: AWS_DEFAULT_REGION
-              optional: false
-              secretNameParameter:
-                componentInputParameter: input_data_secret_name
+          - keyToEnv:
+            - envVar: AWS_ACCESS_KEY_ID
+              secretKey: AWS_ACCESS_KEY_ID
+            - envVar: AWS_SECRET_ACCESS_KEY
+              secretKey: AWS_SECRET_ACCESS_KEY
+            - envVar: AWS_S3_ENDPOINT
+              secretKey: AWS_S3_ENDPOINT
+            - envVar: AWS_DEFAULT_REGION
+              secretKey: AWS_DEFAULT_REGION
+            optional: false
+            secretNameParameter:
+              componentInputParameter: input_data_secret_name

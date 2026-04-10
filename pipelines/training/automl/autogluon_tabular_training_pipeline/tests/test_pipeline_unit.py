@@ -8,8 +8,18 @@ from kfp import compiler
 from kfp_components.utils.compiled_pipeline_alignment import (
     assert_checked_in_pipeline_yaml_matches_compiled_ir,
 )
+from kfp_components.utils.pipeline_dag_tasks import (
+    assert_compiled_pipeline_root_dag_task_ids,
+)
 
 from ..pipeline import autogluon_tabular_training_pipeline
+
+# Root DAG task IDs from ``root.dag.tasks`` (fresh compile). Update when the graph changes.
+_EXPECTED_ROOT_DAG_TASK_IDS = (
+    "autogluon-models-training",
+    "automl-data-loader",
+    "leaderboard-evaluation",
+)
 
 
 class TestAutogluonTabularTrainingPipelineUnitTests:
@@ -82,4 +92,11 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
         assert_checked_in_pipeline_yaml_matches_compiled_ir(
             pipeline_func=autogluon_tabular_training_pipeline,
             checked_in_yaml_path=yaml_path,
+        )
+
+    def test_compiled_pipeline_root_dag_task_ids(self):
+        """Root-level step IDs are stable; renames or add/remove steps require updating expectations."""
+        assert_compiled_pipeline_root_dag_task_ids(
+            pipeline_func=autogluon_tabular_training_pipeline,
+            expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )

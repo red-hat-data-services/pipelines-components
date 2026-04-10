@@ -5,8 +5,21 @@ from pathlib import Path
 from kfp_components.utils.compiled_pipeline_alignment import (
     assert_checked_in_pipeline_yaml_matches_compiled_ir,
 )
+from kfp_components.utils.pipeline_dag_tasks import (
+    assert_compiled_pipeline_root_dag_task_ids,
+)
 
 from ..pipeline import documents_rag_optimization_pipeline
+
+_EXPECTED_ROOT_DAG_TASK_IDS = (
+    "documents-discovery",
+    "leaderboard-evaluation",
+    "prepare-responses-api-requests",
+    "rag-templates-optimization",
+    "search-space-preparation",
+    "test-data-loader",
+    "text-extraction",
+)
 
 
 class TestDocumentsRagOptimizationPipelineUnit:
@@ -35,4 +48,11 @@ class TestDocumentsRagOptimizationPipelineUnit:
         assert_checked_in_pipeline_yaml_matches_compiled_ir(
             pipeline_func=documents_rag_optimization_pipeline,
             checked_in_yaml_path=yaml_path,
+        )
+
+    def test_compiled_pipeline_root_dag_task_ids(self):
+        """Root-level step IDs are stable; renames or add/remove steps require updating expectations."""
+        assert_compiled_pipeline_root_dag_task_ids(
+            pipeline_func=documents_rag_optimization_pipeline,
+            expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
