@@ -172,17 +172,23 @@ def train_model(
                 )
 
             log.info("Initializing Kubernetes client from environment variables")
+            _in_cluster_ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
             cfg = k8s.Configuration()
-            cfg.host, cfg.verify_ssl = srv, False
+            cfg.host = srv
+            cfg.verify_ssl = True
+            if not os.path.isfile(_in_cluster_ca):
+                raise RuntimeError(
+                    f"In-cluster CA certificate not found at {_in_cluster_ca}. "
+                    "Ensure the service account token is mounted."
+                )
+            cfg.ssl_ca_cert = _in_cluster_ca
+            log.info("SSL verification enabled with CA: %s", _in_cluster_ca)
             cfg.api_key = {"authorization": f"Bearer {tok}"}
             k8s.Configuration.set_default(cfg)
 
-            import urllib3
-
-            # TODO: Remove this temporary workaround for SSL verification bypass
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
             return k8s.ApiClient(cfg)
+        except RuntimeError:
+            raise
         except Exception as e:
             log.warning(f"K8s client init failed: {e}")
             return None
@@ -341,11 +347,12 @@ def train_model(
                 continue
             try:
                 with tarfile.open(fp, mode="r:*") as tf:
-                    for m in tf.getmembers():
-                        if m.isfile() and m.name.startswith("models/"):
-                            tf.extract(m, path=out)
-                            ext.append(m.name)
-            except Exception:
+                    members = [m for m in tf.getmembers() if m.isfile() and m.name.startswith("models/")]
+                    tf.extractall(path=out, members=members, filter="data")
+                    ext.extend(m.name for m in members)
+            except tarfile.FilterError:
+                raise
+            except tarfile.TarError:
                 pass
         log.info(f"Extracted: {len(ext)}")
         return ext
