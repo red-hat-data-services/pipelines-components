@@ -452,7 +452,7 @@ deploymentSpec:
           \            \"run_id\": run_id,\n        },\n    }\n\n    logger.info(\"\
           Timeseries refit done: %s (artifact under %s)\", model_name_full, output_path)\n\
           \n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:d943beee403c071e18b939206aa6f6284135644070181bb8d350baf056cc0564
+        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:6eb2195abdc2f1bf4542542ec833b9dec21ed1949c877410b19818af0a19830e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -572,7 +572,7 @@ deploymentSpec:
           \    )\n    return outputs(\n        top_models=top_models,\n        predictor_path=str(predictor_path),\n\
           \        eval_metric_name=eval_metric,\n        model_config=model_config,\n\
           \    )\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:d943beee403c071e18b939206aa6f6284135644070181bb8d350baf056cc0564
+        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:6eb2195abdc2f1bf4542542ec833b9dec21ed1949c877410b19818af0a19830e
         resources:
           cpuRequest: 4.0
           memoryRequest: 17.179869184
@@ -765,7 +765,7 @@ deploymentSpec:
           \        split_config=split_config,\n        sample_rows=sample_rows,\n\
           \        models_selection_train_data_path=str(selection_path),\n       \
           \ extra_train_data_path=str(extra_path),\n    )\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:d943beee403c071e18b939206aa6f6284135644070181bb8d350baf056cc0564
+        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:6eb2195abdc2f1bf4542542ec833b9dec21ed1949c877410b19818af0a19830e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -892,7 +892,7 @@ deploymentSpec:
           ] = leaderboard_df.to_dict()\n    html_artifact.metadata[\"display_name\"\
           ] = \"automl_timeseries_leaderboard\"\n    return NamedTuple(\"outputs\"\
           , best_model=str)(best_model=best_model_name)\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:d943beee403c071e18b939206aa6f6284135644070181bb8d350baf056cc0564
+        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:6eb2195abdc2f1bf4542542ec833b9dec21ed1949c877410b19818af0a19830e
         resources:
           cpuRequest: 1.0
           memoryRequest: 4.294967296
