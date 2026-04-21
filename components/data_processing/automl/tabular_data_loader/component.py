@@ -50,6 +50,10 @@ def automl_data_loader(  # noqa: D417
     or the ``sample_row`` JSON (stratified sampling already dropped per chunk; this
     applies the same rule to random and first-n-rows paths).
 
+    After sampling, **±infinity** values in the frame are replaced with **NaN** (same
+    idea as AutoAI ``loadXy``), then **full-row duplicates** are dropped before the
+    label drop and train/test split.
+
     Authentication uses AWS-style credentials provided via environment variables
     (e.g. from a Kubernetes secret).
 
@@ -73,6 +77,8 @@ def automl_data_loader(  # noqa: D417
     import io
     import logging
     import os
+
+    import math
 
     import boto3
     import pandas as pd
@@ -309,6 +315,20 @@ def automl_data_loader(  # noqa: D417
         sampling_method=sampling_method,
         label_column=label_column,
     )
+
+    sampled_dataframe.replace([math.inf, -math.inf], float("nan"), inplace=True)
+
+    n_before_dedup = len(sampled_dataframe)
+    sampled_dataframe.drop_duplicates(inplace=True)
+    n_dup_dropped = n_before_dedup - len(sampled_dataframe)
+    if n_dup_dropped:
+        logger.info("Dropped %s full-row duplicate(s) (%s rows remaining).", n_dup_dropped, len(sampled_dataframe))
+
+    if sampled_dataframe.empty:
+        raise ValueError(
+            "No data rows remain after replacing infinite values and dropping duplicate rows. "
+            "Check the source CSV and sampling limits."
+        )
 
     if label_column not in sampled_dataframe.columns:
         raise ValueError(

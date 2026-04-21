@@ -30,6 +30,10 @@ def autogluon_models_training(
 ) -> NamedTuple("outputs", eval_metric=str):
     """Train AutoGluon models, select the top N, and refit each on the full dataset.
 
+    After reading each CSV from disk, **±infinity** is mapped to **NaN** and **full-row
+    duplicates** are removed on train, test, and extra-train frames (aligned with AutoAI
+    ``loadXy`` cleansing before fitting).
+
     This component combines the model selection and full-refit stages into a single
     step. It trains a TabularPredictor on sampled data, ranks all models on the test
     set, then refits each of the top N models on the full training data in a single
@@ -120,8 +124,18 @@ def autogluon_models_training(
     # 1. models selection stage
 
     train_data_df = pd.read_csv(train_data_path)
+    train_data_df.replace([math.inf, -math.inf], float("nan"), inplace=True)
+    train_data_df.drop_duplicates(inplace=True)
+
     test_data_df = pd.read_csv(test_data.path)
-    extra_train_df = pd.read_csv(extra_train_data_path) if extra_train_data_path.strip() else None
+    test_data_df.replace([math.inf, -math.inf], float("nan"), inplace=True)
+    test_data_df.drop_duplicates(inplace=True)
+
+    extra_train_df = None
+    if extra_train_data_path.strip():
+        extra_train_df = pd.read_csv(extra_train_data_path)
+        extra_train_df.replace([math.inf, -math.inf], float("nan"), inplace=True)
+        extra_train_df.drop_duplicates(inplace=True)
 
     eval_metric = "r2" if task_type == "regression" else "accuracy"
 

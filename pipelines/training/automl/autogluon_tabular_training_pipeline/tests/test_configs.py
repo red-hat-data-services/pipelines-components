@@ -18,6 +18,14 @@ ProblemType = str  # "classification" | "regression" | "timeseries"
 _CONFIGS_JSON = Path(__file__).resolve().parent / "test_configs.json"
 
 
+def _require_nonempty_str(value: Any, field: str, index: int) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(
+            f"test_configs.json[{index}] {field!r} must be a non-empty string; got {value!r}."
+        )
+    return value
+
+
 @dataclass
 class TestConfig:
     """Single test configuration for one pipeline run.
@@ -61,9 +69,15 @@ class TestConfig:
         }
 
 
-def _load_configs() -> list[TestConfig]:
-    """Load test configs from test_configs.json and return TestConfig instances."""
-    raw = _CONFIGS_JSON.read_text(encoding="utf-8")
+def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
+    """Load test configs from JSON and return TestConfig instances.
+
+    Args:
+        config_path: Optional path to a JSON array of config objects; defaults to
+            ``test_configs.json`` beside this module.
+    """
+    path = config_path if config_path is not None else _CONFIGS_JSON
+    raw = path.read_text(encoding="utf-8")
     data = json.loads(raw)
     if not isinstance(data, list):
         raise ValueError(f"test_configs.json must be a JSON array; got {type(data).__name__}")
@@ -81,11 +95,11 @@ def _load_configs() -> list[TestConfig]:
                 raise ValueError(f"test_configs.json[{i}] 'tags' must be a list; got {type(raw_tags).__name__}")
             configs.append(
                 TestConfig(
-                    id=item["id"],
-                    dataset_path=item["dataset_path"],
-                    label_column=item["label_column"],
-                    problem_type=item["problem_type"],
-                    task_type=item["task_type"],
+                    id=_require_nonempty_str(item.get("id"), "id", i),
+                    dataset_path=_require_nonempty_str(item.get("dataset_path"), "dataset_path", i),
+                    label_column=_require_nonempty_str(item.get("label_column"), "label_column", i),
+                    problem_type=_require_nonempty_str(item.get("problem_type"), "problem_type", i),
+                    task_type=_require_nonempty_str(item.get("task_type"), "task_type", i),
                     automl_settings=item.get("automl_settings") or {},
                     tags=tags,
                 )

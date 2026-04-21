@@ -14,7 +14,12 @@ from unittest import mock
 import pytest
 
 from ..component import automl_data_loader
-from .mocked_pandas import MockedDataFrame, make_mocked_pandas_module, make_mocked_sklearn_module
+from .mocked_pandas import (
+    MockedDataFrame,
+    _mock_train_test_split,
+    make_mocked_pandas_module,
+    make_mocked_sklearn_module,
+)
 
 TAXI_TRIP_PRICING_SAMPLE = Path(__file__).resolve().parent / "data" / "taxi_trip_pricing_sample.csv"
 
@@ -75,6 +80,36 @@ def _mock_boto3_and_pandas(get_object_return=None, get_object_side_effect=None):
     mock_sklearn, mock_model_selection = make_mocked_sklearn_module()
     with _mock_boto3_module(
         get_object_return=get_object_return, get_object_side_effect=get_object_side_effect
+    ) as mock_s3:
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "pandas": mocked_pandas,
+                "sklearn": mock_sklearn,
+                "sklearn.model_selection": mock_model_selection,
+            },
+        ):
+            yield mock_s3
+
+
+@contextmanager
+def _mock_boto3_pandas_custom_train_test_split(
+    train_test_split_impl,
+    *,
+    get_object_return=None,
+    get_object_side_effect=None,
+):
+    """Like ``_mock_boto3_and_pandas`` but with a custom ``train_test_split`` (for split-failure tests)."""
+    mocked_pandas = make_mocked_pandas_module()
+    import types
+
+    mock_sklearn = types.ModuleType("sklearn")
+    mock_model_selection = types.ModuleType("sklearn.model_selection")
+    mock_model_selection.train_test_split = train_test_split_impl
+    mock_sklearn.model_selection = mock_model_selection
+    with _mock_boto3_module(
+        get_object_return=get_object_return,
+        get_object_side_effect=get_object_side_effect,
     ) as mock_s3:
         with mock.patch.dict(
             sys.modules,
@@ -349,6 +384,180 @@ class TestAutomlDataLoaderUnitTests:
                     label_column="Trip_Price",
                     sampled_test_dataset=sampled_test,
                     task_type="regression",
+                )
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_drop_full_row_duplicates_before_split(self, tmp_path):
+        """Identical feature+label rows are deduplicated before train/test split."""
+        csv_content = "a,b,target\n1,2,10\n1,2,10\n3,4,20\n5,6,30\n7,8,40\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="bucket",
+                workspace_path=str(tmp_path),
+                label_column="target",
+                sampled_test_dataset=sampled_test,
+                task_type="regression",
+            )
+
+        assert result.sample_config["n_samples"] == 4
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_infinity_in_label_replaced_then_dropped_regression(self, tmp_path):
+        """±infinity in the label column becomes NaN and is dropped with other missing labels."""
+        csv_content = "a,b,target\n1,2,10\n3,4,20\n5,6,inf\n7,8,40\n9,10,50\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="bucket",
+                workspace_path=str(tmp_path),
+                label_column="target",
+                sampled_test_dataset=sampled_test,
+                task_type="regression",
+            )
+
+        assert result.sample_config["n_samples"] == 4
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_infinity_in_feature_only_row_retained_regression(self, tmp_path):
+        """Infinity in a non-label column is replaced with NaN but the row stays if the label is valid."""
+        csv_content = "a,b,target\n1,inf,10\n3,4,20\n5,6,30\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="bucket",
+                workspace_path=str(tmp_path),
+                label_column="target",
+                sampled_test_dataset=sampled_test,
+                task_type="regression",
+            )
+
+        assert result.sample_config["n_samples"] == 3
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_rows_equal_after_inf_replace_are_deduplicated(self, tmp_path):
+        """Rows that differ only by opposite infinities in a feature collapse to one row after replace."""
+        csv_content = "a,b,target\n1,inf,10\n1,-inf,10\n3,4,20\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="bucket",
+                workspace_path=str(tmp_path),
+                label_column="target",
+                sampled_test_dataset=sampled_test,
+                task_type="regression",
+            )
+
+        assert result.sample_config["n_samples"] == 2
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_raises_when_all_labels_are_infinite(self, tmp_path):
+        """If every label is ±inf, after replace all labels are missing and the component fails clearly."""
+        csv_content = "a,b,target\n1,2,inf\n3,4,-inf\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            with pytest.raises(ValueError, match="No rows remain after removing missing values"):
+                automl_data_loader.python_func(
+                    file_key="data/file.csv",
+                    bucket_name="bucket",
+                    workspace_path=str(tmp_path),
+                    label_column="target",
+                    sampled_test_dataset=sampled_test,
+                    task_type="regression",
+                )
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_first_n_rows_sampling_drops_missing_label_before_split(self, tmp_path):
+        """``first_n_rows`` must drop missing labels before split (same as random regression path)."""
+        csv_content = "a,b,target\n1,2,10\n3,4,\n5,6,30\n7,8,40\n9,10,50\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = automl_data_loader.python_func(
+                file_key="data/file.csv",
+                bucket_name="bucket",
+                workspace_path=str(tmp_path),
+                label_column="target",
+                sampled_test_dataset=sampled_test,
+                sampling_method="first_n_rows",
+                task_type="regression",
+            )
+
+        assert result.sample_config["n_samples"] == 4
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_secondary_train_test_split_failure_propagates(self, tmp_path):
+        """If sklearn rejects the secondary split, the error is not swallowed (AutoAI-style holdout edge)."""
+        calls = {"n": 0}
+
+        def train_test_split_impl(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] >= 2:
+                raise ValueError(
+                    "With n_samples=4, test_size=0.7 and stratify=False, the resulting train set would be empty."
+                )
+            return _mock_train_test_split(*args, **kwargs)
+
+        csv_content = "a,b,target\n1,2,10\n3,4,20\n5,6,30\n7,8,40\n9,10,50\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_pandas_custom_train_test_split(
+            train_test_split_impl,
+            get_object_return={"Body": body_stream},
+        ):
+            with pytest.raises(ValueError, match="resulting train set would be empty"):
+                automl_data_loader.python_func(
+                    file_key="data/file.csv",
+                    bucket_name="bucket",
+                    workspace_path=str(tmp_path),
+                    label_column="target",
+                    sampled_test_dataset=sampled_test,
+                    task_type="regression",
+                )
+
+    @mock.patch.dict("os.environ", mocked_env_variables)
+    def test_stratified_train_test_split_rejection_propagates(self, tmp_path):
+        """Classification stratify failures (e.g. too few per class) surface from train_test_split."""
+        def train_test_split_impl(*args, **kwargs):
+            if kwargs.get("stratify") is not None:
+                raise ValueError(
+                    "The least populated class in y has only 1 member, which is too few for stratification. "
+                    "Minimum 2 members are required for each class."
+                )
+            return _mock_train_test_split(*args, **kwargs)
+
+        csv_content = "f1,f2,target\n1,2,A\n3,4,B\n5,6,A\n7,8,B\n9,10,A\n"
+        body_stream = io.BytesIO(csv_content.encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_pandas_custom_train_test_split(
+            train_test_split_impl,
+            get_object_return={"Body": body_stream},
+        ):
+            with pytest.raises(ValueError, match="least populated class"):
+                automl_data_loader.python_func(
+                    file_key="data/file.csv",
+                    bucket_name="bucket",
+                    workspace_path=str(tmp_path),
+                    label_column="target",
+                    sampled_test_dataset=sampled_test,
+                    task_type="binary",
                 )
 
     @mock.patch.dict("os.environ", mocked_env_variables)
