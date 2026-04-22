@@ -91,12 +91,9 @@ class MockedDataFrame:
         inf_like = False
         if isinstance(to_replace, (list, tuple)):
             for x in to_replace:
-                try:
-                    if math.isinf(float(x)):
-                        inf_like = True
-                        break
-                except (TypeError, ValueError):
-                    pass
+                if isinstance(x, float) and math.isinf(x):
+                    inf_like = True
+                    break
         if not inf_like:
             out = MockedDataFrame(self._columns, [list(r) for r in self._rows])
             return None if inplace else out

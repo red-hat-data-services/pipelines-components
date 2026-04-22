@@ -76,10 +76,10 @@ def automl_data_loader(  # noqa: D417
     """  # noqa: E501
     import io
     import logging
+    import math
     import os
 
     import boto3
-    import numpy as np
     import pandas as pd
 
     logger = logging.getLogger(__name__)
@@ -321,10 +321,10 @@ def automl_data_loader(  # noqa: D417
             f"Available columns: {list(sampled_dataframe.columns)}"
         )
 
-    sampled_dataframe = sampled_dataframe.replace([np.inf, -np.inf], np.nan)
+    sampled_dataframe.replace([math.inf, -math.inf], float("nan"), inplace=True)
 
     n_before_dedup = len(sampled_dataframe)
-    sampled_dataframe = sampled_dataframe.drop_duplicates()
+    sampled_dataframe.drop_duplicates(inplace=True)
     n_dup_dropped = n_before_dedup - len(sampled_dataframe)
     if n_dup_dropped:
         logger.info("Dropped %s full-row duplicate(s) (%s rows remaining).", n_dup_dropped, len(sampled_dataframe))
@@ -371,7 +371,7 @@ def automl_data_loader(  # noqa: D417
         sampled_test_dataset.uri = (sampled_test_dataset.uri or "sampled_test_dataset") + ".csv"
 
     # Features and target
-    X = sampled_dataframe.drop(columns=[label_column])
+    X = sampled_dataframe.drop(columns=[label_column], inplace=False)
     y = sampled_dataframe[label_column]
 
     stratify_effective = task_type != "regression" and split_config.get("stratify", True)

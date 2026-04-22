@@ -73,11 +73,11 @@ def autogluon_models_training(
     """  # noqa: E501
     import json
     import logging
+    import math
     import shutil
     from concurrent.futures import ThreadPoolExecutor
     from pathlib import Path
 
-    import numpy as np
     import pandas as pd
     from autogluon.tabular import TabularPredictor
 
@@ -260,7 +260,7 @@ def autogluon_models_training(
         eval_results = {
             k: float(v) if hasattr(v, "item") else v
             for k, v in eval_results.items()
-            if not (isinstance(v, (float, np.floating)) and not np.isfinite(v))
+            if not (isinstance(v, float) and (math.isnan(v) or math.isinf(v)))
         }
 
         (output_path / "metrics").mkdir(parents=True, exist_ok=True)
