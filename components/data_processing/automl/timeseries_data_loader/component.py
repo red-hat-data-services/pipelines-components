@@ -27,7 +27,9 @@ def timeseries_data_loader(
     """Load and split timeseries data from S3 for AutoGluon training.
 
     This component loads time series data from S3, samples it (up to 100 MB),
-    and performs a two-stage **per-series temporal** split for efficient AutoGluon training:
+    applies **cleansing** (non-finite values, invalid timestamps, missing keys/target,
+    duplicate ``(id_column, timestamp_column)`` rows), then performs a two-stage
+    **per-series temporal** split for efficient AutoGluon training:
     1. Primary split (default 80/20): for each distinct ``id_column`` value, the earliest
        (1 - test_size) fraction of rows by ``timestamp_column`` goes to the train portion and
        the remainder to the test set (so every series with at least two rows contributes
@@ -53,6 +55,7 @@ def timeseries_data_loader(
     """
     import io
     import logging
+    import math
     import os
     from pathlib import Path
 
@@ -174,6 +177,76 @@ def timeseries_data_loader(
         )
         return pd.concat(chunk_list, ignore_index=True)
 
+    def _clean_timeseries_dataframe(data, id_col, ts_col, tgt, log):
+        """Normalize panel data for AutoGluon TimeSeriesDataFrame-style consumption.
+
+        - Replaces ``±inf`` with NaN (then drops rows with missing target).
+        - Parses ``ts_col`` with ``errors='coerce'`` and drops NaT.
+        - Drops rows with missing ``id_col``, ``ts_col``, or ``tgt``.
+        - Drops duplicate ``(id_col, ts_col)`` rows keeping the **last** row in time order.
+        """
+        rows_in = len(data)
+        if rows_in == 0:
+            return data
+
+        out = data.replace([float("inf"), float("-inf")], float("nan"))
+
+        out = out.copy()
+        out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce", utc=False)
+
+        key_cols = [id_col, ts_col, tgt]
+        before_na = len(out)
+        out = out.dropna(subset=key_cols)
+        dropped_na = before_na - len(out)
+        if dropped_na:
+            log.info(
+                "Timeseries cleansing: dropped %s rows with missing id/timestamp/target or NaT timestamp "
+                "(had %s rows before this step).",
+                dropped_na,
+                before_na,
+            )
+
+        out = out.sort_values(by=[id_col, ts_col])
+        before_dedupe = len(out)
+        out = out.drop_duplicates(subset=[id_col, ts_col], keep="last")
+        dropped_dupes = before_dedupe - len(out)
+        if dropped_dupes:
+            log.info(
+                "Timeseries cleansing: dropped %s duplicate rows on (%s, %s), keep=last.",
+                dropped_dupes,
+                id_col,
+                ts_col,
+            )
+
+        rows_out = len(out)
+        log.info("Timeseries cleansing: rows in=%s out=%s.", rows_in, rows_out)
+        if rows_out == 0:
+            raise ValueError(
+                "After cleansing, the dataset has no rows left. Check for invalid timestamps, "
+                "missing targets, or empty input after removing duplicate (id, timestamp) pairs."
+            )
+
+        def _target_value_is_finite(val):
+            try:
+                return math.isfinite(float(val))
+            except (TypeError, ValueError):
+                return True
+
+        keep_tgt = out[tgt].map(_target_value_is_finite)
+        dropped_nonfinite = int((~keep_tgt).sum())
+        if dropped_nonfinite:
+            out = out[keep_tgt].copy()
+            log.info(
+                "Timeseries cleansing: dropped %s rows with non-finite numeric target (inf/NaN).",
+                dropped_nonfinite,
+            )
+        if len(out) == 0:
+            raise ValueError(
+                "After removing non-finite target values, the dataset has no rows left."
+            )
+
+        return out.reset_index(drop=True)
+
     df = load_timeseries_data_truncate(bucket_name, file_key, MAX_SIZE_BYTES, PANDAS_CHUNK_SIZE)
 
     required_columns = {id_column, timestamp_column, target}
@@ -189,11 +262,13 @@ def timeseries_data_loader(
             f"with columns {sorted(required_columns)}."
         )
 
+    df = _clean_timeseries_dataframe(df, id_column, timestamp_column, target, logger)
+
     # Create workspace datasets directory
     datasets_dir = Path(workspace_path) / "datasets"
     datasets_dir.mkdir(parents=True, exist_ok=True)
 
-    # Stable ordering for downstream I/O
+    # Stable ordering for downstream I/O (redundant if cleanse already sorted; kept for clarity)
     df = df.sort_values(by=[id_column, timestamp_column]).reset_index(drop=True)
 
     test_size = DEFAULT_TEST_SIZE

@@ -437,3 +437,92 @@ class TestTimeseriesDataLoaderUnitTests:
         assert len(client_calls) == 2
         assert client_calls[0][1].get("verify", True) is True
         assert client_calls[1][1]["verify"] is False
+
+    @mock.patch.dict(os.environ, mocked_env_variables, clear=True)
+    def test_duplicate_id_timestamp_keep_last(self, tmp_path):
+        """Duplicate (item_id, timestamp) rows: keep last by time order after stable sort."""
+        lines = ["item_id,timestamp,target,feature"]
+        for i in range(10):
+            lines.append(f"series-1,2024-01-{i + 1:02d},{i},{i * 10}")
+        # Same day as row with target 4; later in file so keep=last prefers 999
+        lines.append("series-1,2024-01-05,999,40")
+        body_stream = io.BytesIO(("\n".join(lines) + "\n").encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = timeseries_data_loader.python_func(
+                file_key="ts.csv",
+                bucket_name="b",
+                workspace_path=str(tmp_path),
+                target="target",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                sampled_test_dataset=sampled_test,
+            )
+
+        assert result.sample_config["total_rows_loaded"] == 10
+        all_rows = (
+            _read_csv_rows(result.models_selection_train_data_path)
+            + _read_csv_rows(result.extra_train_data_path)
+            + _read_csv_rows(sampled_test.path)
+        )
+        jan5 = [r for r in all_rows if r["timestamp"].startswith("2024-01-05")]
+        assert len(jan5) == 1
+        assert jan5[0]["target"] == "999"
+
+    @mock.patch.dict(os.environ, mocked_env_variables, clear=True)
+    def test_invalid_timestamp_row_dropped(self, tmp_path):
+        """Unparseable timestamp coerced to NA and row dropped before split."""
+        lines = ["item_id,timestamp,target,feature"]
+        for i in range(10):
+            lines.append(f"series-1,2024-01-{i + 1:02d},{i},{i * 10}")
+        lines.append("series-1,not-a-date,99,0")
+        body_stream = io.BytesIO(("\n".join(lines) + "\n").encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = timeseries_data_loader.python_func(
+                file_key="ts.csv",
+                bucket_name="b",
+                workspace_path=str(tmp_path),
+                target="target",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                sampled_test_dataset=sampled_test,
+            )
+
+        assert result.sample_config["total_rows_loaded"] == 10
+        targets = {r["target"] for r in _read_csv_rows(sampled_test.path)}
+        assert "99" not in targets
+
+    @mock.patch.dict(os.environ, mocked_env_variables, clear=True)
+    def test_non_finite_target_row_dropped(self, tmp_path):
+        """inf target becomes NaN, row removed; remaining rows still split."""
+        lines = ["item_id,timestamp,target,feature"]
+        for i in range(10):
+            lines.append(f"series-1,2024-01-{i + 1:02d},{i},{i * 10}")
+        lines.append("series-1,2024-01-11,inf,0")
+        body_stream = io.BytesIO(("\n".join(lines) + "\n").encode("utf-8"))
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
+            result = timeseries_data_loader.python_func(
+                file_key="ts.csv",
+                bucket_name="b",
+                workspace_path=str(tmp_path),
+                target="target",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                sampled_test_dataset=sampled_test,
+            )
+
+        assert result.sample_config["total_rows_loaded"] == 10
+        all_targets = []
+        for path in (
+            result.models_selection_train_data_path,
+            result.extra_train_data_path,
+            sampled_test.path,
+        ):
+            all_targets.extend(r["target"] for r in _read_csv_rows(path))
+        assert "inf" not in all_targets
+        assert "nan" not in "".join(all_targets).lower()
