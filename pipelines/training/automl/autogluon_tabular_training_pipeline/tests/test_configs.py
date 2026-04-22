@@ -21,11 +21,11 @@ _CONFIGS_JSON = Path(__file__).resolve().parent / "test_configs.json"
 def _require_nonempty_str(value: Any, field: str, index: int) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"test_configs.json[{index}] {field!r} must be a non-empty string; got {value!r}.")
-    return value
+    return value.strip()
 
 
 @dataclass
-class TestConfig:
+class PipelineConfig:
     """Single test configuration for one pipeline run.
 
     Attributes:
@@ -67,8 +67,8 @@ class TestConfig:
         }
 
 
-def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
-    """Load test configs from JSON and return TestConfig instances.
+def _load_configs(config_path: Path | None = None) -> list[PipelineConfig]:
+    """Load test configs from JSON and return PipelineConfig instances.
 
     Args:
         config_path: Optional path to a JSON array of config objects; defaults to
@@ -92,7 +92,7 @@ def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
             else:
                 raise ValueError(f"test_configs.json[{i}] 'tags' must be a list; got {type(raw_tags).__name__}")
             configs.append(
-                TestConfig(
+                PipelineConfig(
                     id=_require_nonempty_str(item.get("id"), "id", i),
                     dataset_path=_require_nonempty_str(item.get("dataset_path"), "dataset_path", i),
                     label_column=_require_nonempty_str(item.get("label_column"), "label_column", i),
@@ -112,7 +112,7 @@ def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
 TEST_CONFIG_TAGS_ENV = "RHOAI_TEST_CONFIG_TAGS"
 
 
-def get_test_configs_for_run() -> list[TestConfig]:
+def get_test_configs_for_run() -> list[PipelineConfig]:
     """Return configs to run for this session, optionally filtered by tags.
 
     If RHOAI_TEST_CONFIG_TAGS is set to a comma-separated list of tags, only
@@ -129,11 +129,11 @@ def get_test_configs_for_run() -> list[TestConfig]:
 
 
 def resolve_config_to_pipeline_arguments(
-    config: TestConfig,
+    config: PipelineConfig,
     uploaded_datasets: dict[str, dict[str, str]] | None,
     secret_name: str,
 ) -> dict[str, Any] | None:
-    """Resolve a TestConfig and uploaded datasets to pipeline arguments.
+    """Resolve a PipelineConfig and uploaded datasets to pipeline arguments.
 
     Args:
         config: The test configuration.
@@ -157,4 +157,4 @@ def resolve_config_to_pipeline_arguments(
 # Test configurations loaded from JSON (parametrize integration tests over these)
 # ---------------------------------------------------------------------------
 
-TEST_CONFIGS: list[TestConfig] = _load_configs()
+TEST_CONFIGS: list[PipelineConfig] = _load_configs()
