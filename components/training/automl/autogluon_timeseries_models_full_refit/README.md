@@ -133,7 +133,7 @@ Each model directory contains a `model.json` file with the model's metadata:
   "location": {
     "model_directory": "ETS_FULL",
     "predictor": "ETS_FULL/predictor",
-    "notebooks": "ETS_FULL/notebooks/automl_predictor_notebook.ipynb",
+    "notebook": "ETS_FULL/notebooks/automl_predictor_notebook.ipynb",
     "metrics": "ETS_FULL/metrics"
   },
   "metrics": {

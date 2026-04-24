@@ -145,7 +145,7 @@ Each model directory contains a `model.json` file with the model's metadata, mat
   "location": {
     "model_directory": "LightGBM_BAG_L1_FULL",
     "predictor": "LightGBM_BAG_L1_FULL/predictor",
-    "notebooks": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+    "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
     "metrics": "LightGBM_BAG_L1_FULL/metrics"
   },
   "metrics": {
@@ -180,7 +180,7 @@ Each entry in **`context.models`** contains:
 | Key | Type | Description |
 | --- | ---- | ----------- |
 | `name` | `str` | Model name with `_FULL` suffix (e.g. `"LightGBM_BAG_L1_FULL"`). |
-| `location` | `dict` | Paths relative to `models_artifact.path`: `model_directory`, `predictor`, `notebooks`, `metrics`. |
+| `location` | `dict` | Paths relative to `models_artifact.path`: `model_directory`, `predictor`, `notebook`, `metrics`. |
 | `metrics` | `dict` | `test_data` — evaluation results dict from `evaluate_predictions` (metric names → values). |
 
 Example:
@@ -202,7 +202,7 @@ Example:
         "location": {
           "model_directory": "LightGBM_BAG_L1_FULL",
           "predictor": "LightGBM_BAG_L1_FULL/predictor",
-          "notebooks": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+          "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
           "metrics": "LightGBM_BAG_L1_FULL/metrics"
         },
         "metrics": {
@@ -214,7 +214,7 @@ Example:
         "location": {
           "model_directory": "CatBoost_BAG_L1_FULL",
           "predictor": "CatBoost_BAG_L1_FULL/predictor",
-          "notebooks": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+          "notebook": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
           "metrics": "CatBoost_BAG_L1_FULL/metrics"
         },
         "metrics": {

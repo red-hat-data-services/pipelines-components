@@ -231,7 +231,7 @@ class TestTimeseriesModelsFullRefitUnitTests:
         assert "base_model" not in model_meta
         assert model_meta["location"]["model_directory"] == "DeepAR_FULL"
         assert "predictor" in model_meta["location"]
-        assert model_meta["location"]["notebooks"] == "DeepAR_FULL/notebooks/automl_predictor_notebook.ipynb"
+        assert model_meta["location"]["notebook"] == "DeepAR_FULL/notebooks/automl_predictor_notebook.ipynb"
         assert model_meta["location"]["metrics"] == "DeepAR_FULL/metrics"
         assert model_meta["metrics"]["test_data"] == {"MASE": 1.23}
 

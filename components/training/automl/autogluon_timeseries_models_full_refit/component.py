@@ -254,7 +254,7 @@ def autogluon_timeseries_models_full_refit(
         "location": {
             "model_directory": model_name_full,
             "predictor": f"{model_name_full}/predictor",
-            "notebooks": f"{model_name_full}/notebooks/automl_predictor_notebook.ipynb",
+            "notebook": f"{model_name_full}/notebooks/automl_predictor_notebook.ipynb",
             "metrics": f"{model_name_full}/metrics",
         },
         "metrics": {
@@ -274,7 +274,7 @@ def autogluon_timeseries_models_full_refit(
         "location": {
             "model_directory": model_name_full,
             "predictor": f"{model_name_full}/predictor",
-            "notebooks": f"{model_name_full}/notebooks/automl_predictor_notebook.ipynb",
+            "notebook": f"{model_name_full}/notebooks/automl_predictor_notebook.ipynb",
             "metrics": f"{model_name_full}/metrics",
         },
         "pipeline_info": {

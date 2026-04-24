@@ -265,7 +265,7 @@ class TestAutogluonModelsTrainingUnitTests:
             assert model_meta["name"] == model_name_full
             assert model_meta["location"]["model_directory"] == model_name_full
             assert "predictor" in model_meta["location"]
-            assert "notebooks" in model_meta["location"]
+            assert "notebook" in model_meta["location"]
             assert "metrics" in model_meta["location"]
             assert "test_data" in model_meta["metrics"]
             nb_path = Path(models_output_dir) / model_name_full / "notebooks" / "automl_predictor_notebook.ipynb"
@@ -621,7 +621,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert lgbm["name"] == "LightGBM_BAG_L1_FULL"
         assert lgbm["location"]["model_directory"] == "LightGBM_BAG_L1_FULL"
         assert lgbm["location"]["predictor"] == str(Path("LightGBM_BAG_L1_FULL") / "predictor")
-        assert lgbm["location"]["notebooks"] == str(
+        assert lgbm["location"]["notebook"] == str(
             Path("LightGBM_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
         )
         assert lgbm["location"]["metrics"] == str(Path("LightGBM_BAG_L1_FULL") / "metrics")
@@ -631,7 +631,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert cat["name"] == "CatBoost_BAG_L1_FULL"
         assert cat["location"]["model_directory"] == "CatBoost_BAG_L1_FULL"
         assert cat["location"]["predictor"] == str(Path("CatBoost_BAG_L1_FULL") / "predictor")
-        assert cat["location"]["notebooks"] == str(
+        assert cat["location"]["notebook"] == str(
             Path("CatBoost_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
         )
         assert cat["location"]["metrics"] == str(Path("CatBoost_BAG_L1_FULL") / "metrics")
