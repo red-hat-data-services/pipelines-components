@@ -266,6 +266,7 @@ class TestAutogluonModelsTrainingUnitTests:
             assert model_meta["location"]["model_directory"] == model_name_full
             assert "predictor" in model_meta["location"]
             assert "notebook" in model_meta["location"]
+            assert "metrics" in model_meta["location"]
             assert "test_data" in model_meta["metrics"]
             nb_path = Path(models_output_dir) / model_name_full / "notebooks" / "automl_predictor_notebook.ipynb"
             assert nb_path.exists()
@@ -623,6 +624,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert lgbm["location"]["notebook"] == str(
             Path("LightGBM_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
         )
+        assert lgbm["location"]["metrics"] == str(Path("LightGBM_BAG_L1_FULL") / "metrics")
         assert lgbm["metrics"]["test_data"] == {"r2": 0.9, "root_mean_squared_error": 0.31}
 
         cat = models[1]
@@ -632,6 +634,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert cat["location"]["notebook"] == str(
             Path("CatBoost_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
         )
+        assert cat["location"]["metrics"] == str(Path("CatBoost_BAG_L1_FULL") / "metrics")
         assert cat["metrics"]["test_data"] == {"r2": 0.85, "root_mean_squared_error": 0.42}
 
         # Shared context fields still present alongside models
