@@ -24,6 +24,9 @@ from kfp_components.components.training.autorag.search_space_preparation.compone
     search_space_preparation,
 )
 
+MAX_CPUS = "32"
+MAX_MEMORY = "64Gi"
+
 SUPPORTED_OPTIMIZATION_METRICS = frozenset({"faithfulness", "answer_correctness", "context_correctness"})
 
 
@@ -86,7 +89,9 @@ def documents_rag_optimization_pipeline(
     )
 
     test_data_loader_task.set_caching_options(False)
-    test_data_loader_task.set_cpu_request("2").set_memory_request("8Gi")
+    test_data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
+    )
 
     documents_discovery_task = documents_discovery(
         input_data_bucket_name=input_data_bucket_name,
@@ -95,14 +100,18 @@ def documents_rag_optimization_pipeline(
     )
 
     documents_discovery_task.set_caching_options(False)
-    documents_discovery_task.set_cpu_request("2").set_memory_request("8Gi")
+    documents_discovery_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
+    )
 
     text_extraction_task = text_extraction(
         documents_descriptor=documents_discovery_task.outputs["discovered_documents"],
     )
 
     text_extraction_task.set_caching_options(False)
-    text_extraction_task.set_cpu_request("2").set_memory_request("8Gi")
+    text_extraction_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
+    )
 
     for task, secret_name in zip(
         [test_data_loader_task, documents_discovery_task, text_extraction_task],
@@ -127,7 +136,7 @@ def documents_rag_optimization_pipeline(
     )
 
     mps_task.set_caching_options(False)
-    mps_task.set_cpu_request("2").set_memory_request("8Gi")
+    mps_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
     hpo_task = rag_templates_optimization(
         extracted_text=text_extraction_task.outputs["extracted_text"],
@@ -143,7 +152,7 @@ def documents_rag_optimization_pipeline(
     )
 
     hpo_task.set_caching_options(False)
-    hpo_task.set_cpu_request("2").set_memory_request("8Gi")
+    hpo_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
     use_secret_as_env(
         mps_task,
@@ -166,7 +175,9 @@ def documents_rag_optimization_pipeline(
         rag_patterns=hpo_task.outputs["rag_patterns"],
     )
     prepare_responses_api_requests_task.set_caching_options(False)
-    prepare_responses_api_requests_task.set_cpu_request("500m").set_memory_request("2Gi")
+    prepare_responses_api_requests_task.set_cpu_request("500m").set_memory_request("2Gi").set_cpu_limit(
+        MAX_CPUS
+    ).set_memory_limit(MAX_MEMORY)
     use_secret_as_env(
         prepare_responses_api_requests_task,
         llama_stack_secret_name,
@@ -178,7 +189,9 @@ def documents_rag_optimization_pipeline(
 
     leaderboard_evaluation_task = leaderboard_evaluation(rag_patterns=hpo_task.outputs["rag_patterns"])
     leaderboard_evaluation_task.set_caching_options(False)
-    leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi")
+    leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
+    )
 
 
 if __name__ == "__main__":
