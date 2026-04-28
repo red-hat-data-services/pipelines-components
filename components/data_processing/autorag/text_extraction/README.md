@@ -50,7 +50,7 @@ def example_pipeline():
   - data-processing
   - autorag
   - text-extraction
-- **Last Verified**: 2026-01-23 10:29:57+00:00
+- **Last Verified**: 2026-04-21 12:00:00+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
