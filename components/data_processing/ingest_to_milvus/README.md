@@ -1,5 +1,7 @@
 # Ingest to Milvus Component
 
+> **Stability: experimental** — This asset is not yet stable and may change.
+
 KFP component that reads chunked text from S3, generates vector embeddings, and inserts them into a Milvus collection. Supports two embedding modes: local sentence-transformers model or a deployed embedding service endpoint.
 
 ## How It Works
@@ -70,11 +72,29 @@ S3 credentials are injected from a Kubernetes Secret via the pipeline orchestrat
 - Better resource utilization, can leverage GPU on the embedding service
 - Ideal for production workloads
 
+## Metadata
+
+- **Name**: ingest_to_milvus
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: Milvus, Version: >=2.4.0
+- **Tags**: milvus, embeddings, vector_db, ingestion, rag
+- **Last Verified**: 2026-04-28
+- **Owners**:
+  - Approvers: szaher
+
 ## Dependencies
 
 - **Base image**: `registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`
 - **Python packages**: `pymilvus>=2.4.0`, `sentence-transformers>=2.2.0`, `requests>=2.28.0`, `boto3>=1.28.0`
 - **External services**: Milvus (>= 2.4.0), S3-compatible object store
+
+## Additional Resources
+
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)
 
 ## Usage
 

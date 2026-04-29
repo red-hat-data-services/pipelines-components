@@ -16,3 +16,6 @@ tags:
   - model_serving
   - kserve
   - rag
+lastVerified: 2026-04-28T00:00:00Z
+links:
+  documentation: https://github.com/kubeflow/pipelines-components

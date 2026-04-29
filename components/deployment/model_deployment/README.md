@@ -1,5 +1,7 @@
 # Model Deployment Component
 
+> **Stability: experimental** — This asset is not yet stable and may change.
+
 KFP component that deploys an LLM on OpenShift AI using vLLM. Creates a KServe ServingRuntime and InferenceService matching the RHOAI dashboard deployment pattern, serving the model from a PVC cache with GPU acceleration.
 
 ## How It Works
@@ -79,9 +81,28 @@ deploy_task = model_deployment(
 
 The model chain (download -> deploy) runs in parallel with the data chain (parse -> ingest).
 
+## Metadata
+
+- **Name**: model_deployment
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: KServe, Version: >=0.11.0
+    - Name: vLLM ServingRuntime, Version: >=0.4.0
+- **Tags**: deployment, model_serving, vllm, kserve, rag
+- **Last Verified**: 2026-04-28
+- **Owners**:
+  - Approvers: szaher
+
 ## Dependencies
 
 - **Base image**: `registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`
 - **Python packages**: `kubernetes>=28.1.0`
 - **Cluster requirements**: KServe CRDs, NVIDIA GPU operator, vLLM CUDA container image
 - **Upstream dependency**: Requires `download_model` output as `model_dir` input
+
+## Additional Resources
+
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)

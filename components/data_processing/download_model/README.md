@@ -1,5 +1,7 @@
 # Download Model Component
 
+> **Stability: experimental** — This asset is not yet stable and may change.
+
 KFP component that downloads a HuggingFace model to a PVC for caching. On subsequent runs, detects the model is already present and skips the download, avoiding re-downloading 14GB+ model weights every time.
 
 ## How It Works
@@ -28,8 +30,26 @@ This output is consumed by the `model_deployment` component to construct:
 pvc://{model_cache_pvc}/{model_dir}
 ```
 
+## Metadata
+
+- **Name**: download_model
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: HuggingFace Hub, Version: >=0.20.0
+- **Tags**: data_processing, model_download, huggingface, caching, rag
+- **Last Verified**: 2026-04-28
+- **Owners**:
+  - Approvers: szaher
+
 ## Dependencies
 
 - **Base image**: `registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`
 - **Python packages**: `huggingface_hub>=0.20.0`
 - **PVC**: Must be mounted by the pipeline (via `kubernetes.mount_pvc`) before this component runs
+
+## Additional Resources
+
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)

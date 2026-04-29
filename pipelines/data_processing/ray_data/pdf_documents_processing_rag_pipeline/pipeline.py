@@ -17,11 +17,11 @@ S3 credentials are read from a Kubernetes Secret (not pipeline parameters).
 from kfp import dsl
 from kfp import kubernetes
 
-from kfp_components.components.inference.deploy_embedding_model.component import deploy_embedding_model
-from kfp_components.components.data_processing.download_model.component import download_model
-from kfp_components.components.data_processing.ingest_to_milvus.component import ingest_to_milvus
-from kfp_components.components.inference.model_deployment.component import model_deployment
-from kfp_components.components.data_processing.parse_and_chunk.component import parse_and_chunk
+from kfp_components.components.data_processing.download_model import download_model
+from kfp_components.components.data_processing.ingest_to_milvus import ingest_to_milvus
+from kfp_components.components.data_processing.parse_and_chunk import parse_and_chunk
+from kfp_components.components.deployment.deploy_embedding_model import deploy_embedding_model
+from kfp_components.components.deployment.model_deployment import model_deployment
 
 
 @dsl.pipeline(

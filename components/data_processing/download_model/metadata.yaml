@@ -1,21 +1,21 @@
 ---
-name: ingest_to_milvus
+name: download_model
 description: >
-  Read chunked JSONL files, generate embeddings via an embedding
-  service endpoint or local model, and insert into Milvus.
+  Download a HuggingFace model to a PVC for caching. Skips the download
+  if the model is already present.
 stability: experimental
 dependencies:
   kubeflow:
     - name: Pipelines
       version: ">=2.15.2"
   external_services:
-    - name: Milvus
-      version: ">=2.4.0"
+    - name: HuggingFace Hub
+      version: ">=0.20.0"
 tags:
-  - milvus
-  - embeddings
-  - vector_db
-  - ingestion
+  - data_processing
+  - model_download
+  - huggingface
+  - caching
   - rag
 lastVerified: 2026-04-28T00:00:00Z
 links:

@@ -1,5 +1,7 @@
 # Deploy Embedding Model Component
 
+> **Stability: experimental** — This asset is not yet stable and may change.
+
 KFP component that deploys a text embedding model as a KServe InferenceService on OpenShift AI. Uses HuggingFace Text Embeddings Inference (TEI) as the serving runtime, exposing an OpenAI-compatible `/v1/embeddings` API.
 
 ## How It Works
@@ -59,9 +61,27 @@ with dsl.If(deploy_embedding == True):
 
 When `deploy_embedding=False`, the pipeline skips this step entirely. The downstream `ingest_to_milvus` component determines embedding mode based on whether `embedding_endpoint` is empty (local mode) or a URL (service mode).
 
+## Metadata
+
+- **Name**: deploy_embedding_model
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: OpenShift AI (KServe), Version: >=2.10
+- **Tags**: embeddings, model_serving, kserve, rag
+- **Last Verified**: 2026-04-28
+- **Owners**:
+  - Approvers: szaher
+
 ## Dependencies
 
 - **Base image**: `registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`
 - **Python packages**: `kubernetes>=28.1.0`
 - **Cluster requirements**: KServe with `ServingRuntime` and `InferenceService` CRDs installed
 - **Network**: TEI container must be able to pull the model from HuggingFace at startup
+
+## Additional Resources
+
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)

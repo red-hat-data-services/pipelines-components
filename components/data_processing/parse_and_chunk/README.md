@@ -1,5 +1,7 @@
 # Parse and Chunk Component
 
+> **Stability: experimental** — This asset is not yet stable and may change.
+
 KFP component that parses PDF documents using Docling and chunks them with HybridChunker via a distributed RayJob. Output chunks are written as JSONL files to an S3-compatible bucket (MinIO).
 
 ## How It Works
@@ -77,13 +79,31 @@ Each line in the output JSONL files contains:
 
 Files are written to `s3://{s3_bucket}/{s3_prefix}/{stem}.jsonl`.
 
+## Metadata
+
+- **Name**: parse_and_chunk
+- **Stability**: experimental
+- **Dependencies**:
+  - Kubeflow:
+    - Name: Pipelines, Version: >=2.15.2
+  - External Services:
+    - Name: KubeRay Operator, Version: >=1.4.0
+- **Tags**: data_processing, pdf, docling, ray, chunking, rag
+- **Last Verified**: 2026-04-28
+- **Owners**:
+  - Approvers: szaher
+
 ## Dependencies
 
 - **Base image**: `registry.redhat.io/rhoai/odh-pipeline-runtime-datascience-cpu-py312-rhel9`
 - **Python packages** (KFP pod): `codeflare-sdk==0.35.0`, `kubernetes>=28.1.0`
 - **Ray runtime packages** (installed on the cluster): `opencv-python-headless`, `pypdfium2`, `boto3>=1.28.0`
 - **Pre-installed in `ray_image`**: `docling`, `ray`, `pandas`
-- **External services**: KubeRay Operator (>= 1.1.0), S3-compatible object store (MinIO)
+- **External services**: KubeRay Operator (>= 1.4.0), S3-compatible object store (MinIO)
+
+## Additional Resources
+
+- **Documentation**: [https://github.com/kubeflow/pipelines-components](https://github.com/kubeflow/pipelines-components)
 
 ## Usage
 

@@ -1,0 +1,29 @@
+---
+name: pdf_documents_processing_rag
+description: >
+  Multi-step RAG pipeline that parses and chunks PDF documents using
+  Docling via RayJob, ingests embeddings into Milvus, and deploys
+  an LLM for inference using vLLM on OpenShift AI.
+stability: experimental
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: '>=2.15.2'
+  external_services:
+    - name: KubeRay Operator
+      version: '>=1.4.0'
+    - name: Milvus
+      version: '>=2.4.0'
+    - name: KServe
+      version: '>=0.11.0'
+tags:
+  - data_processing
+  - pdf
+  - docling
+  - ray
+  - chunking
+  - rag
+  - milvus
+lastVerified: 2026-04-28T00:00:00Z
+links:
+  documentation: https://github.com/kubeflow/pipelines-components
