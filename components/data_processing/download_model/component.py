@@ -33,27 +33,24 @@ def download_model(
 
     from huggingface_hub import snapshot_download
 
-    # Convert model name to a directory-safe path
-    # e.g. "mistralai/Mistral-7B-Instruct-v0.3" -> "mistralai--Mistral-7B-Instruct-v0.3"
     model_dir_name = model_name.replace("/", "--")
     model_path = os.path.join(model_cache_mount, model_dir_name)
+    sentinel = os.path.join(model_path, ".download_complete")
 
-    # Check if model is already cached
-    config_path = os.path.join(model_path, "config.json")
-    if os.path.exists(config_path):
+    if os.path.exists(sentinel):
         file_count = sum(1 for _ in os.scandir(model_path) if _.is_file())
         print(f"Model '{model_name}' already cached at {model_path} ({file_count} files). Skipping download.")
         return model_dir_name
 
-    # Download the model snapshot
     print(f"Downloading model '{model_name}' to {model_path}...")
-    os.makedirs(model_path, exist_ok=True)
-
     snapshot_download(
         repo_id=model_name,
         local_dir=model_path,
         local_dir_use_symlinks=False,
     )
+
+    with open(sentinel, "w") as f:
+        f.write(model_name)
 
     file_count = sum(1 for _ in os.scandir(model_path) if _.is_file())
     print(f"Model '{model_name}' downloaded to {model_path} ({file_count} files).")

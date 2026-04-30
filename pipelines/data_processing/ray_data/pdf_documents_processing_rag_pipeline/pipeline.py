@@ -82,7 +82,49 @@ def rag_multistep_pipeline(
     max_model_len: int = 4096,
     gpu_count: int = 1,
 ):
-    """Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM."""
+    """Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM.
+
+    Args:
+        pvc_name: PVC containing input PDF documents.
+        pvc_mount_path: Mount path for the data PVC inside pods.
+        namespace: OpenShift namespace for all resources.
+        s3_endpoint: S3-compatible endpoint URL (e.g. MinIO).
+        s3_bucket: S3 bucket for intermediate chunk storage.
+        s3_prefix: Key prefix for chunk files in S3.
+        s3_secret_name: Kubernetes Secret with S3 credentials.
+        input_path: Path to PDF files on the PVC.
+        ray_image: Container image with Ray and Docling pre-installed.
+        num_workers: Number of Ray worker pods.
+        worker_cpus: CPUs per Ray worker pod.
+        worker_memory_gb: Memory (GB) per Ray worker pod.
+        head_cpus: CPUs for the Ray head pod.
+        head_memory_gb: Memory (GB) for the Ray head pod.
+        cpus_per_actor: CPUs per Docling processing actor.
+        min_actors: Minimum actor pool size.
+        max_actors: Maximum actor pool size.
+        batch_size: Files per batch sent to each actor.
+        chunk_max_tokens: Maximum tokens per chunk.
+        num_files: Number of PDFs to process (0 = all).
+        timeout_seconds: Per-file processing timeout in seconds.
+        enable_profiling: Enable cProfile profiling output.
+        verbose: Enable verbose logging.
+        deploy_embedding: If True, deploy embedding model as InferenceService.
+        embedding_endpoint: Embedding service URL (empty = local model).
+        embedding_model: Embedding model name.
+        embedding_dim: Embedding vector dimension.
+        embedding_runtime_image: Container image for the embedding server.
+        embedding_gpu_count: GPUs for the embedding service.
+        milvus_host: Milvus service hostname.
+        milvus_port: Milvus gRPC port.
+        milvus_db: Milvus database name.
+        collection_name: Milvus collection name.
+        embed_batch_size: Batch size for embedding requests.
+        milvus_batch_size: Batch size for Milvus inserts.
+        llm_model_name: HuggingFace LLM model ID for inference.
+        model_cache_pvc: PVC for cached model weights.
+        max_model_len: Maximum context length for the LLM.
+        gpu_count: GPUs for LLM serving.
+    """
     # Step 1: Parse & chunk PDFs -> S3
     chunk_task = parse_and_chunk(
         pvc_name=pvc_name,
@@ -119,9 +161,9 @@ def rag_multistep_pipeline(
     )
     chunk_task.set_caching_options(False)
 
-    # Step 2 (optional): Deploy embedding model as InferenceService
-    # When deploy_embedding=True, the pipeline deploys the embedding
-    # model and passes its endpoint to the ingest step.
+    # Step 2 + 3: Deploy embedding (optional) then ingest into Milvus.
+    # When deploy_embedding=True, deploy the embedding model first and
+    # pass its endpoint URL to the ingest step.
     # When deploy_embedding=False, embedding_endpoint is used as-is
     # (empty string = local model, URL = existing service).
     with dsl.If(deploy_embedding == True):  # noqa: E712
@@ -134,37 +176,62 @@ def rag_multistep_pipeline(
         embed_deploy_task.after(chunk_task)
         embed_deploy_task.set_caching_options(False)
 
-    # Step 3: Ingest into Milvus (supports local or deployed embedding model)
-    ingest_task = ingest_to_milvus(
-        s3_endpoint=s3_endpoint,
-        s3_bucket=s3_bucket,
-        s3_prefix=s3_prefix,
-        milvus_host=milvus_host,
-        milvus_port=milvus_port,
-        milvus_db=milvus_db,
-        collection_name=collection_name,
-        embedding_endpoint=embedding_endpoint,
-        embedding_model=embedding_model,
-        embedding_dim=embedding_dim,
-        embed_batch_size=embed_batch_size,
-        milvus_batch_size=milvus_batch_size,
-    )
-    kubernetes.use_secret_as_env(
-        ingest_task,
-        secret_name=s3_secret_name,
-        secret_key_to_env={
-            "access_key": "S3_ACCESS_KEY",
-            "secret_key": "S3_SECRET_KEY",
-        },
-    )
-    ingest_task.after(chunk_task)
-    ingest_task.set_caching_options(False)
+        ingest_with_service = ingest_to_milvus(
+            s3_endpoint=s3_endpoint,
+            s3_bucket=s3_bucket,
+            s3_prefix=s3_prefix,
+            milvus_host=milvus_host,
+            milvus_port=milvus_port,
+            milvus_db=milvus_db,
+            collection_name=collection_name,
+            embedding_endpoint=embed_deploy_task.output,
+            embedding_model=embedding_model,
+            embedding_dim=embedding_dim,
+            embed_batch_size=embed_batch_size,
+            milvus_batch_size=milvus_batch_size,
+        )
+        kubernetes.use_secret_as_env(
+            ingest_with_service,
+            secret_name=s3_secret_name,
+            secret_key_to_env={
+                "access_key": "S3_ACCESS_KEY",
+                "secret_key": "S3_SECRET_KEY",
+            },
+        )
+        ingest_with_service.set_caching_options(False)
+
+    with dsl.Else():
+        ingest_task = ingest_to_milvus(
+            s3_endpoint=s3_endpoint,
+            s3_bucket=s3_bucket,
+            s3_prefix=s3_prefix,
+            milvus_host=milvus_host,
+            milvus_port=milvus_port,
+            milvus_db=milvus_db,
+            collection_name=collection_name,
+            embedding_endpoint=embedding_endpoint,
+            embedding_model=embedding_model,
+            embedding_dim=embedding_dim,
+            embed_batch_size=embed_batch_size,
+            milvus_batch_size=milvus_batch_size,
+        )
+        kubernetes.use_secret_as_env(
+            ingest_task,
+            secret_name=s3_secret_name,
+            secret_key_to_env={
+                "access_key": "S3_ACCESS_KEY",
+                "secret_key": "S3_SECRET_KEY",
+            },
+        )
+        ingest_task.after(chunk_task)
+        ingest_task.set_caching_options(False)
 
     # Step 4: Download LLM to PVC (skips if already cached)
     download_task = download_model(
         model_name=llm_model_name,
         model_cache_pvc=model_cache_pvc,
     )
+    download_task.set_caching_options(False)
     kubernetes.mount_pvc(
         download_task,
         pvc_name=model_cache_pvc,

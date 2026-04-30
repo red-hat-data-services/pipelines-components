@@ -1,6 +1,5 @@
-# Ray Data Pipelines
+# Ray Data
 
-This subcategory contains pipelines that use Ray Data for distributed data processing:
+This subcategory contains pipelines in the **Ray Data** group:
 
-- [Documents Indexing Pipeline](./documents_indexing_pipeline/README.md): Load, extract, and index documents for AutoRAG using Llama Stack.
-- [PDF Documents Processing RAG Pipeline](./pdf_documents_processing_rag_pipeline/README.md): Multi-step RAG pipeline with Docling PDF parsing, Milvus ingestion, and vLLM deployment.
+- [Pdf Documents Processing Rag](./pdf_documents_processing_rag_pipeline/README.md): Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM.
