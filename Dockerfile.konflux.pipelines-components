@@ -9,6 +9,7 @@ RUN dnf install -y cmake ninja-build  \
     && dnf clean all \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     && pip install --no-cache uv \
+    && mkdir -p ${WHEEL_DIR} \
     && touch /tmp/ctrl
 
 COPY pyproject.toml __init__.py uv.lock ./
