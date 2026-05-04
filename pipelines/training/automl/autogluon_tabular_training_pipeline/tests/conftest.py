@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Ensure this directory is on path so test modules and integration_config can be imported
@@ -12,9 +13,105 @@ _tests_dir = Path(__file__).resolve().parent
 if str(_tests_dir) not in sys.path:
     sys.path.insert(0, str(_tests_dir))
 
-import pytest  # noqa: E402
+_SESSION_SUMMARY_LOG = _tests_dir / "summary.log"
+_FAILURES_SUMMARY_LOG = _tests_dir / "failures.log"
+_session_start: float | None = None
+_failed_reports: list[tuple[str, str, str]] = []
 
-# .env is loaded by integration_config when get_rhoai_config/get_dspa_config run.
+
+def _all_collected_items_under_this_tests_dir(session) -> bool:
+    """True when every collected test lives under this AutoML tests/ tree (avoids mixed-suite totals)."""
+    items = getattr(session, "items", None) or []
+    if not items:
+        return False
+    root = _tests_dir.resolve()
+    for item in items:
+        p = getattr(item, "path", None)
+        path = Path(p).resolve() if p is not None else Path(item.fspath).resolve()
+        if not path.is_relative_to(root):
+            return False
+    return True
+
+
+def pytest_sessionstart(session):
+    """Record session start time for pytest_session_summary.log (AutoML tests only)."""
+    global _session_start
+    _session_start = time.perf_counter()
+    _failed_reports.clear()
+
+
+def pytest_runtest_logreport(report):
+    """Collect failures for a plain-text summary file."""
+    if not report.failed:
+        return
+    if getattr(report, "wasxfail", False):
+        return
+    nodeid = report.nodeid
+    when = report.when
+    details = getattr(report, "longreprtext", "") or str(report.longrepr)
+    _failed_reports.append((nodeid, when, details))
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Write session and failure summaries when only this AutoML tests/ suite is collected."""
+    if not _all_collected_items_under_this_tests_dir(session):
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is None:
+        return
+    passed = len(reporter.stats.get("passed", []))
+    failed = len(reporter.stats.get("failed", []))
+    skipped = len(reporter.stats.get("skipped", []))
+    errors = len(reporter.stats.get("error", []))
+    duration_sec = None
+    if _session_start is not None:
+        duration_sec = time.perf_counter() - _session_start
+    else:
+        duration_sec = getattr(session, "duration", None)
+
+    lines = [
+        "AutoML training pipeline tests",
+        "=================================================================",
+        (
+            f"Duration (seconds): {duration_sec:.3f}"
+            if duration_sec is not None
+            else "Duration (seconds): n/a"
+        ),
+        f"Passed:  {passed}",
+        f"Failed:  {failed}",
+        f"Skipped: {skipped}",
+        f"Errors:  {errors}",
+        "",
+    ]
+    _SESSION_SUMMARY_LOG.write_text("\n".join(lines), encoding="utf-8")
+
+    failure_lines = [
+        "AutoML training pipeline test failures",
+        "=================================================================",
+        "",
+    ]
+    if not _failed_reports:
+        failure_lines.append("No failures.")
+        failure_lines.append("")
+    else:
+        for idx, (nodeid, when, details) in enumerate(_failed_reports, start=1):
+            failure_lines.extend(
+                [
+                    f"{idx}. {nodeid}",
+                    f"Phase: {when}",
+                    details,
+                    "",
+                    "-" * 80,
+                    "",
+                ]
+            )
+    _FAILURES_SUMMARY_LOG.write_text("\n".join(failure_lines), encoding="utf-8")
+
+import pytest
+
+from integration_config import RHOAI_INTEGRATION_CONFIG, get_rhoai_config, get_dspa_config
+
+# .env is loaded by integration_config at import time.
 # ---------------------------------------------------------------------------
 # Integration test configuration (RHOAI + S3 + KFP)
 # Set env vars to enable integration tests; otherwise they are skipped.
@@ -23,20 +120,12 @@ import pytest  # noqa: E402
 
 def _get_rhoai_config():
     """Build integration config from environment; None if not configured."""
-    from integration_config import get_rhoai_config
-
     return get_rhoai_config()
-
-
-def _get_dspa_config():
-    from integration_config import get_dspa_config
-
-    return get_dspa_config()
 
 
 @pytest.fixture(scope="session")
 def rhoai_integration_config():
-    """Session-scoped RHOAI integration config from env; None if not set. Use RHOAI_TOKEN (e.g. SA token for Jenkins)."""  # noqa: E501
+    """Session-scoped RHOAI integration config from env; None if not set. Use RHOAI_TOKEN (e.g. SA token for Jenkins)."""
     return _get_rhoai_config()
 
 
@@ -81,10 +170,11 @@ def _build_temp_kubeconfig(server_url, token, namespace="default"):
 
 @pytest.fixture(scope="session")
 def temp_kubeconfig_path(rhoai_integration_config):
-    """Create a temporary kubeconfig from RHOAI_URL and RHOAI_TOKEN (.env) so the Kubernetes
+    """
+    Create a temporary kubeconfig from RHOAI_URL and RHOAI_TOKEN (.env) so the Kubernetes
     client does not use the default ~/.kube/config. Session-scoped; file is removed after tests.
     Yields the path to the temp file, or None when integration config is not set.
-    """  # noqa: D205
+    """
     if rhoai_integration_config is None:
         yield None
         return
@@ -118,6 +208,7 @@ def s3_client(rhoai_integration_config):
         aws_access_key_id=c["s3_access_key"],
         aws_secret_access_key=c["s3_secret_key"],
         region_name=c["s3_region"],
+        verify=False if c["s3_internal_endpoint"] else True
     )
 
 
@@ -191,13 +282,15 @@ def _ensure_admin_role_for_sa_in_namespace(
 
 @pytest.fixture(scope="session")
 def rhoai_project(rhoai_integration_config, s3_client, temp_kubeconfig_path):
-    """Ensure RHOAI test project exists: create if needed via OpenShift ProjectRequest (self-provisioner), then create the S3 connection secret.
+    """
+    Ensure RHOAI test project exists: create if needed via OpenShift ProjectRequest (self-provisioner),
+    then create the S3 connection secret.
 
     OpenShift normally grants the ProjectRequest creator (the ServiceAccount) admin in the new
     project (same as oc new-project). If the cluster does not do that and we get 403 on the secret
     create, we create a RoleBinding granting the SA admin; that requires the SA to be allowed to
     create RoleBindings (see README_integration.md Option B).
-    """  # noqa: E501
+    """
     if rhoai_integration_config is None:
         yield None
         return
@@ -264,8 +357,8 @@ def rhoai_project(rhoai_integration_config, s3_client, temp_kubeconfig_path):
         string_data={
             "AWS_ACCESS_KEY_ID": rhoai_integration_config["s3_access_key"],
             "AWS_SECRET_ACCESS_KEY": rhoai_integration_config["s3_secret_key"],
-            "AWS_S3_ENDPOINT": rhoai_integration_config["s3_endpoint"],
-            "AWS_DEFAULT_REGION": rhoai_integration_config["s3_region"],
+            "AWS_S3_ENDPOINT": rhoai_integration_config["s3_internal_endpoint"] if rhoai_integration_config["s3_internal_endpoint"] else rhoai_integration_config["s3_endpoint"],
+            "AWS_DEFAULT_REGION": rhoai_integration_config["s3_region"]
         },
     )
 
@@ -291,7 +384,7 @@ def rhoai_project(rhoai_integration_config, s3_client, temp_kubeconfig_path):
             pytest.fail(
                 f"Cannot create secret in namespace {project_name!r}. "
                 f"Grant the ServiceAccount 'edit' or 'admin' in that namespace, e.g.:\n"
-                f"  oc adm policy add-role-to-user edit system:serviceaccount:<sa-namespace>:<sa-name> -n {project_name!r}"  # noqa: E501
+                f"  oc adm policy add-role-to-user edit system:serviceaccount:<sa-namespace>:<sa-name> -n {project_name!r}"
             )
         sub = _decode_jwt_sub(token)
         sa_identity = _parse_service_account_sub(sub) if sub else None
@@ -319,7 +412,7 @@ def rhoai_project(rhoai_integration_config, s3_client, temp_kubeconfig_path):
                 pytest.fail(
                     f"Cannot create secret in namespace {project_name!r} even after creating "
                     f"admin RoleBinding. Grant the ServiceAccount 'edit' or 'admin' manually, e.g.:\n"
-                    f"  oc adm policy add-role-to-user edit system:serviceaccount:{sa_namespace}:{sa_name} -n {project_name!r}"  # noqa: E501
+                    f"  oc adm policy add-role-to-user edit system:serviceaccount:{sa_namespace}:{sa_name} -n {project_name!r}"
                 )
             raise
     yield project_name
@@ -330,12 +423,14 @@ def _create_datascience_pipelines_application(
     dspa_config,
     resource_name="automl-test-dspa",
     kubeconfig_path=None,
-    object_storage_host=None,
+    object_storage_url=None,
     object_storage_region=None,
     object_storage_secret_name=None,
     object_storage_bucket=None,
+    object_storage_internal_url=None
 ):
-    """Create a DataSciencePipelinesApplication CR in the given namespace using CustomObjectsApi.
+    """
+    Create a DataSciencePipelinesApplication CR in the given namespace using CustomObjectsApi.
 
     The Data Science Pipelines Operator (DSPO) / Open Data Hub will reconcile the CR and
     deploy the pipeline server. Requires the DSPA CRD and operator to be installed.
@@ -364,20 +459,28 @@ def _create_datascience_pipelines_application(
 
     # CRD requires spec.objectStorage: either internal (operator MinIO) or external (existing S3).
     if object_storage_secret_name and object_storage_bucket:
+
+        object_storage_host = object_storage_internal_url.lstrip("http://").rstrip(":" + str(object_storage_internal_url.split(":")[2])) if object_storage_internal_url \
+            else object_storage_url.lstrip("https://").split(":")[0]
+        object_storage_port = object_storage_internal_url.split(":")[2] if object_storage_internal_url \
+            else ""
+        object_storage_scheme = "http" if object_storage_internal_url \
+            else "https"
+
         object_storage = {
             "externalStorage": {
                 "basePath": "",
                 "bucket": object_storage_bucket,
-                "host": object_storage_host.lstrip("https://"),
-                "port": "",
+                "host": object_storage_host,
+                "port": object_storage_port,
                 "region": object_storage_region,
                 "s3CredentialsSecret": {
                     "accessKey": "AWS_ACCESS_KEY_ID",
                     "secretKey": "AWS_SECRET_ACCESS_KEY",
-                    "secretName": object_storage_secret_name,
+                    "secretName": object_storage_secret_name
                 },
-                "scheme": "https",
-            }
+                "scheme": object_storage_scheme
+            },
         }
     else:
         object_storage = {"internal": {}}
@@ -448,7 +551,8 @@ def _wait_for_dspa_ready(
     kubeconfig_path=None,
     timeout_seconds=600,
 ):
-    """Poll the DSPA CR until status.conditions has type=Ready and status=True, or timeout.
+    """
+    Poll the DSPA CR until status.conditions has type=Ready and status=True, or timeout.
 
     Returns True when ready, False on timeout. Uses the same kubeconfig as creation.
     """
@@ -497,7 +601,8 @@ _ROUTE_PLURAL = "routes"
 
 
 def _get_dspa_route_url(namespace, route_name_prefix="ds-pipeline", timeout_seconds=300, kubeconfig_path=None):
-    """Resolve the pipeline API URL from an OpenShift Route in the given namespace.
+    """
+    Resolve the pipeline API URL from an OpenShift Route in the given namespace.
 
     Lists Route custom resources (route.openshift.io/v1/routes) and returns
     https://<host> for the first route whose metadata.name starts with route_name_prefix.
@@ -556,7 +661,8 @@ def _get_dspa_route_url(namespace, route_name_prefix="ds-pipeline", timeout_seco
 
 @pytest.fixture(scope="session")
 def datascience_pipelines_application(rhoai_integration_config, rhoai_project, temp_kubeconfig_path):
-    """Optionally create a DataSciencePipelinesApplication CR in the test project namespace.
+    """
+    Optionally create a DataSciencePipelinesApplication CR in the test project namespace.
 
     Controlled by env: set RHOAI_CREATE_DSPA=true (or 1) to create the CR via Kubernetes
     CustomObjectsApi. Uses temp kubeconfig from .env (RHOAI_URL, RHOAI_TOKEN) when set.
@@ -565,7 +671,7 @@ def datascience_pipelines_application(rhoai_integration_config, rhoai_project, t
     if rhoai_integration_config is None or rhoai_project is None:
         yield None
         return
-    dspa_config = _get_dspa_config()
+    dspa_config = get_dspa_config()
     if not dspa_config or not dspa_config.get("create"):
         yield None
         return
@@ -578,10 +684,11 @@ def datascience_pipelines_application(rhoai_integration_config, rhoai_project, t
         dspa_config,
         kubeconfig_path=temp_kubeconfig_path,
         object_storage_secret_name=rhoai_integration_config.get("s3_secret_name"),
-        object_storage_host=rhoai_integration_config.get("s3_endpoint"),
+        object_storage_url=rhoai_integration_config.get("s3_endpoint"),
         object_storage_region=rhoai_integration_config.get("s3_region"),
         object_storage_bucket=rhoai_integration_config.get("s3_bucket_artifacts")
         or rhoai_integration_config.get("s3_bucket_data"),
+        object_storage_internal_url=rhoai_integration_config.get("s3_internal_endpoint"),
     )
     if created is None and error_message:
         import logging
@@ -614,7 +721,8 @@ def datascience_pipelines_application(rhoai_integration_config, rhoai_project, t
 
 @pytest.fixture(scope="session")
 def uploaded_datasets(rhoai_integration_config, s3_client):
-    """Upload dataset files referenced in test_configs.TEST_CONFIGS to S3.
+    """
+    Upload dataset files referenced in test_configs.TEST_CONFIGS to S3.
 
     Reads each unique dataset_path from the configs, uploads the file from
     tests_dir / dataset_path to S3 under key kfp-integration-test/{dataset_path},
@@ -664,7 +772,7 @@ def kfp_client(rhoai_integration_config, datascience_pipelines_application, temp
     # If we created a DSPA, resolve the route URL from OpenShift Route; else use env.
     host = None
     if datascience_pipelines_application is not None:
-        dspa_config = _get_dspa_config()
+        dspa_config = get_dspa_config()
         if dspa_config:
             namespace = (datascience_pipelines_application.get("metadata") or {}).get("namespace")
             if namespace:
@@ -688,6 +796,7 @@ def kfp_client(rhoai_integration_config, datascience_pipelines_application, temp
         host=host,
         namespace=rhoai_integration_config["rhoai_project"],
         existing_token=rhoai_integration_config.get("rhoai_token"),
+        verify_ssl=False if rhoai_integration_config.get("s3_internal_endpoint") else True,
     )
     return client
 
