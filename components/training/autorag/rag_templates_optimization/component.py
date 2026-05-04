@@ -491,6 +491,11 @@ def rag_templates_optimization(
         ret = settings.get("retrieval", {})
         mapping["RETRIEVAL_METHOD"] = ret.get("method", "")
         mapping["NUMBER_OF_CHUNKS"] = ret.get("number_of_chunks", 5)
+        # Hybrid search parameters (optional, None if not present)
+        mapping["SEARCH_MODE"] = ret.get("search_mode")
+        mapping["RANKER_STRATEGY"] = ret.get("ranker_strategy")
+        mapping["RANKER_K"] = ret.get("ranker_k")
+        mapping["RANKER_ALPHA"] = ret.get("ranker_alpha")
 
         ch = settings.get("chunking", {})
         mapping["CHUNKING_METHOD"] = ch.get("method", "")
