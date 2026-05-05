@@ -368,16 +368,17 @@ def _create_datascience_pipelines_application(
 
     # CRD requires spec.objectStorage: either internal (operator MinIO) or external (existing S3).
     if object_storage_secret_name and object_storage_bucket:
+        from urllib.parse import urlparse
+
         if object_storage_internal_url:
-            # Internal (http) endpoint: extract host and port from the URL
-            _stripped = object_storage_internal_url.lstrip("http://")
-            _parts = _stripped.split(":")
-            object_storage_host = _parts[0]
-            object_storage_port = _parts[1] if len(_parts) > 1 else ""
+            _parsed = urlparse(object_storage_internal_url)
+            object_storage_host = _parsed.hostname or ""
+            object_storage_port = str(_parsed.port) if _parsed.port else ""
             object_storage_scheme = "http"
         else:
-            object_storage_host = object_storage_url.lstrip("https://").split(":")[0]
-            object_storage_port = ""
+            _parsed = urlparse(object_storage_url)
+            object_storage_host = _parsed.hostname or ""
+            object_storage_port = str(_parsed.port) if _parsed.port else ""
             object_storage_scheme = "https"
 
         object_storage = {
