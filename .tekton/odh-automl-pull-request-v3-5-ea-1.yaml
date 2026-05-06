@@ -22,6 +22,8 @@ spec:
   timeouts:
     pipeline: 8h
   params:
+  - name: rhoai-version
+    value: "3.5.0-ea.1"
   - name: git-url
     value: '{{source_url}}'
   - name: revision
