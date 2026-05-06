@@ -51,7 +51,8 @@ spec:
             "type": "pip",
             "path": "pipelines/training/automl",
             "requirements_files": [
-              "autogluon_tabular_training_pipeline/requirements.txt"
+              "autogluon_tabular_training_pipeline/requirements.txt",
+              "autogluon_tabular_training_pipeline/requirements-extra.txt"
             ],
             "binary": {"arch": ":all:"}
           }
