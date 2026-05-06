@@ -16,10 +16,10 @@ The system integrates with llama-stack API for inference and vector database ope
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `test_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for test data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `test_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for test data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT. AWS_DEFAULT_REGION is optional. |
 | `test_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the test data file. |
 | `test_data_key` | `str` | `None` | Object key (path) of the test data JSON file in the test data bucket. |
-| `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for input document data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for input document data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT. AWS_DEFAULT_REGION is optional. |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the input documents. |
 | `llama_stack_secret_name` | `str` | `None` | Name of the Kubernetes secret for llama-stack API connection. The secret must define: LLAMA_STACK_CLIENT_API_KEY, LLAMA_STACK_CLIENT_BASE_URL. |
 | `llama_stack_vector_io_provider_id` | `str` | `None` | Vector I/O provider id (e.g., registered in llama-stack Milvus). |
