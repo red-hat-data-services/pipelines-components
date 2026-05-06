@@ -60,7 +60,7 @@ def text_extraction(
     for k, v in s3_creds.items():
         if v is None:
             raise ValueError(f"{k} environment variable not set. Check if kubernetes secret was configured properly.")
-    s3_creds["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", "")
+    s3_creds["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION")
 
     logger = logging.getLogger("Text Extraction component logger")
     logger.setLevel(logging.INFO)
