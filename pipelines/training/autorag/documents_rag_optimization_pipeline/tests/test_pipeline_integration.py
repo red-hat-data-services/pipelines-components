@@ -10,10 +10,16 @@ Scenarios:
   (leaderboard HTML, rag_patterns, .ipynb notebooks, v1_responses_body.json) in S3 when configured.
 """
 
+import logging
+import os
 import secrets
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import pytest
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _skip_if_no_rag_integration_config():
@@ -59,6 +65,61 @@ def _run_succeeded(detail):
     return False
 
 
+def _collect_artifact_keys(s3_client, bucket, prefix):
+    """List object keys under prefix and group them by artifact type."""
+    html_keys = []
+    ipynb_keys = []
+    pattern_keys = []
+    responses_body_keys = []
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents") or []:
+            key = obj["Key"]
+            if "leaderboard" in key.lower() or key.endswith(".html"):
+                html_keys.append(key)
+            elif key.endswith(".ipynb"):
+                ipynb_keys.append(key)
+            elif "v1_responses_body.json" in key:
+                responses_body_keys.append(key)
+            elif "rag_patterns" in key or "pattern" in key.lower():
+                pattern_keys.append(key)
+    return html_keys, ipynb_keys, pattern_keys, responses_body_keys
+
+
+def _derive_external_s3_endpoint(endpoint):
+    """Derive the public MinIO route from RHOAI_URL when only a cluster-local endpoint is available."""
+    if ".svc.cluster.local" not in (endpoint or ""):
+        return None
+    rhoai_url = os.environ.get("RHOAI_URL", "").strip()
+    if not rhoai_url:
+        return None
+    host = urlparse(rhoai_url).hostname or ""
+    if not host.startswith("api."):
+        return None
+    return f"https://minio-api-minio.apps.{host[len('api.'):]}"
+
+
+def _make_retry_s3_client(endpoint, verify):
+    """Build an ad-hoc S3 client for artifact lookup retries."""
+    try:
+        import boto3
+    except ImportError:
+        return None
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    if not endpoint or not access_key or not secret_key:
+        return None
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region,
+        verify=verify,
+    )
+
+
 def _find_artifacts_in_s3(s3_client, bucket, prefix):
     """List object keys under prefix.
 
@@ -66,26 +127,47 @@ def _find_artifacts_in_s3(s3_client, bucket, prefix):
         Tuple of key lists: leaderboard HTML, .ipynb notebooks, rag/pattern-related paths,
         and ``v1_responses_body.json`` files from ``prepare_responses_api_requests``.
     """
-    html_keys = []
-    ipynb_keys = []
-    pattern_keys = []
-    responses_body_keys = []
     try:
-        paginator = s3_client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-            for obj in page.get("Contents") or []:
-                key = obj["Key"]
-                if "leaderboard" in key.lower() or key.endswith(".html"):
-                    html_keys.append(key)
-                elif key.endswith(".ipynb"):
-                    ipynb_keys.append(key)
-                elif "v1_responses_body.json" in key:
-                    responses_body_keys.append(key)
-                elif "rag_patterns" in key or "pattern" in key.lower():
-                    pattern_keys.append(key)
-    except Exception:
-        pass
-    return html_keys, ipynb_keys, pattern_keys, responses_body_keys
+        return _collect_artifact_keys(s3_client, bucket, prefix)
+    except Exception as exc:
+        endpoint = getattr(getattr(s3_client, "meta", None), "endpoint_url", None) or ""
+        LOGGER.warning(
+            "Artifact lookup failed for s3://%s/%s via %s: %s",
+            bucket,
+            prefix,
+            endpoint or "<unknown>",
+            exc,
+        )
+
+        retry_endpoints = []
+        derived_endpoint = _derive_external_s3_endpoint(endpoint)
+        if derived_endpoint:
+            retry_endpoints.append((derived_endpoint, False))
+        elif endpoint.startswith("https://"):
+            retry_endpoints.append((endpoint, False))
+
+        for retry_endpoint, verify in retry_endpoints:
+            retry_client = _make_retry_s3_client(retry_endpoint, verify)
+            if retry_client is None:
+                continue
+            try:
+                LOGGER.warning(
+                    "Retrying artifact lookup for s3://%s/%s via %s (verify=%s)",
+                    bucket,
+                    prefix,
+                    retry_endpoint,
+                    verify,
+                )
+                return _collect_artifact_keys(retry_client, bucket, prefix)
+            except Exception as retry_exc:
+                LOGGER.warning(
+                    "Retry artifact lookup failed for s3://%s/%s via %s: %s",
+                    bucket,
+                    prefix,
+                    retry_endpoint,
+                    retry_exc,
+                )
+    return [], [], [], []
 
 
 def _pipeline_arguments_from_config(config):
