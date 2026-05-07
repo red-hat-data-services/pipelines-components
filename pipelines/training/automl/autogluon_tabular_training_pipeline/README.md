@@ -73,6 +73,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR

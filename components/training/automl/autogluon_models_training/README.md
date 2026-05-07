@@ -51,6 +51,7 @@ output artifact so the pipeline does not require a ParallelFor loop. Each model 
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
