@@ -46,5 +46,7 @@ Defines a pipeline to load, sample, extract text, and index documents for AutoRA
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - LukaszCmielowski
+    - DorotaDR

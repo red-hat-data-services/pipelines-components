@@ -54,10 +54,12 @@ The system integrates with llama-stack API for inference and vector database ope
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
     - filip-komarzyniec
     - witold-nowogorski
   - Reviewers:
     - LukaszCmielowski
+    - DorotaDR
 
 <!-- custom-content -->
 
