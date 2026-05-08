@@ -329,38 +329,38 @@ deploymentSpec:
           \ size of sampled documents (in gigabytes).\n        discovered_documents:\
           \ Output artifact containing the documents descriptor JSON file.\n\n   \
           \ Environment variables (required when run with pipeline secret injection):\n\
-          \        AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.\n\
-          \    \"\"\"\n    import json\n    import logging\n    import os\n    import\
-          \ sys\n    from math import inf\n\n    import boto3\n\n    logger = logging.getLogger(\"\
-          Document Loader component logger\")\n    logger.setLevel(logging.INFO)\n\
-          \    handler = logging.StreamHandler(sys.stdout)\n    logger.addHandler(handler)\n\
-          \n    DOCUMENTS_DESCRIPTOR_FILENAME = \"documents_descriptor.json\"\n  \
-          \  SUPPORTED_EXTENSIONS = {\".pdf\", \".docx\", \".pptx\", \".md\", \".html\"\
-          , \".txt\"}\n    MAX_SIZE_BYTES = float(inf)\n\n    if sampling_enabled:\n\
-          \        MAX_SIZE_BYTES = float(sampling_max_size) * 1024**3\n\n    def\
-          \ get_test_data_docs_names() -> list[str]:\n        if test_data is None:\n\
-          \            return []\n        with open(test_data.path, \"r\") as f:\n\
-          \            benchmark = json.load(f)\n\n        docs_names = []\n     \
-          \   for question in benchmark:\n            docs_names.extend(question[\"\
+          \        AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT.\n  \
+          \      AWS_DEFAULT_REGION is optional.\n    \"\"\"\n    import json\n  \
+          \  import logging\n    import os\n    import sys\n    from math import inf\n\
+          \n    import boto3\n\n    logger = logging.getLogger(\"Document Loader component\
+          \ logger\")\n    logger.setLevel(logging.INFO)\n    handler = logging.StreamHandler(sys.stdout)\n\
+          \    logger.addHandler(handler)\n\n    DOCUMENTS_DESCRIPTOR_FILENAME = \"\
+          documents_descriptor.json\"\n    SUPPORTED_EXTENSIONS = {\".pdf\", \".docx\"\
+          , \".pptx\", \".md\", \".html\", \".txt\"}\n    MAX_SIZE_BYTES = float(inf)\n\
+          \n    if sampling_enabled:\n        MAX_SIZE_BYTES = float(sampling_max_size)\
+          \ * 1024**3\n\n    def get_test_data_docs_names() -> list[str]:\n      \
+          \  if test_data is None:\n            return []\n        with open(test_data.path,\
+          \ \"r\") as f:\n            benchmark = json.load(f)\n\n        docs_names\
+          \ = []\n        for question in benchmark:\n            docs_names.extend(question[\"\
           correct_answer_document_ids\"])\n\n        return docs_names\n\n    \"\"\
           \"Validate S3 credentials, list objects, sample, and write JSON descriptor.\"\
-          \"\"\n    from botocore.exceptions import SSLError\n\n    s3_creds = {\n\
-          \        k: os.environ.get(k)\n        for k in [\"AWS_ACCESS_KEY_ID\",\
-          \ \"AWS_SECRET_ACCESS_KEY\", \"AWS_S3_ENDPOINT\", \"AWS_DEFAULT_REGION\"\
-          ]\n    }\n    for k, v in s3_creds.items():\n        if v is None:\n   \
-          \         raise ValueError(\"%s environment variable not set. Check if kubernetes\
-          \ secret was configured properly\" % k)\n\n    def _make_s3_client(verify=True):\n\
-          \        return boto3.client(\n            \"s3\",\n            endpoint_url=s3_creds[\"\
-          AWS_S3_ENDPOINT\"],\n            region_name=s3_creds[\"AWS_DEFAULT_REGION\"\
-          ],\n            aws_access_key_id=s3_creds[\"AWS_ACCESS_KEY_ID\"],\n   \
-          \         aws_secret_access_key=s3_creds[\"AWS_SECRET_ACCESS_KEY\"],\n \
-          \           verify=verify,\n        )\n\n    try:\n        s3_client = _make_s3_client()\n\
-          \        contents = s3_client.list_objects_v2(\n            Bucket=input_data_bucket_name,\n\
-          \            Prefix=input_data_path,\n        ).get(\"Contents\", [])\n\
-          \    except SSLError:\n        logger.warning(\n            \"SSL error\
-          \ when listing objects in s3://%s/%s, retrying with verify=False\",\n  \
-          \          input_data_bucket_name,\n            input_data_path,\n     \
-          \   )\n        s3_client = _make_s3_client(verify=False)\n        contents\
+          \"\"\n    from botocore.exceptions import SSLError\n\n    s3_creds = {k:\
+          \ os.environ.get(k) for k in [\"AWS_ACCESS_KEY_ID\", \"AWS_SECRET_ACCESS_KEY\"\
+          , \"AWS_S3_ENDPOINT\"]}\n    for k, v in s3_creds.items():\n        if v\
+          \ is None:\n            raise ValueError(\"%s environment variable not set.\
+          \ Check if kubernetes secret was configured properly\" % k)\n    s3_creds[\"\
+          AWS_DEFAULT_REGION\"] = os.environ.get(\"AWS_DEFAULT_REGION\")\n\n    def\
+          \ _make_s3_client(verify=True):\n        return boto3.client(\n        \
+          \    \"s3\",\n            endpoint_url=s3_creds[\"AWS_S3_ENDPOINT\"],\n\
+          \            region_name=s3_creds[\"AWS_DEFAULT_REGION\"],\n           \
+          \ aws_access_key_id=s3_creds[\"AWS_ACCESS_KEY_ID\"],\n            aws_secret_access_key=s3_creds[\"\
+          AWS_SECRET_ACCESS_KEY\"],\n            verify=verify,\n        )\n\n   \
+          \ try:\n        s3_client = _make_s3_client()\n        contents = s3_client.list_objects_v2(\n\
+          \            Bucket=input_data_bucket_name,\n            Prefix=input_data_path,\n\
+          \        ).get(\"Contents\", [])\n    except SSLError:\n        logger.warning(\n\
+          \            \"SSL error when listing objects in s3://%s/%s, retrying with\
+          \ verify=False\",\n            input_data_bucket_name,\n            input_data_path,\n\
+          \        )\n        s3_client = _make_s3_client(verify=False)\n        contents\
           \ = s3_client.list_objects_v2(\n            Bucket=input_data_bucket_name,\n\
           \            Prefix=input_data_path,\n        ).get(\"Contents\", [])\n\n\
           \    supported_files = [c for c in contents if c[\"Key\"].endswith(tuple(SUPPORTED_EXTENSIONS))]\n\
@@ -387,9 +387,13 @@ deploymentSpec:
           Documents descriptor written to %s\", descriptor_path)\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 2.0
+          memoryLimit: 68.719476736
           memoryRequest: 8.589934592
+          resourceCpuLimit: '32'
           resourceCpuRequest: '2'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 8Gi
     exec-leaderboard-evaluation:
       container:
@@ -668,9 +672,13 @@ deploymentSpec:
           \      f.write(html_content)\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 1.0
+          memoryLimit: 68.719476736
           memoryRequest: 4.294967296
+          resourceCpuLimit: '32'
           resourceCpuRequest: '1'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 4Gi
     exec-prepare-responses-api-requests:
       container:
@@ -996,9 +1004,13 @@ deploymentSpec:
           metadata\"] = {\"patterns\": written}\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 0.5
+          memoryLimit: 68.719476736
           memoryRequest: 2.147483648
+          resourceCpuLimit: '32'
           resourceCpuRequest: 500m
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 2Gi
     exec-rag-templates-optimization:
       container:
@@ -1026,7 +1038,7 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\n__KFP_EMBEDDED_ARCHIVE_B64 = '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'\n\
+          \ *\n\n__KFP_EMBEDDED_ARCHIVE_B64 = 'H4sIALKL/2kC/+1963YaSdJg/56nqHWfHUsegbkI2epZvvMhQBIyFwmQZGj74KKqgIKCYqhCqOjxnn2IfcJ9ko2IzKwbVQjZbbe7B824gbxEZkZGRkZGRkYkXydf//e1/Hipyaq2+Omb/KXYX9xnKpXNet8xPZ3KpNM/SY8/fYe/pWXLC2j+p//Mv8wbaWrrUy2ffvPmbTaXS6dyyZNc7jiX+9tP+7+//l/y9bdvAxf1m1yOfZ6wz1TmOLDm0zkgwDep3MlxBtZ/OpU++UnKfc/1P5iYU3mxduLKQbHB4K84/z8C/z/e5P+ZPf//Lvz/rcf/T7Jvjt9m3gL/h+V38ma/AfxH8H9ltADO17O16dyQbS2pz51Z/3df/yfHxzH8/00um3pD/D+VyWVSuE+kc5lM7icp9T3X/38o///tb9ILRTMM68Uv0q9/kyT4LbGUnu3MNUh9AWiZqOZq9uKI8qaaLauyLUPWb59ZkmUuF4rGIcDv/6VPh5K1UPIvseAv+lQeaq+th+E/HqfGP/uypZ0cH12XTo/796uhOr1zlIzx0B+n9FrreFXRz4z+tP7QvTCW3XVKV983p9X2UL9eH7+7vqxnus5Zpvv+ai3fny6vW5XH6risVy5Hdv8it75uXZnqZXPV0N8+qFk1W50p6+r01Ok6b51aqbCqZrF+ZahdpK3+rHaiXTzO+1PrtDIdpdTLwknVOYVaylJd15b97NWsui7nGu3JAy8H7QxPK+OzlVYEGG3o7+XZcWVoXlUuu/Pue7XYz2J+YVgrFh7r60mmUiqvalBWyTZz/YtbaOdu2bm/srqttN65ry+62asH9T43aUxzhuoUVpUS1G0rubpeeIT+vgFcII5OlOzZqJOB+rMzp/u+biizrlEZEz5S2v2jUbls5hSEP2sa2uXNQydbX2N+sZVbq6WzN92pYfWLaUeFso3pXaZ7nwP83rzpZB7nSkQ6lS/N08p0ZVbS9ftmyii/X58P3rXt0+JwslSyN49apjvvX6xO+tPTZbdtr9XLqwc5c3tSSXUvmhP4N3bTbDVjTNSL4UnNl9a/N1Iwj5Z8n56rJRPG68J2vgh26zjdyNZTyvR0Afi15fdNQ5nCvEE7jXF51cimOD7qfHzmmGDBPy+vCXmnS7WYnnagX/3LyclVamT0L7uGemGMO62zRvf9nXHlrIY376/mnfuVVbmsj4CWbCVz58j3nTeDG/OqOqun6u/taT+TS1Xf1+fa9Paktr5aad4YM2KMlXW9XEvdrJteXtbLm6wb7dtcw8s71jKnK6CduQp9qxWPnQYvqwIu3xXr7buJetU8f+u8dyZvYD5HnemjUb2/AvqxZ4CbdH96A3i9y3pjNsSYs917YyZf3pzU2wXC13XxFPBsWN020tqV0cneDDm+gc7L2Ua7o1cuRoZ8r5pqCdYD1AOancr3jxaszXGt3Xmsj8uZiv72H8XxI8x1zui8v7pUpucT+f4O2jybd6Hebbp72bptDmp3bwGe6nTum3Poe+ruPgfjrAFd362BVtrKxfm4e3u6vIM1gGujBmuwXqosGyXox+XkEdpM43rTShXon5KrjpVHKJerAW+BMenXsFZxzfSzhWE/053CnKWgDvaZjzOlw1p9gDUx7mceH5Qx0kgnczPuFmkMw8lbln/20J12oU83uN6XNeJBbC0CD1qrF6er6n39oX9x6jT0+nkT8ALrWa8CDyu2Hym/cnE67c7qBuGteJytt3x8YkZ9tDuZU6ufrQDd10vIv2BsDzFjeNw2hpvbMra/YvOwgn4Bb70/d5rZqxHwWaM/u8H0UbWVArq+S/XTV2dN5+wK2l9WU48P3czboXLxCDR0ZwLMSfd9ZVhtnQEPTq8AFsz33QTmzehn0gasy3nHgbyL81W3VbCrRDtnI6CZIfCbkZKt0fhwnnDu2+1bpzq+seql22XjvraqtivLmrMCvj6068Xjx2rpZllrpVLV8fma/S4vG8UV/C5b+Pt2fXsMZS2YX/jXWdZbq3TtYrWqls7GBEuH7+MywEoBTIXBbNeWDVinN2vRdgfqVpZ1gFvXob5+nIJ209WxcVIpp7J15zhdLWHZO4BZgPYRVtkGnpNi/cXfE7sG5TrrMrSJ/b21cF5h71rW9RSNp9Yu4xhtgJ+jPhRT0PeKjfnQr3QV+l+DfnUcqm/XqK9DHC/1vdau4JiPIX9dLdVwLJlqSfHaA/h1hE94gnXRwrFPrHrr+Bh/150VtHc+hnz4XeBwaxaMI4d4hfGv1fGNgEFl6i3s+w2WWVfbVAbwUHtXxLkaVzA9TXVbmN6xYO7gszmGdAdxBfh3cIzwm/oE88DyEYdtAX/i4TLbwXEBHguApxTNlcAvjrdD329t6jPNL469gjh9RPzVEX9Y1+H9KqYyiAP4fVxtT5b1i5pDuNRhbkodhE20BLyLaKOzvsWxAP1MOH6gLrYDdNVZw3h1jsvWKsNxl8Ky9SnhLIVtMprrWKwNomegpQ7HWQfpIsfLMfgtnMcKow3KA7w4gCcqA3ON/QM8w9hXnK5ShDuH5pfPFYz1rpOpYxtYv4hlyxblYVkayznRb43qVWyiz1KB45fKrotDY0zzrGP9GuKRt5VKi3lUCeejsQu7hbBv2BwynAOO62yO2Vw5OFc0Jo57hX23vDykExXqAKySgDnh+CW6wHlCHNpi/MAXVgSP1kmZ/65D/284XZVttq4qOB62pmA80P9j6p/DaLRO83PDaQbnH2lGHfM21rR2HaT/Do4hS3B1osU1n09Ge7B+6FNH2uDzXarxNVCzkLfg/EHdrDoeLmsZzK8wPgF8jtfDfKDDGps74E1sjU2QBmFMBuId1n8B8zM0f7TOh9QP4D9WjdGtzcrR2B9xXom22mLd39jeusdxnGcIb/c1h5dJEY/T+adznL1Z054KvPIWeUsW/qU5D8rSuBDP703a564v6nNlWgdZ92zcvzhfK2vcl25wnxprJdyPkVdXhp3sBPZQ5LUT2ENx3wb8s33ubSdjOLBnGJWLutV5X1/T3lqqgIxQP4Y9L9WA8RE8lAPGt7w+0u5O9TPIS936wGdrOuzB7BwiZBaQUUcpkK9BJsmtQU5y+lC2f38OcqZx/K5URlkf5Hb4bBcApwWnUroFHNXW73Bs/v0O9kS1dAN7/E26Ms6dwbnm4XZyfgkyFrWB/VWmd2OQibBvTh37eYm4qaWwjz4cQt/OsjJI5TLKDtCOfHE372ZGKAesa3zs6sXdMcCCfp4vlUz3QZmm4PyRHuH+rBWHj3TWgHNKpQQSvg5yZKuQbsC46/pED+JLwT6nUL6B+frH7cW5o6L8o5+1uvc3w9bFeapSPl2BvNaWQRaAvLNWe/VA7ZeQDvDsdDdSJp5cV7kwJgDbJ6uCLODKIs27/tRIKXT2g7OOUUd512hncndKBud4iHIenHBw/8RzWBlpZkXyIM4dnZ8wvcLSx3Ey1xZ5a13OkOyqx8pbyIedr5Ub6+PK18qNx43iHy03Pjrd+3qKnY2B2h22pnz0ehyg13bBAf6PuDP5eQPXrOjjM+i2nKqNh8M67umlzjzU5protYhr7hbpNwdrrnVzqwyBflPQhtPXzxr9bNPoTE8f5LWPXvHMM1VgzvL5l9Lr/3qBKo2P8B/Sdfwu6pGff5auZdvWFjPpt+tCu11u1nv1Qq38WarMVO1ROlvqhqrPhkdSU7MXuvagSX+XLrSZtpBt3ZxJRXNmazP7A29SeuF9a490S5qZttY3zYmkalNzZtlQTbOkZuHCbXZpAXipSJq/0pk0MBfSg6bY8GHBf+ShJskzVWrMtVmhQrnatK+p2CeLcoZuZ5JSxZYU80FbWL943UhIJVNZTqGTkqpblO1QRVt7tCX4t5AVGsoAeiC1sqJZPwSBBUn2902TdMLRSrdH3gB8vfV66gdWmc4NDfuDABcMq7KRkJdDTNT8I6Lx/mupWfRDnlkrbQG1/NDKUHcpEyzE6lxbQJ2pPFM01q++NlNGSBcSUkLUPP0MNPD3nx/T58fFs3+KCbWkuIlUoICszyzJHmnQP8MwV9i4pREW/Zj3d/PVq19bmr2cfzz4mT4PX73ysiUpIf1aAeqQDUOay8oE0G9BSZ6UEEmH4SrTubmwAYf/WuoLQJyh9xcyoJPqUl5C5CXcvDAQGPBAHy5hNmHuFSiKMyMbCMPNSrSyCV9WGMT1QpvLHIChQyGoy9OoJqUdhtBxvTAVzbKAhuZLIE1OoxZVpZwE5STcnE2UCcK2PMqG6m5qwk0Nd7gdJH2ohCkJLyXc2du5Ycqq10uiAlxS+sw2A2sCYLHCXscTvHACCydY4QQV3hySNxt8DcXNCMveZVaU0XI20Ra+OeEpG+Q00xGQvta81RwamlckIYoEBxQCyfFGDcKKiUMVy0+EsRMC5nJgDg6ZgyUjN3F5BIAUpQTQAYKjUglRKjy7kazdD+rvCS89auW6eOOTdm4uZyrjYDVT1Ywg5vjUeYUSVGjLdIiOLIKA3ORtVb2tJlS5cJHgGeHqN0vcI4I1KS2mEiGxjmvKsrU50in+SNCPTXRVkSLaMBNSCTgyFMaEBCYkMCHcGdp7XDYPGOW1KD3hpUdW5tmIQWsO3BlpTqQlRFp4JK3lFDYMZCX8G4zhG4geiUQiejuSaIeIFSn4TgOfwIeWc9qH3N1Jmz3oC3NG233fAfZEOwjbafkuIXaTI0mnPQIz3d3hiPZvhbMZ2vIVYtOwdj3ZIBm3j4Y3sahyogz+czt17dgjGJOoR2tbMFBpzjYE6g30DgnTnPPlGBR1Xr3qm7aZffXqF6lw35JapXcEiUOHMQAL1pDHM+EgWtp59WquzzVAmoasG3A0Qy6OMJvQ00vZfmlJooTkFWB9hjn39TcIFgaEU4GQSjFjCwtlbGKcIBxZP4Y+I5g2zH1haZuIksFCnmorEyQd7EhfiGyYJc/nhq4wfAVBAR5nso6gOOviqBKYCwmbyki2aciGFgGMXV+rfQR3xxg94gNvGRmz1kAws3UFvsgLZfTkmlKALfL1pD1qyhKb7CnANm3InS0NI3atmUsbZAe6SP0Yvfr+J8ygWB4SEY30bwkEO0NKzKS0N65AucStlEjMzIQiKyMNxIuFNNTtf4xse2798vo1fB8t+0lAz2uUuABVCexWwtIWDzpM8usoskpCrf9ejExZT2STxzv0gRPRDiVfMjr53/lUMpc8fumv8U1OUj9LsQJpJB9ghbGnMw3XANC5IL+pqS4NzQowI00yzOEQhw7r2FrO5wvkS7D79U2gLzbj7BDjYpdqwHEo+YeSGmOzkunDAk8aW+ZsI5GP0kunMc1lewTo5DwbN+ZRqAQOxRL5LR3XaB04ggU8VdtoZKjZc9mKnBdeYiUvZsGjm/dN5CUHugH8VPw8+PBCH85Acvvw4nALZFptoc4b8mwIzEVHpC+0pCdo8zqCX0aBRdbCJro3gwED/UsHfjlAkj68wDX6+OHFUTjd5cMohGiLDdKJqEKHh7LHoneqwqWdnZo5/CVYnxNEEuasSqUPfKM9TMIOMpeHKOTkpXM4B2jfaHHHHRQjBRVTCh2YuHaBOB9sRH0Q2s3+GDYJsQMfSY65BE4AbAPWNwzqQVc1fztJqTLAMi+hB0xpgltWa6QPbKlQOUI5CPiAIs/gzO8xDVWSLbYrQ9KMH9Ij5ReuAyj+E3ayApXDfeyadwSlLF9naD+DziwQGcRwUeOgD7CcI+GxC0Qy4G0LTVYdFNWQKuMktS3dKaSxO219jn2pMBCAG0TcEQpBM8gtegN79YpYpqzCP8zCmYpDuA8hUA1wLoPQoEygqzgRKx348pJv3N40MhkFqBlRmqQZgGbuQeogRYsGPTiSNFW3GXJWIoPJlXBygJ2TBkE9E+1Ti4BdGdU/lhlEFM4oopGREGaxbiallvzAtGOwE9gycAnMdJvE2QBUTecA9I/dAMR+2HuQFxas0l8/vADptFcoFsutVu9dudOrlIADSCy5VS42y21fri8r2yvXS9eNSr3tJZbK54XbarvXLF9UGvVA4bPb4rsyFP3okdVUZ8Im9AJ6w9SN8KnPpGAvAXlIwaaV5ISK7OcAsg59wKAQhxdiWQtZB9K5g4OWVl4szMXB4MOLGm/ZlQ78ZxUArMtAoxbg9TcO8/Nn2Ee+ETPbUFlFLcEiUSQSvVcO1jJ0zhR6W74ekUWoQWZFZzVehxZTH9kW425CMUXEi52PYpYI2pprij7QoRZ0gJP9jyDLbBMOvG+qNpB6utWzLKOnERloj8ov0hmcB8qPijYndYqU+C+QCEzjl/Cmif8rjjRlIq1GGiADsQVHI15POgDK1VETJyOXItnhUNLZZLWqKBcC4hSuRga5F/aCJAMabMjSgIXlkUUfHAZzlOVigbOXx1aDWauRDvxUFGDqYakOOzrNqK4e8KxDytBn1EpohKLxJHDrA1+Vw81iUwsXrGUv3EJJkH9BEIgoC2sS8FZutivnlWKhXe7dlZuV807vvFCploHNYG8QHqDvwwvAlJsS0T1aypq9XMyk9mKpbRbwUMS/JXs9mpBeDxvwJaIK9NHu9UJ8ggEnsWUHWmJbRM/K9tjCOqBZdvLYubDUJNZpnsmbSf472WKfB5uDkVdWj2k7ehPN6elq3uN+0Sz741E0FEuDnto+YJuQIrh8GNphJK7EODgGomiKjpskHeY/vLCyGwIp/mkzdW7qM7u3XBgRvfNvNFGj5IhnH/H9jvpmL5zwVIn5hMnanOPDmMJJQ7fsHmOKlr8U4xGSy2JQAkTGE4SjR/Cmw4g14J518MsBLZlN5gIMGndSYNL/7//8X7rUcnB3ICUTRxXReDJwMnJnbOv4/fVDlTVIiugy7b7fVWMZc5nzpA5zBOwSz/nqTleUScm78cHNe6AvLK8KzIE+86n06ERAErO+8O5rLAEPTwZMuwB1bbYvC5RIdIdo05wOlgvafDxFXfIboBYVeSHdoadjnDNhxfJLCNAzFBBQu2c5lq1NiYsvDVvH+xBSvSelMkrb+F1aLGcWrgNZwqOKKhumX3fJCJXv/uxyRpWWMzypfsLqPZ71+lNSiprTf0stbOTfcEYUEP8tXS8Xc9TM/NtXLkF//CP03V9OSgOAV68iLvjgqPJvqapbPioTRyvGCo4AXbq50G28/XBvfxMLbQAkAoc0krNQzz2fGw7iA8sp8pydUFZQETZx6arVqAM5zPQBHnYOZqZLQUJcO0wGRiZlqMehm0XqbUkIeNhJZFpaxMGYWucVGd0DPdYEPTJhs8RUf9DwHyoDUo8ng3nPp8X0fUV4Pd9qkZe0Hj2dTs+dTK+a0PNEFAppip7fMAkePi6y0WioQBSF+1ZBD/W+edLAwXaQfO1fIAH2TsywR71ipMnUU3kparuNOKr56oMIAfU+vPitUr++bfdKhXYBZYbPH+K7mJxO4L8HyDgAOSQiwcn8EfdMc8Ikpm90topYtVEoxUVscZ2Eu4ZJm4J7iFjMTMNo4WUW6nxNYtUwV9oMpSBLOtCSw+SR9Ck5Vwef8BMo6JG+zOc2+zJV6WNkTw36Yj/anw7ZcqdbEuSK7gZkoWLBG4GPbQgu4xqU4Bbk8RqV7zcm7hZsfwLBnviorRuS7Kqk8JjLuI6hT3VgLmnp4gzHByKuDAycTjEgBCgjTeXHSGLhqqmxc8bGgVHwJsASYI5YmLXJwz751pZmKQt9DssjiSroT4fCqkUcaT1Wqg30R4Yr5FySOQAMGRptn1ydBLTJ9EI4Jm9nmon74D/2wOpJBz1v/FANllNIR36AKvY8HrLCi/01rLwoOLDaI2XdKE43p4uN3mA5U0IyezSbyEcnH8XWpd4HWUaocNQQ8nH48eujo89jgoSoZTqe7oo1lhVHjX6exuSSuTY7CLV3iMLMICT7emWgOwgqicvkYBA5AFi5IFxTKXU5nVu+Fo7IsG1m54+BY86s5ULryZai61wG/1Z8MyQ7RHW6qckqszzbsppRhlSXyLKAqWBZT6jGOTpyGQjIwigghkQSVyIh2yZZwtfIJl5CA5wF3eo6jCGQTElCGrvVRonFL8EkpQa7lAMOhuKmK80MUHky13w3/IKLi4ReinNtNyGNCYfE3GyNrvJxZPLC1gfYHr/+Q9JAnok3AdgKsSOmShvoM9lgkpViLubLKBn6D2ZVHonrs9+fP7nnnh7JO1/AA4MQ4rhfWNyK53xRJJwPYCHEwYIdyG+OyM+1vusBeHcDwSfPxO7VFVvokaZ4R65JHZTwDrRu82yBLud8lXtGHN7FWaHy0peDN+6aIZbVNquN5De/Xty0fIxUzofLF64rGzd0T5ivJKXO5p1jyKCocV2uFyo9gI4SN17DdfBmy9coCufmwn/RxlMjAZ0VWuXebbMqzHcIz/DbZUc+yAdBsEJnd/j115ff+Kby3BQYSkT0H6R2Q58Amta+6aNLfAVYNFGihQK6Ol5a7FLPRZKsAPPGCTWc5B9/CGbWU+IYyQYSafjgXqYNNeAKD3BuLF4W2r1ao1Su9tqNd+X6h41r/8ApcbP4R+De3IojyT8B7LWhIarQkH4hvQzXevmLFGeasdnDcu2sXCpV6hfP6GZMnV36Glk1vsM9XMu9yUpeDPFKVdWVsC5cnuubqvcIPIb2GCQ1UorDadtXGojvc9BKYwN5rHirVeVXLp9DmPJ3+VdmksJ1vAxDZKOSLG7V+jKK6w1c2+EeLRdPf8yI8ODVK39r0Rh0mePz0Rg3z1twGa6yC0K9OluwGh7GV6LWAxeL2XCL3/qSmtvrR0sObrZkzQ28EI0QB5gUYk1lw0DjI898foqveLTBAEWPB817jZN0t2N2x6HPFGMJkllobywiJJQeahrIeKrY0mRjiEqR0dS98KauMeGbi/pwklguLJ2s+WXqLx8A2iMfRjQDoupawxZq8qM+XU6BgcM0LFAj4UKw6FRB44uC0ICZN2TaoOpuZZMlznEYPkB9zV7hzbCCFuK4dXjvDkhU0PCaTZP4vWbU1MDW6/YGgbOTJIpssi0wrakCAh6S+iacdheaATMAFIcCywAnFA/BfE8mknxpuZVWcFA1Vz/ATshMTZP4zx0w3xar8mxYxOv5YjwZizq9KRES03UWL2/r74hhlNuXjVJA2UkVeqRFy0usZK9V6ZY/h4vw6fVKNYCNVAvXn2O7oaH2INzpA9axfKijXA6njuS9ryKZN54P/PpW3OKp5ztx7COyMOoNyRDfPaKHRGnglWius3E6kGLOMmGpmgl9Zff8QU9gcGUW2YWcxY/qbMn5T1HAFHH1zWxmzx5/pAEJOswF2EgFn3oI2aj3ZWWizdhVLmJBGOX/C9++0BKOfNCIFniGwUeMR2l6fiChug6Xt5u1GmnIbX14XGj8si1uboKvLREPYo5VbviGQjvgBtiphizKUwkT4n4szuAOPcn3WnboDIjPLkUQQYTufnywGGZ6hJkke3ggALFpZg8QWnGUH97mdc50wmJKJch3YD+Wp66k9OqVr/x1oVmotT6HJIrepkjhyhLBsYbkLiZ35LdKJUeS6Hx+czxHEutsnn1ECloedYq7KeS7jWq1XGxXGvwptH/8qs5MXZH/LWDVU4VSpdUu1ItlZNTNSjFQwc9cybkhmzhG0fnNuQphITSsfAxKj8KmMmiCFBpcPvR7UzvuH1k+9Psba5Z+9nRI0Y8ln1Qb8YtPjSt1PSlwGlC79p0AJ0Z7dHHpE75OYlYBovP+Wi0hqEk613DxTntGkT4D7A3xNeE+swzw1AAn9ymwOMgpokSw8Ch0NNAEm2t3YAvmj2X87JA4Lj1aD/DPCC0X8Xxd+4MZKGpjkdmghv6AXzgH7DE2NLLJoWH2odSr5FSNU9DicOdklEi3qaTztcLHehdzefc2NMLWbA4yQo+TS36eRHRSTw60GeAFJg5Ofkt7kHiLZslkZmVBCuzgBj5KeXEYYVkmEJX/7TfvkgjY2QdAyzyJWvrPn3cxOCMeSpTn04ijoSKjxiQdNrycg1/F149hM9ANvoUWm76aG618KwaxwwPoJ9lEwA/FyFzRaYY5TUBjmIhV4EjyEB0eME3c3JwvDbLT93MnpkhFS316HOCeI+nankDhIh6Q9MaPN3wMKHipEhrphYfyA8guc7okFHIF+xVpHUI977meKvLsYvYgkjBBeF0anBQ3KIsh64Dwng+BPZIm+dxhcB0zYMx8n8BuWjnqlnifcsDKHEk2MFYtytiRDZGX+zX1McmECbwgPcCvsHjZdQ6uXfeWNMKkEXmCPgubDAfA7wj7u17jRHoCeNZLbHJCwl274AQNvZ2O+S+hnV1MqdjzNtUB7hOA6OOZ52UFtQHBaw08+CS//SEzxtdB3FHGU1nyuybd4oICvuyE4/YS3yTxaygcEMechsYw7KG+tevpkjoiVUrioMefUSiiz+5ll3jg5HM5w/VTw7mdOGYf2WQuYS8XfTOklmoxu8saPl0dauyBFnDWJXuKxQahagO04PTrbvraSH7QTfb4Y2Eaobfnt5a2EDClNvcELgbis0tdYjkupYRPo4yE/JUvgdNH6pz0Gd6Gmwti6STKsTdTMba7eLEu3JMzNRSMgO0jQWtUhghSeHGA4nIxONc/1gk1rFe3tpxUPcKPpfsNNb04ZZ7Xoo+XDHlw5KDpJ1GKKuD/fmt1Wu0yVCy3WoULOpYFHrMgQcTUvG2Vm7H1xNMMMa2husVGvV1+3+7hfzbqPnkx4Z51Q9jaetiNud0ISX3u0TcCy6GiEWjNR6SFam0gNL+REqoRicp8ZOp3OE9GOZCJ486CNyzQToabGE1NEuW4vBY+SiEPkqWh/qDNmJi4451B05UNn7o0wJ5stu+afFr6VDdkqCJEzCNp5PQXsMTYzxC39jT+pNK1BFcEgdfZGBxp1LgoQC+62FjE1fgWrX8QmTKatsoMndi1oeZeLAj+zeUAeu4ApSYzc2VoVBAk4x+LO3rXQ94IOUvcSmB+pX4TVUTlu0I1SqvPrnR65qDH5yEv/Va/rZ0B92qc90h/3/ocLVOL/uS9rhz4dYT5TWH7SOJKfaHLDzefDyd8j5XqeV2KtnqZ9tGDCPc+FxKpmErDnRpmvyc0IgHRlIQTPK8xodRHiHBi4yCYYCqOa1xk8LscpHwhmv1QlOpGULHIvq0HaS77DbrIAKREEhRUELjKe0UPwntN3JZ15M1D3v32rchnw1/XkycWNgGcjLAivpofGMAOyc6+P+XqPTrNe7TBJTgu4sWRgnemjznWiCPNn+iEv+1oLwYOeT6ySYrzy4Gom4/wP+ediAmE3/J4pav2KJ9Lfd8TsOfGLf4gF/Z56XrrMOm9pWx4xv9MTnC1uMJzxBEaD9NrA36CYQaLmufMM3SWfmn5XXsKE1/WgkwOQbTB0mAaMaJOGbVY2J64xHPfbZA3V3wowV2FWBN9PsfDD3kXoScPwBA3fIWFzjfMFtpw/H4AOL/w+x7pmw/atzqLBx3pRU1XyTX0pgccpjAe996wuDMirL6TzCjRLUCXBtbIXBqIQvGqhFK9NyMhEU/QuRDtAlyEPI1YkxA+Q47EzAVit8c1JgKO9jjX+MNNpkkhE0/XA+A2GD2fJpngVUoWyoKeVMl2RDYkoZhAAEAG7NS9TRNEGNQtV3SdajIae4QGCUQsKwrIx4rj36phvfxrCbu/7XwLSvn06RNXq339OzqLvy0xyItR1EO6YIntD8G/5E3d8x+5RZuoW089zHsZeJf38mNUZfdVXrvcinmU5xX+Ant7tzJ/F3P4xGD4tMQb3EeOOx+ZehRXk3ocwEFc0Xxg8E89KOJj54+JiBIC9ZP07Cf8NMirRJoaIJ4FXTVtXD9FPhhyG/iS90Ju5aeeC3kwYC1+nxUOPIs9W+x5UlkeJKG460AP0zp/Su6mhD377CrsBEH++sEVoT68CN+wRfQ2KcOePFNdweibIxE31EhXs0/K0vYCthjcIqxNdu+OzCcd82OZqyBV/Vpdbzfj3tzZcS+0wZ652zP2UGyP5kIf8kdOAamdvSwPbp1BeBW3m8InrrvngvwDe5Ov+2Km3ddlUZt4WB+C9z102e/hlpadiwS8rTdXVliAo8cDCx0Wnas38Y1EFb3jO8URs0qj5yzMPEWRDQWvK4UvedmyuHOFjanyi5ffcRueozcGz80hADlHP66RC9V3yCUviYiKhU7vMuBkZLhQ6FVzz8N1L2i/sQ2OK/gxtsgBuvQWtyC8byEA+WDd0H7kDjfCtCC4g8Re+Efy6tDQ0QdQFEpCrQa7ng/+PJKe4ln5CDYW2c9vx8A23F0/rQjgNRjv4mIoCsYb68N3vHfEuhSGOX4DgU0h3XXbFwjFkPQzWrZcLWkqO66uVYjKR0IJpWhHIbEZzmqKbu1kK/D7rVi+cjjmzEVyOdNtfPIoEsSquaX0skh+Cgw9ltgAUiPMtGEUWwidHjyHmgt4RHIbEfPNrdqsg9CSyId+H4mpyR94PUkW6q37crNXbDSb5WK7Xm61jnwdTZ4XKu3L89vqRoa4S/JV/Pbi0RY/68y9+9PBW6wlefIaLA3DCVrQxKhXdRHjhJH37xnjBTdU1zNQ5B3L18d7cd91kOjgGlR7h+Vdba5b3IraNx6QLQOICJkc+Ws3d9dDC2YT6liEZUSckCLMAtWAi6kZ3ZvHGQkGuRGMLOxs3ceX/iahHjJAsJD8YgLkohlooMBTyMZ2bsgOHcOQ5LlP7CwneXF/jlmMQfEMUZ4lZl+IVeTW6KEqw20mWJzDwOBB0HFMzybT8H9yFQ6dR0gvZn0mqkL2sf93b6rPzAWm/u3zPlT9l8d/T77+72v58VLDY/y3aYPFeU/FfaZS2WPvO6anU5l05ifp8XvGf/8Pnf/MW2lqgxieT7958zZ9knr7Np18e5I+fZNO7xfVf8T6N6webUP4rsG9wtTnzqz/e67/k2O2xt+c5Nhaz4g1n8umcrmf0jkgwHQ6kz3JwPo/yeROfpJS33P9DyYgHizWTlw5KDYY/PXmH7ZlknUtLrv+LtLv/9KnQ8laKPmXpMzTpyAHvLYehv94nBr/xCPHyfHRden0uH+/GqrTO0fJGA99FncV43ga/Wn9oYuxJikGaHNabQ/1a4wpe1nPdJ2zTPf91Vq+P11i/MoqxV4f2f2LHMYrNdXL5qqhv31Qs2q2OlPW1emp03XeOhjHsprF+pWhdpG2+rPaiUaxSa3TynSUUi8LJ1XnFGopS3VdW/azV7PqupxrtCcPvJzOYlyerTSKOwr9vTw7rgzNq8pld959rxb7Wcxn8Snr60mmUqK4ll58zundsnN/ZXVbab1zX190s1cP6n1u0pjmDNXBOLJQl+KXFh6hv28wping6ETJno06GYzveeZ0MSbqrGtgXNNrHju0ctnMKRT/s2lolzcPnWx9TXFPW7m1Wjp7050aVr+YdlQo25jeZbr3OcDvzZtO5nGuRKRT+dI8rUxXZiVdv2+mjPL79fngXds+LQ4nS4zjq2W68/7F6qQ/PV122/Zavbx6kDO3J5VU96I5gX9jN81WM8ZEvRie1Hxp/XsjBfNoyffpuVoyYbwubOeLYLeO041sPaVMTxeAX1t+3zSUKcwbtNMYl1eNbIrjo87HhzFaGTwvrwl5p0u1mJ52oF/9y8nJVWpk9C+7hnphjDuts0b3/Z1x5ayGN++v5p37lVW5rI+Almwlc+fI9503gxvzqjqrp+rv7Wk/k0tV39fn2vT2pLa+WmneGDNijJV1vVxL3aybXl7Wy5usG+3bXMPLO9YypxgPd65C32rFY6fBy6qAy3fFui+m7uQNzOeoM300qvdXQD/2DHCT7k9vAK93WW/MhhhzlsdjPam3C4QvioVKsWGR1q6MTvZmyPGNMVuzjXZHr1yMDPleNVUW2xXX71S+f7RgbY4phu64LGIpw1znjM77q0tlej6R7++gzbN5F+rdpruXrdvmoHb3FuB5cYLv7nMwToyffLcGWmkrF+fj7u3p8g7WAMX7xbjNGDe91MFYyRgXOI3rTSth7F+KVY3xbXMYFxjGpMfF8v3aOL414kFfFcc3i7Gw/9g4vqtRtZUCur5L9dNXZ03n7AraX1ZTjw/dzNuhcvEINHRnAsxJ931lWG2dAQ9OrwAWzPfdBObN6GfSBsbp7TiQd3G+6rYKdpVo52wENBOMhw3zhHPfbt861fGNVS/dLhsYL71dwfj0jxhzvY5x1Us3GIM9VR2fr9nvsohNbuHv2/XtMcY+h/m1WEzxVbp2sVpVS2djgqVjbHSMA4/x4BUGs11bNmCd3qxF2x0WuxzgYoz2mo4x5zEmuXFSKaeydRYXHsrejVlsdBZbnmLTU39TLN46lOusy9AmxZpncd3bQ4q/TjHk22Ucow3wc9SHIsahr9iYz+LUd5Y16FfH4bHqqa9DHq9dgfoVHPMxxZ0v1Wwee91rD+DXET7hqYIx2mHsE6vewjjyFYxzD+2dj1lceREHvmZ5ceBXa3V8I2BQmXoL+36DZdbVNpXBWPYstv24wmPTlxHvDsauh7mDz+YY0imOPODfwTHCb+oTzAPLRxy2BfyJh8tsB8cFeCwAnlI0VwK/ON4Ofb9lsetpfnHsFcTpI+KvjvjDug7vVzGVQRxgXOoqxoq+qDmESx3mptRB2ERLwLuINjrrWxwL0M+E4wfqYjtAV501jFfnuGytMhx3KSxbnxLOUtgmo7mOxdogegZa6nCcdZAucrwcg9/Ceaww2qA8wIsDeKIyMNfYP8AzjH3F6SpFuHNofvlcwVjvOpk6toH1i1i2bFEelqWxnBP91qhexSb6LBU4fqnsujg0xjTPOtavIR55W6m0mEeVcD4au7BbCPuGzSHDOeC4zuaYzZWDc0Vj4rhX2HfLy0M6UaEOwCoJmBOOX6ILnCfEoS3GD3xhRfBonZT57zr0/4bTVdlm66qC42FrCsYD/T+m/jmMRus0PzecZnD+kWbUMW9jTWvXQfrv4BiyBFcnWlzz+WS0B+uHPnWkDT7fpRpfAzULeQvOH9TNquPhspbB/ArjE8DneD3MBzqssbkD3sTW2ARpEMZkIN5h/RcwP0PzR+t8SP0A/mPVGN3arByN/RHnlWirLdb9je2texzHeYbwdl9zeJkU8TidfzrH2Zs17anAK2+Rt2ThX5rzoCyNC/H83qR97vqiPlemdZB1A3HZcZ8aayXcj5FXV4ad7AT2UOS1E9hDcd8G/PNY8J2M4cCeYVQu6lbnfX1Ne2upAjJC/Rj2vFQDxkfwUA4Y3/L6SLs71c8gL3XrA5+t6bAHs3OIkFlARh2lQL4GmSS3BjnJ6UPZ/v05yJnG8btSGWV9kNvhs10AnBacSukWcFRbv8Ox+fc7B2PR32As+nRlnDuDc83D7eT8EmQsagP7q0zvxiATYd+cOvbzEnFTS4Vi20PfzrIySOUyyg7QjnxxN+9mRigHrGt87BTPvngG/TxfKpnugzJNwfkjPcL9WSsOH+msAeeUSgkkfB3kyFYh3YBx1/WJHsSXgn1OoXwD8/WP24tzR0X5Rz9rde9vhq2L81SlfLoCea0tgywAeWet9uqB2i8hHeDZ6W6kTDy5rnJhTAC2T1YFWcCVRZp3/amRUujsB2cdo47yrtHO5O6UDM7xEOU8OOHg/onnsDLSzIrkQZw7Oj9heoWlj+Nkri3y1rqcIdlVj5W3kA87Xys31seVr5UbjxvFP1pufHS69/UUOxsDtTtsTfno9ThAr+2CA/wfcWfy8wauWdHHZ9BtOVUbD4d13NNLnXmozTXRaxHX3C3Sbw7WXOvmVhkC/aagDaevnzX62abRmZ4+yGsfveKZZ6rAnOXzL6XX//VNbs2Fzbz023Wh3S43udMTqYKKOGYSRJd3zMnB03eFkQ/seXiUYBw9skmQ5JCTH2oWL5s27pKYQRDe0ETESzkK3+8duZ7HjkK+NHyXcWSJFHaDxO7QqoY8laWWLSuT2HDP3Ofo2T8FeiwpDi3cslY8XAmbkP8S1QSLxo3BsDEWN35GBV8PRpymIOeUlBBJG9HR46LUYl3KS4i8hJsXBhIXDRNguFkJjHfpZYVBbMSgg7o8jWpSWjg4eUykHapKOQnKSXjOKDZQFhGfAaq7qQk3NdzhkINyqIQpCS8l3NndvSIDLFbY63iCF05g4QQrnKDCm0MSqPQRrVQM45QyE5SZKIaRGwDDfYT46vKUDVLyHm6FRuPlBLseArDV54+HFJafCOMhBGwH/yAAUpQSQAcIjkolIh6osDXIDCVwFbJvMAPf11IDF/+z/DBEeS9GyyUeHDsQiFIwiiNudIOZ7sI/CgShJlsDMgbByfKsJ2JZZJg/RUbC5mXwn9spfusv6gXisIajxuNWgc4m5TAvxdmj8Hfkku6+5cZ159A3XrlE24O8ehUVuhxhNqGnl7KN9pPCJsUrwPocjGoVBKuK2AG/eFYrobGFzVbYxIR8azNjKmGzWljaJqJkgKaF+LKNOtIXW3l4Y93Hof+Ocehz+zj0+zj0+zj03zsO/T6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/D6m/F81pvzvEkr+D4wVH2/uFefdw1+S60W4ip0NnKxgYNVrYlieSxMWCIKwELKUDIUj8YIz8sgmrB12ztqITo8MMfK2ApWcPGRG5CXeq1cwfLrwsFAo+8VvDJeQPlWrhVqh12oXiu96xWqlXG+L2PWfeOh6OMOMsBtc14TnAMG2/GgKuXKJAixi2X8KhbI3B+yqzg9OXGjufi/pv4qV7r1bP4eHmsIbSXZBi8q4OFSG72npVvLB1FUWeNz1YQWEu5TRvw/tX+iH4QdwT20gAnsWIlCo80RUXcwhzIYJnxdglga7hXqPpxl0nAlI3KGCoIUnIsRva2qXMPHx9cOx4ndp2uv0F7YtAGwJVG9YW+OruzHSd8fvUWyE9t1mdHvQ9WprW7R1dzRfGmbdF3hG6KfDtIwx1t129sHV98HV98HV98HVf5jg6rvEVP+eodR/hxjqQYAsGjM5ZyWJjpurLQQHEmHShc0XvyvivKemGw9LK8RkSjyYMncGKWIv+UI4oWELd9YL6/ZAMUFqRuXyEnYJVZNn8NVWkof7uOtfFXfdJ0+6HKQVDEN+5E+5DoUO3xqFPRL4Nw7DvtHXp2KyxzYdBMaC1PGwdM8Pth6jHWTryB3kdbNxVymVm+HRPTvI+rPDuHvfQM4KRmQPTNkT0di3R2EPYi8UCdbDRd73/Ytjsn9J1Pd9HPdvFMc9OnR7WPG0D+G+D+H+nUK4B5ncPnz7Pnz77xG+PURV+9Dtf2jo9i9z5i522yjrKdfmz9uDmeEfv/Bjm2vAjOpI8CtabEz1MCMjQDwCkpXGXMdHhv5bFV46xi0DX6A/totyOAjMHn5n/+TIHqY6bjgkXYp0D47uh+53XZ7FBE5AKCz1XNse6uvcEfSmw1A5KeJcvX5MbOmwSOxz806ASqZDi40ic2fIriANmK6Fr6vZvZf1/d/e//ve//vT/t+zuVw6lUue5HK509O3++X+n+P/XQSR+iYO4Lf7fz/JncBiJ//vb1K5k2Py/36cyez9v38n/+9CQrZciRf/fvub//HcNhHaK7QpS3t5IaE6kLf3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F7/3F/+n8xfv/n10f/n0Id9TtRLva961DPi7a1FjzjZczgeARac+7YrejUztud2TRfuykSgs6epKU/0dOWgWLg7d2Nab7uHRMf1wSW+p8G2OPVqYy+EIn72TZZDwyOw6V/X8KxxJrpWQcADIrl+ZezTxZBy7SvfqwirJ56IExsTjQGv+GPXCLmHDFjz5HHz+/efHzEkh9U/4PC+nzvF9EnMXK89stDY90wZoNbdYzvgzdx/62UOl6RLGxZzKQCluUrVgHaWBv3olQn4yRe+rV94EonEHN9jYMJ9iVl0RNsW+u2Ly+MLd6LgOXxDQZGauDE0d8jdbZDUf6LxrPPUcbD0VEmALqe4cHmCHbmwPG7BZNPCa0PcMJew63pe1HaDPWBwJ1XVgYwX9wkNewsuLBSmFPc17nZHOzeVMZYuULFaDDXgFE17BBBU83LEtbgtOxqCeR31fG6xAggpseNXfDltwvUUILSJ5K5wbMm1C9HKeCkAojdDK0w63TFJd+JLAWcEfCfrxxDSgnaXURl6F5vFQExMSmJDAhK1dDji7LcaHjChGhYzYjkoEGDE5COzpKaExnbkuSPwDc1OfHh1FSpHKsIksGUFyOJSe8NKfhsTLIoEwdg5QRFpCpG2b2thwBT+OLOC3Y9qJs4ZCIOwqC3hvk8kXu0Umtchjt8YZ8PYzxsG0xznsBrjP/BKP9q+NM7AB8PePObDRRDBuwFTm9lHBwAEinICHBesrqcmzfPQKbDGB3I3cNowid6PEHQMQxNf5Y4IRxPfnqXADf2YmECeqPI8vRLpD0C0hnPq9ISD9i5Xrep+M8BSwmysE/6OF0Frku/6XukoQ9sn42CCuiTLQR9/QLTJm9vsEEK8T/GMSvkyfg9ktnhlCXfk2Xhp2aOSrPDbsdmD6YT05/DX49WYUj6jscFyNqDIbDrejCoWjgOxAA5EOKAIlvtS3xQ6NPyckSKDiZkQMN1pHRDyMZ+HjOzrcCIvTf5DzjWd341s54thherY46NgYxlc569iA9hWOOwKwDrfSXaxDj43+fLVzjx2w/RynH39mSS1WB/TFRzgR3U6c4HxnHoxww92FiyMb19b+Aomuiog90g15/xIK0gVTs4bqYzgEzRgkfzhVegDDWzRiz5WMw+gKyMXioQrPIrWpUD5bnvZ5B88NGydR6qxUKYmzKI/SoXCJjDdouuFzhq56Ph5mi2nIa6h2H2pMFrPsxVKIT9h9VRvgAdrv/6SvjeQH3WSRRBamseWIfgvHOAFfanODZTEEn8PzJZbjKuV4aEXueMUP6JJeN0X4c9Fn6HLRXNBjRnpkxZ2mPXPGUf3N22OuX2DE7LIkeM/AEEdOZnhD4tgQpIq/kqwZdvfgLQ724N+K9vngrcFnL0FlhO+c/K4g8H+/ndcCfiD8AVeCg6G56k0ZRdI7Zg9Iq9NqlwFQudUqXJS3wkF6jYFy2yo3d4IhwpMI6grBKTbq7fL7dg//sxVOjLhqeZPh+a8IYX6LJBPjnGGjnOvzIjAzWypETEE+Im0LhA3k5zdSttSORHs+MjVOnPqxN7uIK5nnbnJh9zZ856KAbgOeIeKvLjzFTMxl46aMsmWfe9Jb0RY3RVEPXONbCrkxwpYIZwEnpqTPCnhRFz5GJOZjxNrBF1HERiZ8jmx1SeTikz8j9zkmYnFEWNxB8muiftUcb7qY8jwv8YfCgHWQBFTfC3++14b377/yBve7eUra2sqXeU3aYd6/zJtSAMQXe1ba1pFv5Fsp2PEdvSsFKj3X01Jog3+e16WddvXdvDFt7Ho7e2b6YkHgSY9NGzV29t60UfOZnpz+TLu3a93wXH7untOJTVv8xEbeWjjDDntKQsYtS0P9QZsx66mnHY9u7GSuZdiTXkiDm4fnooK7BdzYcI6kkdNfwGJlP7fspp47UfIXaYljIWxlzsagyScft6ajuIlsjCLSStil6LORL2NgGZmhH7uPJlTcm6nYJC0mrAhtStDW6q+8e3oebj188S3ti8je76+0iby4fFeoRjgsDVRinmt75qDHKSIv/Va/hX2r2Wuc98hNaetzzOmRKJE4Jmu0VS40i5e0aca2t5DRF1WPmVkOeUilZqH+DhpstZuFdvmi81TlCXaS13n3eWtR2ZiPZF/xQvX6svD5WcpJiZnqeHPEdK5HkjkzHL5gUECfmbMExR8NLFS2GWvoxzemowLuzlr1g4MPL/wyEXoaC+6E27ToUJkRClZj354oHiYRrBhOOzx8rq7dTz2+6K2/bNvmgpj69YOfBJnW3Z8Q13KYBP8H0iC2/eHF81oPAWI9CCc+0YvJlw9eQAi0O3mqQbYivrZRghJomKU8Y2F5Cyrv8TuQmsON/ukvN36WNqwvv/hWg+1d3EwEAaLZ1cCA7Z2is/Wn3EEl2Yd7mytXvXLdLG61Q88V5U5m4H/hfdj1HGKRtX8P0lzFl9iQWZAeQPizKBwAiYuhvAfiIKwXzm9oJ333THn32+FfbQ62OhzcAb9bPBCGOA0jcGJW7pQkxVXUgYCTF1/izsyuUz8C549RttJVe5TPpf78N7Geoffz7wLD7xDEKVgyKQo0HIvckITsvLXxnOXINabl6jN2zapxe2ifkS2fxZeWcOiJZ2UReIy1gPpBOGUMlgZThRL3k1Gfh+0Jja0bTZIcEmL4Rq5ItCb6fI63ZWTsRYEYYbPasM0NXXyxCG0gGXpOgQUP8DkHlvvmg5b88+9sQQP/L97WAq9tiBj8Zm0U+pLiaXmRP729LeR/kr3n8d5H6ZZ75taEpXxwykIk9INNyqdPn7iz0G3WY0/Yt1FQx3hlK/pDNvS+4MTod3lLaRypFdwY3eh1X2D4RkbUz9L6bZievXQpkAgSI524AYYNKvJyZ6M0wPcPqBKLewzzrBVnSiwGdvDtYCtLpuTAF/E+h0eUdZ25IudDexkWaYZxc5+1cVKqEHd8SawWGZ7fePWIm6lyhurnf9aGfWry+YazxSIazhbcqyMeeoOprvwm0cD9yV6XQmryCytg61DO4U5hgcsYzC2spdlC/eW+t/Nxo+TX2/fSnrAwEdFHFFqVGXMIRLx6RRwPrXxlzIJOx06QD4Es+qfMX4HSxK10w3BNYHxucGc+IkjSjEEzrqGxBj04kjRVtxnSVp4FMvXLtslQmIWK9pmFk3ky4BAtTCwziECkAEQvIzkvvnFSaslc9Qjs35YXzO+22yTOErMf0dQ/GWcWT4Z6D/ICtTo80HihWCy3Wmih2KuUUJXC44+Xi81y25fry8r2yvXSdaNSb3uJpfJ54bba7jXLF5VGPVB4M455cLg6vfLBHkHPiDTwkxxr+3vs2eFy6keGewBZhx9jdQwc9jaVgqwDPd7BRqyV0VnxweDDixrvkfvIKtKmHWbnNw7/8+dYo9Ufk31HvT18Dh8p0rKy+DtvbhRq4XMtc+YXNBn/U4McmiQt79mKkIbcGOah/cD2zOmgoPus/E+2+gRy8ky+SPLfyRb73KJelVdWTyaf52htjPd3AWvsiDX88Wg7NJBy4RDvA7oJMWL5f3ye+bKV7bnGwmKwLGHLWPmzMnZh+NLKvtwyEvHERxh0hwbgZ1LP7PqPuWYj3vk+Z8mW3Ajf3vGF9j0X4oYcxo4uXgGKXGONzKWBp1TY2q9ajTpL5Q4A4nkt3gSKM5K4hQwoBUlYsCahs1A8MHLDoAAVz6yVtrAETHzlSb7+eTrtJ5r7fHlXeD1f3BOCXSlZeIXpCS1kfsuH7fmFUFBWY5azsa1tOX+GT4hTTcbAiJsHRFi7SzjyO6EAAf9aAlO3nT8ZbyRymwzmPd8TUt9XbLHnPQdOykuSNZNIPj3KpDAMC6+OOAyGSzxnPmK4WigGel7iQYGSr/1hgWLFgVD95HQC/z1AXQOMNN9eLClehQ7dNif081mvM7zxsj1SGLb4uOPLgFD28uNTgPDhIt2Jtsutdq9UaBdwN4i9EfUqfkEwebdykvQDLw6/cPCcHCKjzG9sI5E4y0emHu0ChUYYwN8u1fIBxD1vu4pO5bjF7ggqDbSRxJwYiKRH9AFI4qEQiHxBQaQ2Aksd4vF58MsOw4Se4NQmcYYOBs8aD9N1U20MXGN5o/HrvVkg2Z5sKbrOnzf9aTb5pzRrrmt574IMzkwfn4NEemLkUoGO+mF95qVsvXrd8c4iCB6kMTc41ouPW14YRowuKc+B7FT3fuNPJa1F+lP5Yn20vQCxBMUKa1MUcDHnuzglK2zZe/Si+l/zeNIQuf6CXbOPDhy2CG5BqVOIWuZCH+p4iRK63KULkpAYFg+74nZf+IZxZTkZ+g7gvWEJalPxdnkXQXGbSRhGwqLIh94cEYtykYZP9cyVFb6rId3XQgdG5JqO+Uaril5zSeCIGW9jQ9xIVcTJxQbJxs+ymGDzV7oG4Gr8mSq7mnkknXO0PXoWw/LdjeMbvqTnxSW5tHXDhd7H9dbz5rKnxq63bTDdww7brjhwl/6fu4ijU0ON5IPwt8gqLgq3lCHT3YBEEV/28HeQM0IoRwVH1FRse5UdQEc++PNIes6ekY/YRv4CR/8Nl1pfbq/DIbF9hB8X8WC7wXt8VjiO4HnCRYc/JOXmgdvVqLu7BtPr+zZD8ThnKjuuia840h4JM2RFOwodb+dwwNYtNzrln4sbco7DZ8BcJJcz3X60e26C4Da3lF4Wyc8BSQ4ONgCyqO1tGPsXLGwTD7mhLsUZtngdEXTGHwtYByF2kA/9PhIkkT/wepss1Fv35Wav2Gg2y8V2vdxqHfkGkzwvVNqX57fVjQzxONNX8c9zDPgC33Kh2Jm7MoXomJoBt7OyG8456FZAuKFly3nDp+wR4wKuHykh3Ww8z8f1HXjqBnJrwFUst2Jhli3eHSGp+jx+4nl84zIbObIN6s98zM6TIz0uJ3iax7UEQ2Ojm6K4iBFyBe/yLK1ZQaEABFEapL6BDD0GhLJf9ByQP8jzFYtnY/SNG7CFI3ryKdyM6xl4GBUI8Mn9+GXDNBoX7NNnj78Z9XNjdURHAI2DEW4hOpqmHw+8qXBkTX/SPrjm/m//t//b/+3/9n/7v/3f/m//t//b/+3/9n/7v+/w9/8BZFK1vQBoAQA='\n\
           \nimport base64 as __kfp_b64\nimport io as __kfp_io\nimport os as __kfp_os\n\
           import sys as __kfp_sys\nimport tarfile as __kfp_tarfile\nimport tempfile\
           \ as __kfp_tempfile\n\n# Extract embedded archive at import time to ensure\
@@ -1298,16 +1310,20 @@ deploymentSpec:
           \")\n        mapping[\"COLLECTION_NAME\"] = vs.get(\"collection_name\",\
           \ \"\")\n\n        ret = settings.get(\"retrieval\", {})\n        mapping[\"\
           RETRIEVAL_METHOD\"] = ret.get(\"method\", \"\")\n        mapping[\"NUMBER_OF_CHUNKS\"\
-          ] = ret.get(\"number_of_chunks\", 5)\n\n        ch = settings.get(\"chunking\"\
-          , {})\n        mapping[\"CHUNKING_METHOD\"] = ch.get(\"method\", \"\")\n\
-          \        mapping[\"CHUNK_SIZE\"] = ch.get(\"chunk_size\", 512)\n       \
-          \ mapping[\"CHUNK_OVERLAP\"] = ch.get(\"chunk_overlap\", 50)\n\n       \
-          \ mapping[\"TEST_DATA_KEY\"] = test_data_key\n        mapping[\"INPUT_DATA_KEY\"\
-          ] = input_data_key\n\n        mapping[\"CHAT_MODEL_URL\"] = chat_model_url\n\
-          \        mapping[\"EMBEDDING_MODEL_URL\"] = embedding_model_url\n      \
-          \  mapping[\"LS_SSL_VERIFY\"] = ls_ssl_verify\n        mapping[\"CHAT_SSL_VERIFY\"\
-          ] = chat_ssl_verify\n        mapping[\"EMBEDDING_SSL_VERIFY\"] = embedding_ssl_verify\n\
-          \n        return mapping\n\n    def generate_notebook_from_templates(\n\
+          ] = ret.get(\"number_of_chunks\", 5)\n        # Hybrid search parameters\
+          \ (optional, None if not present)\n        mapping[\"SEARCH_MODE\"] = ret.get(\"\
+          search_mode\")\n        mapping[\"RANKER_STRATEGY\"] = ret.get(\"ranker_strategy\"\
+          )\n        mapping[\"RANKER_K\"] = ret.get(\"ranker_k\")\n        mapping[\"\
+          RANKER_ALPHA\"] = ret.get(\"ranker_alpha\")\n\n        ch = settings.get(\"\
+          chunking\", {})\n        mapping[\"CHUNKING_METHOD\"] = ch.get(\"method\"\
+          , \"\")\n        mapping[\"CHUNK_SIZE\"] = ch.get(\"chunk_size\", 512)\n\
+          \        mapping[\"CHUNK_OVERLAP\"] = ch.get(\"chunk_overlap\", 50)\n\n\
+          \        mapping[\"TEST_DATA_KEY\"] = test_data_key\n        mapping[\"\
+          INPUT_DATA_KEY\"] = input_data_key\n\n        mapping[\"CHAT_MODEL_URL\"\
+          ] = chat_model_url\n        mapping[\"EMBEDDING_MODEL_URL\"] = embedding_model_url\n\
+          \        mapping[\"LS_SSL_VERIFY\"] = ls_ssl_verify\n        mapping[\"\
+          CHAT_SSL_VERIFY\"] = chat_ssl_verify\n        mapping[\"EMBEDDING_SSL_VERIFY\"\
+          ] = embedding_ssl_verify\n\n        return mapping\n\n    def generate_notebook_from_templates(\n\
           \        notebook_template: Literal[\n            \"ls_inference\",\n  \
           \          \"ls_indexing\",\n            \"chroma\",\n        ],\n     \
           \   output_data: dict[str, Any],\n        output_notebook_path: Path,\n\
@@ -1573,9 +1589,13 @@ deploymentSpec:
           \ autorag_run_artifact\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 2.0
+          memoryLimit: 68.719476736
           memoryRequest: 8.589934592
+          resourceCpuLimit: '32'
           resourceCpuRequest: '2'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 8Gi
     exec-search-space-preparation:
       container:
@@ -1793,29 +1813,34 @@ deploymentSpec:
           \ base_url=embedding_model_url),\n        )\n        in_memory_vector_store_scenario\
           \ = True\n\n    search_space = prepare_ai4rag_search_space()\n\n    benchmark_data\
           \ = BenchmarkData(pd.read_json(Path(test_data.path)))\n    documents = load_as_langchain_doc(extracted_text.path)\n\
-          \n    if (\n        len(search_space[\"foundation_model\"].values) > TOP_K_EMBEDDING_MODELS\n\
-          \        or len(search_space[\"embedding_model\"].values) > TOP_N_GENERATION_MODELS\n\
+          \n    if (\n        len(search_space[\"foundation_model\"].values) > TOP_N_GENERATION_MODELS\n\
+          \        or len(search_space[\"embedding_model\"].values) > TOP_K_EMBEDDING_MODELS\n\
           \    ):\n        mps = ModelsPreSelector(\n            benchmark_data=benchmark_data.get_random_sample(n_records=SAMPLE_SIZE,\
           \ random_seed=SEED),\n            documents=documents,\n            foundation_models=search_space._search_space[\"\
           foundation_model\"].values,\n            embedding_models=search_space._search_space[\"\
           embedding_model\"].values,\n            metric=metric if metric else METRIC,\n\
           \        )\n        mps.evaluate_patterns()\n        selected_models = mps.select_models(\n\
           \            n_embedding_models=TOP_K_EMBEDDING_MODELS,\n            n_foundation_models=TOP_N_GENERATION_MODELS,\n\
-          \        )\n        selected_models_names = {k: list(map(str, v)) for k,\
-          \ v in selected_models.items()}\n\n    else:\n        selected_models_names\
-          \ = {\n            \"foundation_model\": search_space[\"foundation_model\"\
-          ].values,\n            \"embedding_model\": search_space[\"embedding_model\"\
-          ].values,\n        }\n\n    verbose_search_space_repr = {\n        k: v.all_values()\n\
-          \        for k, v in search_space._search_space.items()\n        if k not\
-          \ in (\"foundation_model\", \"embedding_model\")\n    }\n    verbose_search_space_repr\
-          \ |= selected_models_names\n\n    with open(search_space_prep_report.path,\
+          \        )\n        selected_models_names = {\n            \"foundation_model\"\
+          : selected_models[\"foundation_models\"],\n            \"embedding_model\"\
+          : selected_models[\"embedding_models\"],\n        }\n\n    else:\n     \
+          \   selected_models_names = {\n            \"foundation_model\": search_space[\"\
+          foundation_model\"].values,\n            \"embedding_model\": search_space[\"\
+          embedding_model\"].values,\n        }\n\n    verbose_search_space_repr =\
+          \ {\n        k: v.all_values()\n        for k, v in search_space._search_space.items()\n\
+          \        if k not in (\"foundation_model\", \"embedding_model\")\n    }\n\
+          \    verbose_search_space_repr |= selected_models_names\n\n    with open(search_space_prep_report.path,\
           \ \"w\") as report_file:\n        yml.safe_dump(verbose_search_space_repr,\
           \ report_file)\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 2.0
+          memoryLimit: 68.719476736
           memoryRequest: 8.589934592
+          resourceCpuLimit: '32'
           resourceCpuRequest: '2'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 8Gi
     exec-test-data-loader:
       container:
@@ -1854,26 +1879,27 @@ deploymentSpec:
           \ object key to the JSON test data file.\n        test_data: Output artifact\
           \ that receives the downloaded file.\n\n    Environment variables (required\
           \ when run with pipeline secret injection):\n        AWS_ACCESS_KEY_ID,\
-          \ AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.\n\n    Raises:\n\
-          \        ValueError: If S3 credentials are missing or misconfigured.\n \
-          \       Exception: If the download fails or the path is not a JSON file.\n\
-          \    \"\"\"\n    import json\n    import logging\n    import os\n    import\
-          \ sys\n\n    import boto3\n    from botocore.exceptions import ClientError,\
-          \ SSLError\n\n    logger = logging.getLogger(\"Test Data Loader component\
-          \ logger\")\n    logger.setLevel(logging.INFO)\n    if not logger.handlers:\n\
-          \        handler = logging.StreamHandler(sys.stdout)\n        logger.addHandler(handler)\n\
-          \n    if not test_data_bucket_name:\n        raise TypeError(\"test_data_bucket_name\
-          \ must be a non-empty string\")\n\n    def get_test_data_s3():\n       \
-          \ \"\"\"Validate S3 credentials and download the JSON test data file.\"\"\
-          \"\n\n        class TestDataLoaderException(Exception):\n            pass\n\
-          \n        s3_creds = {\n            k: os.environ.get(k)\n            for\
-          \ k in [\"AWS_ACCESS_KEY_ID\", \"AWS_SECRET_ACCESS_KEY\", \"AWS_S3_ENDPOINT\"\
-          , \"AWS_DEFAULT_REGION\"]\n        }\n        for k, v in s3_creds.items():\n\
-          \            if v is None:\n                raise ValueError(\n        \
-          \            \"%s environment variable not set. Check if kubernetes secret\
-          \ was configured properly\" % k\n                )\n\n        def _make_s3_client(verify=True):\n\
-          \            return boto3.client(\n                \"s3\",\n           \
-          \     endpoint_url=s3_creds[\"AWS_S3_ENDPOINT\"],\n                region_name=s3_creds[\"\
+          \ AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT.\n        AWS_DEFAULT_REGION is\
+          \ optional.\n\n    Raises:\n        ValueError: If S3 credentials are missing\
+          \ or misconfigured.\n        Exception: If the download fails or the path\
+          \ is not a JSON file.\n    \"\"\"\n    import json\n    import logging\n\
+          \    import os\n    import sys\n\n    import boto3\n    from botocore.exceptions\
+          \ import ClientError, SSLError\n\n    logger = logging.getLogger(\"Test\
+          \ Data Loader component logger\")\n    logger.setLevel(logging.INFO)\n \
+          \   if not logger.handlers:\n        handler = logging.StreamHandler(sys.stdout)\n\
+          \        logger.addHandler(handler)\n\n    if not test_data_bucket_name:\n\
+          \        raise TypeError(\"test_data_bucket_name must be a non-empty string\"\
+          )\n\n    def get_test_data_s3():\n        \"\"\"Validate S3 credentials\
+          \ and download the JSON test data file.\"\"\"\n\n        class TestDataLoaderException(Exception):\n\
+          \            pass\n\n        s3_creds = {k: os.environ.get(k) for k in [\"\
+          AWS_ACCESS_KEY_ID\", \"AWS_SECRET_ACCESS_KEY\", \"AWS_S3_ENDPOINT\"]}\n\
+          \        for k, v in s3_creds.items():\n            if v is None:\n    \
+          \            raise ValueError(\n                    \"%s environment variable\
+          \ not set. Check if kubernetes secret was configured properly\" % k\n  \
+          \              )\n        s3_creds[\"AWS_DEFAULT_REGION\"] = os.environ.get(\"\
+          AWS_DEFAULT_REGION\")\n\n        def _make_s3_client(verify=True):\n   \
+          \         return boto3.client(\n                \"s3\",\n              \
+          \  endpoint_url=s3_creds[\"AWS_S3_ENDPOINT\"],\n                region_name=s3_creds[\"\
           AWS_DEFAULT_REGION\"],\n                aws_access_key_id=s3_creds[\"AWS_ACCESS_KEY_ID\"\
           ],\n                aws_secret_access_key=s3_creds[\"AWS_SECRET_ACCESS_KEY\"\
           ],\n                verify=verify,\n            )\n\n        s3_client =\
@@ -1903,9 +1929,13 @@ deploymentSpec:
           \n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 2.0
+          memoryLimit: 68.719476736
           memoryRequest: 8.589934592
+          resourceCpuLimit: '32'
           resourceCpuRequest: '2'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 8Gi
     exec-text-extraction:
       container:
@@ -1968,14 +1998,14 @@ deploymentSpec:
           , \"AWS_S3_ENDPOINT\"]}\n    for k, v in s3_creds.items():\n        if v\
           \ is None:\n            raise ValueError(f\"{k} environment variable not\
           \ set. Check if kubernetes secret was configured properly.\")\n    s3_creds[\"\
-          AWS_DEFAULT_REGION\"] = os.environ.get(\"AWS_DEFAULT_REGION\", \"\")\n\n\
-          \    logger = logging.getLogger(\"Text Extraction component logger\")\n\
-          \    logger.setLevel(logging.INFO)\n    logger.propagate = False\n    if\
-          \ not logger.handlers:\n        handler = logging.StreamHandler(sys.stdout)\n\
-          \        logger.addHandler(handler)\n\n    output_dir = Path(extracted_text.path)\n\
-          \    output_dir.mkdir(parents=True, exist_ok=True)\n\n    def make_s3_client(verify=True):\n\
-          \        \"\"\"Create a new boto3 S3 client from the environment credentials.\n\
-          \n        A fresh client is created on every call so it is safe to use from\n\
+          AWS_DEFAULT_REGION\"] = os.environ.get(\"AWS_DEFAULT_REGION\")\n\n    logger\
+          \ = logging.getLogger(\"Text Extraction component logger\")\n    logger.setLevel(logging.INFO)\n\
+          \    logger.propagate = False\n    if not logger.handlers:\n        handler\
+          \ = logging.StreamHandler(sys.stdout)\n        logger.addHandler(handler)\n\
+          \n    output_dir = Path(extracted_text.path)\n    output_dir.mkdir(parents=True,\
+          \ exist_ok=True)\n\n    def make_s3_client(verify=True):\n        \"\"\"\
+          Create a new boto3 S3 client from the environment credentials.\n\n     \
+          \   A fresh client is created on every call so it is safe to use from\n\
           \        multiple threads without sharing state. Pass verify=False to skip\n\
           \        TLS certificate verification (used as a fallback when an SSLError\n\
           \        is encountered during download).\n        \"\"\"\n        session\
@@ -1993,35 +2023,42 @@ deploymentSpec:
           \ with\n                the S3 object key.\n            base_path: Local\
           \ directory under which the file is saved, preserving\n                the\
           \ S3 key as a relative sub-path.\n\n        Returns:\n            Path to\
-          \ the downloaded local file.\n        \"\"\"\n        key = doc[\"key\"\
-          ]\n        local_path = base_path / key\n        local_path.parent.mkdir(parents=True,\
-          \ exist_ok=True)\n        _dl_t0 = time.perf_counter()\n        logger.info(\"\
-          Downloading %s\", key)\n        try:\n            make_s3_client().download_file(bucket,\
-          \ key, str(local_path))\n        except SSLError:\n            logger.warning(\"\
-          SSL error when downloading %s, retrying with verify=False\", key)\n    \
-          \        make_s3_client(verify=False).download_file(bucket, key, str(local_path))\n\
-          \        logger.info(\"Download finished %s (%.1fs)\", key, time.perf_counter()\
-          \ - _dl_t0)\n        return local_path\n\n    def _docling_artifacts_path()\
-          \ -> Optional[Path]:\n        \"\"\"Local Docling models root (contains\
-          \ docling-project--* dirs). Set via image ENV for offline use.\n\n     \
-          \   Returns the path only when it exists and contains at least one model\n\
-          \        directory. If the path is missing or empty, returns None so that\n\
-          \        docling falls back to downloading models from HuggingFace.\n  \
-          \      \"\"\"\n        raw = os.environ.get(\"DOCLING_ARTIFACTS_PATH\")\n\
-          \        if not raw:\n            logger.info(\"DOCLING_ARTIFACTS_PATH not\
-          \ set \u2014 models will be downloaded from HuggingFace.\")\n          \
-          \  return None\n        p = Path(raw)\n        if not p.is_dir() or not\
-          \ any(p.iterdir()):\n            logger.warning(\n                \"DOCLING_ARTIFACTS_PATH=%s\
-          \ is set but the directory is missing or empty \"\n                \"\u2014\
-          \ falling back to HuggingFace model download.\",\n                raw,\n\
-          \            )\n            return None\n        logger.info(\"Using local\
-          \ Docling artifacts from %s\", p)\n        return p\n\n    def _build_docling_format_options():\n\
-          \        \"\"\"Shared pipeline options for main-process warmup and worker\
-          \ processes (spawn-safe: module-level).\"\"\"\n        from docling.datamodel.accelerator_options\
-          \ import AcceleratorOptions\n        from docling.datamodel.base_models\
-          \ import InputFormat\n        from docling.datamodel.pipeline_options import\
-          \ PaginatedPipelineOptions, ThreadedPdfPipelineOptions\n        from docling.document_converter\
-          \ import (\n            HTMLFormatOption,\n            MarkdownFormatOption,\n\
+          \ the downloaded local file.\n        \"\"\"\n        raw_key = doc[\"key\"\
+          ]\n        safe_key = raw_key.strip().lstrip(\"/\")\n        rel = Path(safe_key)\n\
+          \        if not safe_key or rel.is_absolute() or \"..\" in rel.parts:\n\
+          \            raise ValueError(f\"Unsafe S3 key (path traversal): {raw_key!r}\"\
+          )\n        local_path = (base_path / rel).resolve()\n        base_resolved\
+          \ = base_path.resolve()\n        if not local_path.is_relative_to(base_resolved):\n\
+          \            raise ValueError(f\"Unsafe S3 key (escapes download directory):\
+          \ {raw_key!r}\")\n        local_path.parent.mkdir(parents=True, exist_ok=True)\n\
+          \        _dl_t0 = time.perf_counter()\n        logger.info(\"Downloading\
+          \ %s\", raw_key)\n        try:\n            make_s3_client().download_file(bucket,\
+          \ raw_key, str(local_path))\n        except SSLError:\n            logger.warning(\"\
+          SSL error when downloading %s, retrying with verify=False\", raw_key)\n\
+          \            make_s3_client(verify=False).download_file(bucket, raw_key,\
+          \ str(local_path))\n        logger.info(\"Download finished %s (%.1fs)\"\
+          , raw_key, time.perf_counter() - _dl_t0)\n        return local_path\n\n\
+          \    def _docling_artifacts_path() -> Optional[Path]:\n        \"\"\"Local\
+          \ Docling models root (contains docling-project--* dirs). Set via image\
+          \ ENV for offline use.\n\n        Returns the path only when it exists and\
+          \ contains at least one model\n        directory. If the path is missing\
+          \ or empty, returns None so that\n        docling falls back to downloading\
+          \ models from HuggingFace.\n        \"\"\"\n        raw = os.environ.get(\"\
+          DOCLING_ARTIFACTS_PATH\")\n        if not raw:\n            logger.info(\"\
+          DOCLING_ARTIFACTS_PATH not set \u2014 models will be downloaded from HuggingFace.\"\
+          )\n            return None\n        p = Path(raw)\n        if not p.is_dir()\
+          \ or not any(p.iterdir()):\n            logger.warning(\n              \
+          \  \"DOCLING_ARTIFACTS_PATH=%s is set but the directory is missing or empty\
+          \ \"\n                \"\u2014 falling back to HuggingFace model download.\"\
+          ,\n                raw,\n            )\n            return None\n      \
+          \  logger.info(\"Using local Docling artifacts from %s\", p)\n        return\
+          \ p\n\n    def _build_docling_format_options():\n        \"\"\"Shared pipeline\
+          \ options for main-process warmup and worker processes (spawn-safe: module-level).\"\
+          \"\"\n        from docling.datamodel.accelerator_options import AcceleratorOptions\n\
+          \        from docling.datamodel.base_models import InputFormat\n       \
+          \ from docling.datamodel.pipeline_options import PaginatedPipelineOptions,\
+          \ ThreadedPdfPipelineOptions\n        from docling.document_converter import\
+          \ (\n            HTMLFormatOption,\n            MarkdownFormatOption,\n\
           \            PdfFormatOption,\n            PowerpointFormatOption,\n   \
           \         WordFormatOption,\n        )\n\n        ap = _docling_artifacts_path()\n\
           \        pdf_pipeline_options = ThreadedPdfPipelineOptions(\n          \
@@ -2197,9 +2234,13 @@ deploymentSpec:
           \ total_docs, error_tolerance)\n\n"
         image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:b51e1c7b2b4b857f4f5ea34654b10326196fdd1a0487012a9f7074ef092a63c5
         resources:
+          cpuLimit: 32.0
           cpuRequest: 2.0
+          memoryLimit: 68.719476736
           memoryRequest: 8.589934592
+          resourceCpuLimit: '32'
           resourceCpuRequest: '2'
+          resourceMemoryLimit: 64Gi
           resourceMemoryRequest: 8Gi
 pipelineInfo:
   description: Automated system for building and optimizing Retrieval-Augmented Generation
@@ -2373,7 +2414,9 @@ root:
           for input document data access. The following environment variables are
           required:
 
-          AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.'
+          AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT.
+
+          AWS_DEFAULT_REGION is optional.'
         parameterType: STRING
       llama_stack_secret_name:
         description: 'Name of the Kubernetes secret for llama-stack API connection.
@@ -2410,7 +2453,9 @@ root:
 
           test data access. The following environment variables are required:
 
-          AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION.'
+          AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT.
+
+          AWS_DEFAULT_REGION is optional.'
         parameterType: STRING
 schemaVersion: 2.1.0
 sdkVersion: kfp-2.15.2
@@ -2430,7 +2475,7 @@ platforms:
               secretKey: AWS_S3_ENDPOINT
             - envVar: AWS_DEFAULT_REGION
               secretKey: AWS_DEFAULT_REGION
-            optional: false
+            optional: true
             secretNameParameter:
               componentInputParameter: input_data_secret_name
         exec-prepare-responses-api-requests:
@@ -2474,7 +2519,7 @@ platforms:
               secretKey: AWS_S3_ENDPOINT
             - envVar: AWS_DEFAULT_REGION
               secretKey: AWS_DEFAULT_REGION
-            optional: false
+            optional: true
             secretNameParameter:
               componentInputParameter: test_data_secret_name
         exec-text-extraction:
@@ -2488,6 +2533,6 @@ platforms:
               secretKey: AWS_S3_ENDPOINT
             - envVar: AWS_DEFAULT_REGION
               secretKey: AWS_DEFAULT_REGION
-            optional: false
+            optional: true
             secretNameParameter:
               componentInputParameter: input_data_secret_name
