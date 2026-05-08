@@ -368,7 +368,7 @@ def search_space_preparation(
             n_embedding_models=TOP_K_EMBEDDING_MODELS,
             n_foundation_models=TOP_N_GENERATION_MODELS,
         )
-        selected_models = {
+        selected_models_names = {
             "foundation_model": selected_models["foundation_models"],
             "embedding_model": selected_models["embedding_models"],
         }
