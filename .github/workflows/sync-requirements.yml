@@ -27,7 +27,7 @@ jobs:
 
       - name: Generate requirements.txt
         run: |
-          uv export --frozen --no-hashes --no-dev --no-editable --no-annotate \
+          uv export --frozen --no-dev --no-editable --no-annotate \
             | grep -vx '\.' > requirements.txt
 
       - name: Commit and push if changed
