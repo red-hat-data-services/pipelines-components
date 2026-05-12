@@ -9,7 +9,7 @@ repos:
         files: (^pyproject\.toml$|^uv\.lock$)
         pass_filenames: false
       - id: sync-requirements
-        name: sync requirements.txt
+        name: sync requirements
         entry: make requirements
         language: system
         files: (^pyproject\.toml$|^uv\.lock$)

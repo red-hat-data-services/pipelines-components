@@ -23,9 +23,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
-      - name: Verify requirements.txt matches uv.lock
+      - name: Verify requirements.txt is up-to-date
         run: |
-          uv export --frozen --no-dev --no-editable --no-annotate \
-            | grep -vx '\.' > requirements.txt.expected
-          diff -u requirements.txt requirements.txt.expected \
-            || { echo ""; echo "requirements.txt is out of sync with uv.lock."; echo "Run 'make requirements' and commit the result."; exit 1; }
+          make requirements
+          git diff --exit-code requirements.txt \
+            || { echo ""; echo "requirements.txt is out of sync."; echo "Run 'make requirements' and commit the result."; exit 1; }
