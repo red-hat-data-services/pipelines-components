@@ -42,7 +42,14 @@ def kfp_client(docrag_integration_config):
 
 @pytest.fixture(scope="session")
 def compiled_pipeline_path():
-    """Compile the Documents RAG Optimization pipeline to a temp YAML file."""
+    """Use an override YAML when provided, otherwise compile the pipeline locally."""
+    override_path = os.environ.get("RHOAI_COMPILED_PIPELINE_PATH", "").strip()
+    if override_path:
+        if not Path(override_path).is_file():
+            pytest.fail(f"RHOAI_COMPILED_PIPELINE_PATH does not exist: {override_path}")
+        yield override_path
+        return
+
     from kfp import compiler
 
     from ..pipeline import documents_rag_optimization_pipeline
