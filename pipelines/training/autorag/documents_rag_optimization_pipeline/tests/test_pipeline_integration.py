@@ -62,6 +62,10 @@ def _run_succeeded(detail):
 def _find_artifacts_in_s3(s3_client, bucket, prefix):
     """List object keys under prefix.
 
+    When the primary S3 client cannot reach the endpoint (e.g. it points at a
+    cluster-internal address), fall back to the external MinIO route derived
+    from ``RHOAI_URL`` and retry with ``verify=False``.
+
     Returns:
         Tuple of key lists: leaderboard HTML, .ipynb notebooks, rag/pattern-related paths,
         and ``v1_responses_body.json`` files from ``prepare_responses_api_requests``.
@@ -70,21 +74,53 @@ def _find_artifacts_in_s3(s3_client, bucket, prefix):
     ipynb_keys = []
     pattern_keys = []
     responses_body_keys = []
-    try:
-        paginator = s3_client.get_paginator("list_objects_v2")
+
+    def _collect(client):
+        h, n, p, r = [], [], [], []
+        paginator = client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
             for obj in page.get("Contents") or []:
                 key = obj["Key"]
                 if "leaderboard" in key.lower() or key.endswith(".html"):
-                    html_keys.append(key)
+                    h.append(key)
                 elif key.endswith(".ipynb"):
-                    ipynb_keys.append(key)
+                    n.append(key)
                 elif "v1_responses_body.json" in key:
-                    responses_body_keys.append(key)
+                    r.append(key)
                 elif "rag_patterns" in key or "pattern" in key.lower():
-                    pattern_keys.append(key)
-    except Exception:
-        pass
+                    p.append(key)
+        return h, n, p, r
+
+    try:
+        html_keys, ipynb_keys, pattern_keys, responses_body_keys = _collect(s3_client)
+    except Exception as exc:
+        import logging
+        import os
+
+        logging.getLogger(__name__).warning("Primary S3 artifact lookup failed: %s", exc)
+        rhoai_url = os.environ.get("RHOAI_URL", "")
+        if rhoai_url:
+            import re
+
+            import boto3
+
+            m = re.search(r"\.apps\.(.*)", rhoai_url.rstrip("/"))
+            if m:
+                ext_endpoint = f"https://minio-api-minio.apps.{m.group(1)}"
+                logging.getLogger(__name__).info("Retrying artifact lookup via %s", ext_endpoint)
+                try:
+                    ext_client = boto3.client(
+                        "s3",
+                        endpoint_url=ext_endpoint,
+                        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+                        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+                        region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+                        verify=False,
+                    )
+                    html_keys, ipynb_keys, pattern_keys, responses_body_keys = _collect(ext_client)
+                except Exception as retry_exc:
+                    logging.getLogger(__name__).warning("Retry via external route also failed: %s", retry_exc)
+
     return html_keys, ipynb_keys, pattern_keys, responses_body_keys
 
 
