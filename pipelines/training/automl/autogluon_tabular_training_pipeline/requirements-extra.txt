@@ -1,0 +1,7 @@
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9-test/simple
+
+autogluon.common==1.5.0+rhaiv.2
+autogluon.core==1.5.0+rhaiv.2
+autogluon.features==1.5.0+rhaiv.2
+autogluon.tabular==1.5.0+rhaiv.2
+autogluon.timeseries==1.5.0+rhaiv.2
