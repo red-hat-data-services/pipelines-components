@@ -28,6 +28,7 @@ def ingest_to_milvus(
     milvus_port: int = 19530,
     milvus_db: str = "default",
     collection_name: str = "rag_documents",
+    drop_existing: bool = True,
     embed_batch_size: int = 64,
     milvus_batch_size: int = 256,
 ) -> str:
@@ -45,6 +46,7 @@ def ingest_to_milvus(
         milvus_port: Milvus gRPC port.
         milvus_db: Milvus database name.
         collection_name: Milvus collection name.
+        drop_existing: If True, drop and recreate the collection. If False, append to it.
         embed_batch_size: Batch size for embedding requests.
         milvus_batch_size: Batch size for Milvus inserts.
 
@@ -92,35 +94,50 @@ def ingest_to_milvus(
     uri = f"http://{milvus_host}:{milvus_port}"
     client = MilvusClient(uri=uri, db_name=milvus_db)
 
-    if client.has_collection(collection_name):
-        print(f"Dropping existing collection '{collection_name}'")
-        client.drop_collection(collection_name)
+    collection_exists = client.has_collection(collection_name)
 
-    schema = CollectionSchema(
-        fields=[
-            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-            FieldSchema(name="source_file", dtype=DataType.VARCHAR, max_length=512),
-            FieldSchema(name="chunk_index", dtype=DataType.INT64),
-            FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=32768),
-            FieldSchema(
-                name="embedding",
-                dtype=DataType.FLOAT_VECTOR,
-                dim=embedding_dim,
-            ),
-        ],
-        description="RAG document chunks with embeddings",
-    )
-    client.create_collection(collection_name=collection_name, schema=schema)
+    if collection_exists and not drop_existing:
+        desc = client.describe_collection(collection_name)
+        for field in desc.get("fields", []):
+            if field.get("name") == "embedding":
+                existing_dim = field.get("params", {}).get("dim")
+                if existing_dim is not None and int(existing_dim) != embedding_dim:
+                    raise ValueError(
+                        f"Existing collection '{collection_name}' has dim={existing_dim}, "
+                        f"but embedding_dim={embedding_dim}. Drop the collection or fix the dimension."
+                    )
+                break
+        print(f"Appending to existing collection '{collection_name}'.")
+    else:
+        if collection_exists:
+            print(f"Dropping existing collection '{collection_name}'")
+            client.drop_collection(collection_name)
 
-    index_params = client.prepare_index_params()
-    index_params.add_index(
-        field_name="embedding",
-        index_type="IVF_FLAT",
-        metric_type="COSINE",
-        params={"nlist": 128},
-    )
-    client.create_index(collection_name=collection_name, index_params=index_params)
-    print(f"Collection '{collection_name}' created (dim={embedding_dim}).")
+        schema = CollectionSchema(
+            fields=[
+                FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(name="source_file", dtype=DataType.VARCHAR, max_length=512),
+                FieldSchema(name="chunk_index", dtype=DataType.INT64),
+                FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=32768),
+                FieldSchema(
+                    name="embedding",
+                    dtype=DataType.FLOAT_VECTOR,
+                    dim=embedding_dim,
+                ),
+            ],
+            description="RAG document chunks with embeddings",
+        )
+        client.create_collection(collection_name=collection_name, schema=schema)
+
+        index_params = client.prepare_index_params()
+        index_params.add_index(
+            field_name="embedding",
+            index_type="IVF_FLAT",
+            metric_type="COSINE",
+            params={"nlist": 128},
+        )
+        client.create_index(collection_name=collection_name, index_params=index_params)
+        print(f"Collection '{collection_name}' created (dim={embedding_dim}).")
 
     # --- Setup embedding ---
     use_endpoint = bool(embedding_endpoint)

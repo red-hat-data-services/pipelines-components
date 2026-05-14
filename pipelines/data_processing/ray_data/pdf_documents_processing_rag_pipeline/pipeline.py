@@ -62,6 +62,7 @@ def rag_multistep_pipeline(
     timeout_seconds: int = 600,
     enable_profiling: bool = False,
     verbose: bool = True,
+    bypass_kueue: bool = False,
     # Embedding
     deploy_embedding: bool = False,  # If True, deploys embedding model as InferenceService
     embedding_endpoint: str = "",  # If empty, uses local model; else uses deployed service
@@ -74,6 +75,7 @@ def rag_multistep_pipeline(
     milvus_port: int = 19530,
     milvus_db: str = "default",
     collection_name: str = "rag_documents",
+    drop_existing: bool = True,
     embed_batch_size: int = 64,
     milvus_batch_size: int = 256,
     # LLM deployment
@@ -109,6 +111,7 @@ def rag_multistep_pipeline(
         timeout_seconds: Per-file processing timeout in seconds.
         enable_profiling: Enable cProfile profiling output.
         verbose: Enable verbose logging.
+        bypass_kueue: If True, bypass Kueue quota management for the RayJob.
         deploy_embedding: If True, deploy embedding model as InferenceService.
         embedding_endpoint: Embedding service URL (empty = local model).
         embedding_model: Embedding model name.
@@ -119,6 +122,7 @@ def rag_multistep_pipeline(
         milvus_port: Milvus gRPC port.
         milvus_db: Milvus database name.
         collection_name: Milvus collection name.
+        drop_existing: If True, drop and recreate the Milvus collection. If False, append.
         embed_batch_size: Batch size for embedding requests.
         milvus_batch_size: Batch size for Milvus inserts.
         llm_model_name: HuggingFace LLM model ID for inference.
@@ -137,6 +141,7 @@ def rag_multistep_pipeline(
         s3_endpoint=s3_endpoint,
         s3_bucket=s3_bucket,
         s3_prefix=s3_prefix,
+        s3_secret_name=s3_secret_name,
         tokenizer=embedding_model,
         chunk_max_tokens=chunk_max_tokens,
         num_workers=num_workers,
@@ -152,14 +157,7 @@ def rag_multistep_pipeline(
         timeout_seconds=timeout_seconds,
         enable_profiling=enable_profiling,
         verbose=verbose,
-    )
-    kubernetes.use_secret_as_env(
-        chunk_task,
-        secret_name=s3_secret_name,
-        secret_key_to_env={
-            "access_key": "S3_ACCESS_KEY",
-            "secret_key": "S3_SECRET_KEY",
-        },
+        bypass_kueue=bypass_kueue,
     )
     chunk_task.set_caching_options(False)
 
@@ -186,6 +184,7 @@ def rag_multistep_pipeline(
             milvus_port=milvus_port,
             milvus_db=milvus_db,
             collection_name=collection_name,
+            drop_existing=drop_existing,
             embedding_endpoint=embed_deploy_task.output,
             embedding_model=embedding_model,
             embedding_dim=embedding_dim,
@@ -211,6 +210,7 @@ def rag_multistep_pipeline(
             milvus_port=milvus_port,
             milvus_db=milvus_db,
             collection_name=collection_name,
+            drop_existing=drop_existing,
             embedding_endpoint=embedding_endpoint,
             embedding_model=embedding_model,
             embedding_dim=embedding_dim,

@@ -33,6 +33,7 @@ Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM.
 | `timeout_seconds` | `int` | `600` | Per-file processing timeout in seconds. |
 | `enable_profiling` | `bool` | `False` | Enable cProfile profiling output. |
 | `verbose` | `bool` | `True` | Enable verbose logging. |
+| `bypass_kueue` | `bool` | `False` | If True, bypass Kueue quota management for the RayJob. |
 | `deploy_embedding` | `bool` | `False` | If True, deploy embedding model as InferenceService. |
 | `embedding_endpoint` | `str` | `""` | Embedding service URL (empty = local model). |
 | `embedding_model` | `str` | `ibm-granite/granite-embedding-125m-english` | Embedding model name. |
@@ -43,6 +44,7 @@ Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM.
 | `milvus_port` | `int` | `19530` | Milvus gRPC port. |
 | `milvus_db` | `str` | `default` | Milvus database name. |
 | `collection_name` | `str` | `rag_documents` | Milvus collection name. |
+| `drop_existing` | `bool` | `True` | If True, drop and recreate the Milvus collection. If False, append. |
 | `embed_batch_size` | `int` | `64` | Batch size for embedding requests. |
 | `milvus_batch_size` | `int` | `256` | Batch size for Milvus inserts. |
 | `hf_secret_name` | `str` | `hf-token-secret` | Kubernetes Secret with HuggingFace token (key: `token`). Required for gated models. |

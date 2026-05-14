@@ -24,6 +24,7 @@ def parse_and_chunk(
     s3_endpoint: str,
     s3_bucket: str,
     s3_prefix: str = "chunks",
+    s3_secret_name: str = "minio-secret",
     tokenizer: str = "sentence-transformers/all-MiniLM-L6-v2",
     chunk_max_tokens: int = 256,
     num_workers: int = 2,
@@ -39,6 +40,7 @@ def parse_and_chunk(
     timeout_seconds: int = 600,
     enable_profiling: bool = False,
     verbose: bool = True,
+    bypass_kueue: bool = False,
 ) -> str:
     """Parse PDFs and write chunked JSONL files to S3.
 
@@ -51,6 +53,7 @@ def parse_and_chunk(
         s3_endpoint: S3-compatible endpoint URL (e.g. MinIO).
         s3_bucket: S3 bucket for output chunks.
         s3_prefix: Key prefix for chunk files in S3.
+        s3_secret_name: Kubernetes Secret with S3 credentials (keys: access_key, secret_key).
         tokenizer: Tokenizer for HybridChunker (usually the embedding model name).
         chunk_max_tokens: Max tokens per chunk (HybridChunker).
         num_workers: Number of Ray worker pods.
@@ -66,6 +69,9 @@ def parse_and_chunk(
         timeout_seconds: Per-file processing timeout.
         enable_profiling: Enable cProfile profiling (outputs profile stats).
         verbose: Enable verbose logging for debugging.
+        bypass_kueue: If True, remove the Kueue queue-name label and manually
+            unsuspend the RayJob, bypassing cluster quota management. Only use
+            on clusters without Kueue or with sufficient free resources.
 
     Returns:
         The S3 URI where JSONL chunk files were written.
@@ -630,8 +636,6 @@ def parse_and_chunk(
                 "S3_ENDPOINT": s3_endpoint,
                 "S3_BUCKET": s3_bucket,
                 "S3_PREFIX": s3_prefix,
-                "S3_ACCESS_KEY": os.environ["S3_ACCESS_KEY"],
-                "S3_SECRET_KEY": os.environ["S3_SECRET_KEY"],
                 "ENABLE_PROFILING": "true" if enable_profiling else "false",
                 "VERBOSE": "true" if verbose else "false",
             },
@@ -655,7 +659,42 @@ def parse_and_chunk(
     job.submit()
     print(f"RayJob '{rayjob_name}' submitted.")
 
-    # Remove kueue queue-name label so kueue does not manage this job
+    if bypass_kueue:
+        rayjob_obj = custom_api.get_namespaced_custom_object(
+            group=rayjob_group,
+            version=rayjob_version,
+            namespace=namespace,
+            plural=rayjob_plural,
+            name=rayjob_name,
+        )
+        labels = rayjob_obj.get("metadata", {}).get("labels", {})
+        if "kueue.x-k8s.io/queue-name" in labels:
+            custom_api.patch_namespaced_custom_object(
+                group=rayjob_group,
+                version=rayjob_version,
+                namespace=namespace,
+                plural=rayjob_plural,
+                name=rayjob_name,
+                body={"metadata": {"labels": {"kueue.x-k8s.io/queue-name": None}}},
+            )
+            print(f"Removed kueue.x-k8s.io/queue-name label from RayJob '{rayjob_name}'.")
+
+    # Inject S3 credentials into Ray pods via secretKeyRef so they never
+    # appear as plaintext in the RayJob spec.
+    s3_env_vars = [
+        {
+            "name": "S3_ACCESS_KEY",
+            "valueFrom": {
+                "secretKeyRef": {"name": s3_secret_name, "key": "access_key"},
+            },
+        },
+        {
+            "name": "S3_SECRET_KEY",
+            "valueFrom": {
+                "secretKeyRef": {"name": s3_secret_name, "key": "secret_key"},
+            },
+        },
+    ]
     rayjob_obj = custom_api.get_namespaced_custom_object(
         group=rayjob_group,
         version=rayjob_version,
@@ -663,28 +702,39 @@ def parse_and_chunk(
         plural=rayjob_plural,
         name=rayjob_name,
     )
-    labels = rayjob_obj.get("metadata", {}).get("labels", {})
-    if "kueue.x-k8s.io/queue-name" in labels:
-        custom_api.patch_namespaced_custom_object(
-            group=rayjob_group,
-            version=rayjob_version,
-            namespace=namespace,
-            plural=rayjob_plural,
-            name=rayjob_name,
-            body={"metadata": {"labels": {"kueue.x-k8s.io/queue-name": None}}},
-        )
-        print(f"Removed kueue.x-k8s.io/queue-name label from RayJob '{rayjob_name}'.")
-
-    # Unsuspend the RayJob to trigger cluster creation
+    spec = rayjob_obj.get("spec", {})
+    cluster_spec = spec.get("rayClusterSpec", {})
+    head_spec = cluster_spec.get("headGroupSpec", {})
+    head_containers = head_spec.get("template", {}).get("spec", {}).get("containers", [])
+    for c in head_containers:
+        c.setdefault("env", []).extend(s3_env_vars)
+    worker_groups = cluster_spec.get("workerGroupSpecs", [])
+    for wg in worker_groups:
+        worker_containers = wg.get("template", {}).get("spec", {}).get("containers", [])
+        for c in worker_containers:
+            c.setdefault("env", []).extend(s3_env_vars)
     custom_api.patch_namespaced_custom_object(
         group=rayjob_group,
         version=rayjob_version,
         namespace=namespace,
         plural=rayjob_plural,
         name=rayjob_name,
-        body={"spec": {"suspend": False}},
+        body={"spec": {"rayClusterSpec": cluster_spec}},
     )
-    print(f"Unsuspended RayJob '{rayjob_name}' - cluster will now start provisioning.")
+    print(f"Injected S3 credentials from Secret '{s3_secret_name}' into Ray pod templates.")
+
+    if bypass_kueue:
+        custom_api.patch_namespaced_custom_object(
+            group=rayjob_group,
+            version=rayjob_version,
+            namespace=namespace,
+            plural=rayjob_plural,
+            name=rayjob_name,
+            body={"spec": {"suspend": False}},
+        )
+        print(f"Unsuspended RayJob '{rayjob_name}' - cluster will now start provisioning.")
+    else:
+        print(f"RayJob '{rayjob_name}' waiting for Kueue admission...")
 
     # Wait for Ray cluster to be fully ready before job execution
     print(f"Waiting for Ray cluster to be ready with {num_workers} workers...")

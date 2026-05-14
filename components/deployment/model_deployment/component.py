@@ -134,8 +134,7 @@ def model_deployment(
                         "--model=/mnt/models",
                         "--served-model-name={{.Name}}",
                         f"--max-model-len={max_model_len}",
-                        "--enforce-eager",
-                        "--gpu-memory-utilization=0.99",
+                        "--gpu-memory-utilization=0.90",
                         "--max-num-seqs=16",
                     ],
                     "env": [

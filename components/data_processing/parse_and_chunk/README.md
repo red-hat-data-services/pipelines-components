@@ -33,6 +33,7 @@ Parse PDFs and write chunked JSONL files to S3.
 | `timeout_seconds` | `int` | `600` | Per-file processing timeout. |
 | `enable_profiling` | `bool` | `False` | Enable cProfile profiling (outputs profile stats). |
 | `verbose` | `bool` | `True` | Enable verbose logging for debugging. |
+| `bypass_kueue` | `bool` | `False` | If True, bypass Kueue quota management for the RayJob. |
 
 ## Outputs 📤
 
