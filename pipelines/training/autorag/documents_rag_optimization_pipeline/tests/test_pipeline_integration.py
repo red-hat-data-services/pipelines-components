@@ -139,7 +139,10 @@ def _find_artifacts_in_s3(s3_client, bucket, prefix):
         endpoint = getattr(getattr(s3_client, "meta", None), "endpoint_url", None) or ""
         LOGGER.warning(
             "Artifact lookup failed for s3://%s/%s via %s: %s",
-            bucket, prefix, endpoint or "<unknown>", exc,
+            bucket,
+            prefix,
+            endpoint or "<unknown>",
+            exc,
         )
 
         derived_endpoint = _derive_external_s3_endpoint(endpoint)
