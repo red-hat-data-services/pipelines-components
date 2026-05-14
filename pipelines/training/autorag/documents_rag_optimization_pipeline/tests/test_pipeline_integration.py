@@ -97,8 +97,8 @@ def _pipeline_arguments_from_config(config):
         "input_data_secret_name": config["input_data_secret_name"],
         "input_data_bucket_name": config["input_data_bucket_name"],
         "input_data_key": config["input_data_key"],
-        "llama_stack_secret_name": config["llama_stack_secret_name"],
-        "llama_stack_vector_io_provider_id": config["llama_stack_vector_io_provider_id"],
+        "ogx_secret_name": config["ogx_secret_name"],
+        "vector_io_provider_id": config["vector_io_provider_id"],
     }
 
 
@@ -120,7 +120,7 @@ class TestDocumentsRagOptimizationPipelineIntegration:
     ):
         """Run pipeline; assert success and optional presence of artifacts in S3.
 
-        Counts leaderboard HTML, notebooks, pattern paths, and Llama Stack request body JSON files.
+        Counts leaderboard HTML, notebooks, pattern paths, and OGX request body JSON files.
         """
         if not kfp_client:
             pytest.skip("Integration prerequisites not available")
