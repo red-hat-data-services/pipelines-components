@@ -80,10 +80,13 @@ def s3_client(docrag_integration_config):
     except ImportError:
         return None
     c = docrag_integration_config
+    verify_ssl = os.environ.get("KFP_VERIFY_SSL", "true").strip().lower()
+    verify_ssl = verify_ssl not in ("0", "false", "no")
     return boto3.client(
         "s3",
         endpoint_url=c["s3_endpoint"],
         aws_access_key_id=c["s3_access_key"],
         aws_secret_access_key=c["s3_secret_key"],
         region_name=c["s3_region"],
+        verify=verify_ssl,
     )
