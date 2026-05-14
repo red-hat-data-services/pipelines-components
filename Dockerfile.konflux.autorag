@@ -1,6 +1,5 @@
 # This container is used to run the AutoRAG components of the training pipeline.
 
-#ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.3"
 ARG BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9@sha256:e42e1d0b52b4f2d2906b302f75987d353248279fa69eead69f907f6fff8d708c"
 FROM ${BASE_IMAGE}
 
