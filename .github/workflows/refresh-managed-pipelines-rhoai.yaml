@@ -14,16 +14,18 @@ on:
   push:
     branches:
       - rhoai-3.5-ea.1
+    # Do not use pipelines/** — it includes pipeline.yaml and would re-trigger on bot commits.
     paths:
       - components/**
-      - pipelines/**
+      - pipelines/**/pipeline.py
+      - pipelines/**/metadata.yaml
+      - pipelines/**/Containerfile
+      - pipelines/**/requirements*.txt
       - scripts/generate_managed_pipelines/**
       - scripts/lib/**
       - utils/**
       - pyproject.toml
       - uv.lock
-    paths-ignore:
-      - '**/pipeline.yaml'
   workflow_dispatch:
     inputs:
       release_branch:

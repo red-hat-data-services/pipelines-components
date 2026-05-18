@@ -128,7 +128,7 @@ Do not refresh YAML before step 3, or compiled specs will pin stale digests.
 ## GitHub Actions (example)
 
 [`.github/workflows/refresh-managed-pipelines-rhoai.yaml`](../.github/workflows/refresh-managed-pipelines-rhoai.yaml)
-runs on push to `rhoai-3.5-ea.1` (source paths only; ignores `pipeline.yaml` to avoid commit loops),
+runs on push to `rhoai-3.5-ea.1` (source paths only — not `pipeline.yaml` — to avoid commit loops),
 writes the catalog manifest to `${RUNNER_TEMP}` via `-o` (not in the repo), and supports manual
 `workflow_dispatch`. It retries
 Quay digest resolution until runtime images exist after Konflux builds.
@@ -173,7 +173,7 @@ new CEL on the release branch.
 
 - **Branch scope**: trigger only on the target release branch (for example `rhoai-3.5-ea.1`).
 - **No extra image builds**: apply the Konflux CEL guard above in `konflux-central`; GitHub Actions
-  `paths-ignore` alone does not stop Konflux on push.
+  narrowing GitHub `paths` (not `pipeline.yaml`) alone does not stop Konflux on push.
 - **Reproducibility**: always pin `registry.redhat.io/...@sha256:...` at compile time using
   digests resolved from Quay for the release branch tag.
 
