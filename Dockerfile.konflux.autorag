@@ -30,12 +30,16 @@ RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requi
 
 # Docling models for offline text extraction. Hermeto: prefetch with generic lockfile (see /tmp/artifacts.lock.yaml)
 # and mount output at ${HERMETO_GENERIC_DEPS}; https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
-ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-artifacts/models
-RUN if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS}" 2>/dev/null)" ]; then \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
+ENV DOCLING_ARTIFACTS_PATH=/tmp/docling-artifacts/models
+USER root
+RUN mkdir -p /tmp/docling-artifacts "${DOCLING_ARTIFACTS_PATH}" \
+    && if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS}" 2>/dev/null)" ]; then \
+      python3 /tmp/seed_docling_models.py --dest "${DOCLING_ARTIFACTS_PATH}" --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
     else \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --download; \
-    fi
+      python3 /tmp/seed_docling_models.py --dest "${DOCLING_ARTIFACTS_PATH}" --download; \
+    fi \
+    && chown -R 1001:0 /tmp/docling-artifacts
+USER default
 
 LABEL com.redhat.component="odh-autorag-container" \
       name="managed-open-data-hub/odh-autorag-rhel9" \
