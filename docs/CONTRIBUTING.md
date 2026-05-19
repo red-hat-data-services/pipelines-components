@@ -13,6 +13,7 @@ Welcome! This guide covers everything you need to know to contribute components 
 - [Testing and Quality](#testing-and-quality)
   - [Component Testing Guide](#component-testing-guide)
 - [Adding a Custom Base Image](#adding-a-custom-base-image)
+- [Requesting Managed Pipeline Runtime Images](#requesting-managed-pipeline-runtime-images)
 - [Submitting Your Contribution](#submitting-your-contribution)
 - [Getting Help](#getting-help)
 
@@ -1092,7 +1093,7 @@ podman run --rm my-component:test python -c "import pandas; print(pandas.__versi
 
 ## Requesting Managed Pipeline Runtime Images
 
-### Overview
+### About Managed Pipeline Runtime Images
 
 Managed pipeline runtime images are different from custom base images used by individual components. While custom base images are for components you develop and maintain, managed pipeline runtime images are for pipelines that are deployed and managed by OpenDataHub operators in production environments.
 
@@ -1181,7 +1182,8 @@ DEFAULT_AUTOML_IMAGE = "quay.io/opendatahub/odh-automl:odh-stable"
 AUTOML_IMAGE = os.getenv("RELATED_IMAGE_ODH_AUTOML_IMAGE", DEFAULT_AUTOML_IMAGE)
 
 # In your component
-from utils.consts import AUTOML_IMAGE
+from kfp import dsl
+from kfp_components.utils.consts import AUTOML_IMAGE
 
 @dsl.component(base_image=AUTOML_IMAGE)
 def my_automl_component():
@@ -1200,7 +1202,7 @@ This pattern ensures:
 If you have questions about managed pipeline runtime images:
 
 - Review existing implementations in `utils/consts.py`
-- Check the managed pipeline examples in `pipelines/` directories
+- Check the managed pipeline examples in `pipelines/training/automl/` and `pipelines/training/autorag/`
 - Ask questions in your pull request
 - Contact maintainers
 
