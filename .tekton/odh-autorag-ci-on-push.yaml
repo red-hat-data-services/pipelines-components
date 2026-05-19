@@ -28,9 +28,9 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-autorag:odh-stable
   - name: dockerfile
-    value: pipelines/training/autorag/documents_rag_optimization_pipeline/Containerfile
+    value: Containerfile
   - name: path-context
-    value: .
+    value: pipelines/training/autorag/documents_rag_optimization_pipeline
   pipelineRef:
     resolver: git
     params:

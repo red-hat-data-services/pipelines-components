@@ -7,15 +7,9 @@ ARG DOCLING_MODELS_OCI="registry.stage.redhat.io/rhai/docling-project-docling-mo
 
 FROM ${BASE_IMAGE}
 
-COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi-whl.txt \
-     /tmp/
-
-COPY pipelines/training/autorag/documents_rag_optimization_pipeline/seed_docling_models.py \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/artifacts.lock.yaml \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/install_sqlite_from_source.sh \
-     /tmp/
+# Build context is this directory (see .tekton/odh-autorag-ci-*.yaml path-context).
+COPY requirements.txt requirements-pypi.txt requirements-pypi-whl.txt /tmp/
+COPY seed_docling_models.py artifacts.lock.yaml install_sqlite_from_source.sh /tmp/
 
 # Build SQLite from sqlite-autoconf (Hermeto generic prefetch or download); replace system libsqlite3.
 # https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
