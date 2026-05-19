@@ -360,6 +360,7 @@ cache/
 *.msgpack
 checkpoints/
 models/
+pipelines/training/autorag/documents_rag_optimization_pipeline/models_tmp/
 data/
 datasets/
 runs/
