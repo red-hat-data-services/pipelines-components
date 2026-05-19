@@ -1,6 +1,7 @@
 ---
 # Hermeto generic fetcher lockfile (https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md).
-# Docling blobs from Red Hat OCI artifacts (registry.stage.redhat.io/rhai/...:3.0); same content as HF pins.
+# Docling blobs from Red Hat application/x-mlmodel OCI artifacts (registry.stage.redhat.io/rhai/...:3.0).
+# Hermeto downloads individual layer blobs via registry v2 HTTPS URLs (not skopeo/image mount).
 # sqlite-autoconf 3510300 (system libsqlite3 replacement; see install_sqlite_from_source.sh).
 # Filenames mirror paths under DOCLING_ARTIFACTS_PATH (parent of docling-project--* dirs).
 metadata:

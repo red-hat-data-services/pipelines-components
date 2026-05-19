@@ -5,8 +5,8 @@ Modes (mutually exclusive):
   --download          Fetch from Hugging Face (needs network).
   --hermeto-dir       Copy from Hermeto generic output (deps/generic/...); paths must match
                       artifacts.lock.yaml ``filename`` entries.
-  --oci-layout-dir    Copy from Red Hat OCI artifacts (flat tree at artifact root), together with
-  --oci-models-dir    ``--oci-models-dir`` (e.g. registry.stage.redhat.io/rhai/docling-project-*:3.0).
+  --oci-layout-dir    Copy from a local flat export tree (e.g. models_tmp after manual artifact export).
+  --oci-models-dir    Not for registry bind mounts (application/x-mlmodel artifacts are not images).
 
 See https://docling-project.github.io/docling/usage/advanced_options/ and
 https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
