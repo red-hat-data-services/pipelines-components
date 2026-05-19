@@ -11,8 +11,11 @@ metadata:
       == "main"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-pipelines-components-ci
+    # Use rhoai-v3-5-ea-2 application because it's the current release branch
+    # that gets synced daily from RHDS main, allowing main branch builds
+    # to use the existing release infrastructure
+    appstudio.openshift.io/application: rhoai-v3-5-ea-2
+    appstudio.openshift.io/component: odh-pipelines-components-v3-5-ea-2
     pipelines.appstudio.openshift.io/type: build
   name: odh-pipelines-components-ci-on-push
   namespace: rhoai-tenant
