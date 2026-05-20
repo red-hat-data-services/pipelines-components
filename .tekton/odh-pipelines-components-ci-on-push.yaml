@@ -11,11 +11,14 @@ metadata:
       == "main"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-pipelines-components-ci
+    # Use rhoai-v3-5-ea-2 application because it's the current release branch
+    # that gets synced daily from RHDS main, allowing main branch builds
+    # to use the existing release infrastructure
+    appstudio.openshift.io/application: rhoai-v3-5-ea-2
+    appstudio.openshift.io/component: odh-pipelines-components-v3-5-ea-2
     pipelines.appstudio.openshift.io/type: build
   name: odh-pipelines-components-ci-on-push
-  namespace: open-data-hub-tenant
+  namespace: rhoai-tenant
 spec:
   params:
   - name: git-url
@@ -25,24 +28,32 @@ spec:
   - name: output-image
     value: quay.io/opendatahub/odh-pipelines-components:odh-stable
   - name: dockerfile
-    value: Dockerfile
+    value: Dockerfile.konflux.pipelines-components
   - name: path-context
     value: .
   - name: build-platforms
     value:
-    - linux/x86_64
-    - linux/aarch64
+      - linux/x86_64
+      - linux/aarch64
+  - name: hermetic
+    value: 'true'
+  - name: prefetch-input
+    value: >-
+      {"type": "pip", "path": ".",
+      "requirements_files": ["requirements.txt"],
+      "requirements_build_files": ["requirements-build.txt"],
+      "binary": {"arch": ":all:"}}
   pipelineRef:
     resolver: git
     params:
     - name: url
-      value: https://github.com/opendatahub-io/odh-konflux-central.git
+      value: https://github.com/red-hat-data-services/konflux-central.git
     - name: revision
-      value: main
+      value: '{{ target_branch }}'
     - name: pathInRepo
-      value: pipeline/multi-arch-container-build.yaml
+      value: pipelines/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-pipelines-components-ci
+    serviceAccountName: build-pipeline-pull-request-pipelines
   workspaces:
   - name: git-auth
     secret:

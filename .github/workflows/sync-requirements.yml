@@ -1,40 +1,30 @@
 ---
-name: Sync requirements.txt
+name: Check requirements.txt
 
 on:
   pull_request:
     paths:
       - pyproject.toml
       - uv.lock
+      - requirements.txt
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: sync-requirements-${{ github.head_ref }}
+  group: check-requirements-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
-  sync:
+  check:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-        with:
-          ref: ${{ github.head_ref }}
 
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
-      - name: Generate requirements.txt
+      - name: Verify requirements.txt is up-to-date
         run: |
-          uv export --frozen --no-dev --no-editable --no-annotate \
-            | grep -vx '\.' > requirements.txt
-
-      - name: Commit and push if changed
-        run: |
-          git add requirements.txt
-          git diff --cached --quiet requirements.txt && exit 0
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: sync requirements.txt from uv.lock"
-          git push
+          make requirements
+          git diff --exit-code requirements.txt \
+            || { echo ""; echo "requirements.txt is out of sync."; echo "Run 'make requirements' and commit the result."; exit 1; }

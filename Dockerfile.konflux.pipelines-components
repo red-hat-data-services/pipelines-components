@@ -1,6 +1,9 @@
-FROM registry.redhat.io/ubi9/python-311@sha256:89d4f0c9c39bee97104b7f16bcd15c332c3d4e7cdc80cad81d73ab6ca59055ff
+FROM registry.redhat.io/ubi9/python-312@sha256:ff373f4b42b662e99954adea770ca87b4ea963186cc752174ccb94aa08fa702d
 
 WORKDIR /app
+
+# PR verification: This label proves the build is using PR changes
+LABEL pr.verification="hermetic-build-pr-53"
 
 USER root
 
