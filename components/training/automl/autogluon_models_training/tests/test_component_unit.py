@@ -455,7 +455,9 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), mock_notebooks),
+            **_base_call_kwargs(
+                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), mock_notebooks
+            ),
             positive_class="yes",
         )
 

@@ -144,9 +144,7 @@ class TestAutogluonPipelineIntegration:
             metrics_json = [k for k in json_keys if k.endswith("metrics/metrics.json")]
             feature_imp_json = [k for k in json_keys if k.endswith("metrics/feature_importance.json")]
 
-            assert len(metrics_json) >= 1, (
-                f"Expected at least one metrics.json under {prefix}; found {metrics_json}"
-            )
+            assert len(metrics_json) >= 1, f"Expected at least one metrics.json under {prefix}; found {metrics_json}"
             assert len(feature_imp_json) >= 1, (
                 f"Expected at least one feature_importance.json under {prefix}; found {feature_imp_json}"
             )
