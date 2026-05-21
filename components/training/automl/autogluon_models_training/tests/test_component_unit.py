@@ -428,10 +428,10 @@ class TestAutogluonModelsTrainingUnitTests:
         caplog,
         tmp_path,
     ):
+        """positive_class on regression runs is not passed to TabularPredictor."""
         import logging
 
         caplog.set_level(logging.WARNING)
-        """positive_class on regression runs is not passed to TabularPredictor."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
