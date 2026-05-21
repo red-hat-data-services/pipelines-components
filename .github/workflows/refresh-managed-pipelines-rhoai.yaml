@@ -1,0 +1,130 @@
+---
+# Refresh committed managed pipeline.yaml artifacts on RHOAI release branches.
+# See docs/rhoai-release-pipeline-yaml-refresh.md
+#
+# Images: resolve digest from quay.io/rhoai/odh-*-rhel9:<branch>, compile with
+# registry.redhat.io/rhoai/odh-*-rhel9@<digest> via RELATED_IMAGE_ODH_* env vars.
+#
+# Konflux image builds are out of scope here; coordinate path filters in
+# konflux-central so commits that only touch pipeline.yaml do not re-trigger builds.
+
+name: Refresh pipeline YAMLs (RHOAI release)
+
+on:
+  push:
+    branches:
+      - rhoai-3.5-ea.2
+    # Do not use pipelines/** — it includes pipeline.yaml and would re-trigger on bot commits.
+    paths:
+      - components/**
+      - pipelines/**/pipeline.py
+      - pipelines/**/metadata.yaml
+      - pipelines/**/Containerfile
+      - pipelines/**/requirements*.txt
+      - scripts/generate_managed_pipelines/**
+      - scripts/lib/**
+      - utils/**
+      - pyproject.toml
+      - uv.lock
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: Release branch name (Quay image tag)
+        required: false
+        default: rhoai-3.5-ea.2
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-managed-pipelines-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_BRANCH: >-
+    ${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.ref_name }}
+  QUAY_AUTOML: quay.io/rhoai/odh-automl-rhel9
+  QUAY_AUTORAG: quay.io/rhoai/odh-autorag-rhel9
+  RH_AUTOML: registry.redhat.io/rhoai/odh-automl-rhel9
+  RH_AUTORAG: registry.redhat.io/rhoai/odh-autorag-rhel9
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    # Avoid loops if this workflow pushes a follow-up commit.
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Install skopeo
+        run: sudo apt-get update && sudo apt-get install -y skopeo
+
+      - name: Resolve runtime image digests from Quay
+        id: images
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_BRANCH}"
+          max_attempts=12
+          sleep_seconds=300
+
+          resolve_digest() {
+            local image="$1"
+            local attempt=1
+            while true; do
+              if digest=$(skopeo inspect --format '{{.Digest}}' "docker://${image}:${tag}" 2>/dev/null); then
+                echo "${digest}"
+                return 0
+              fi
+              if [[ "${attempt}" -ge "${max_attempts}" ]]; then
+                echo "Failed to resolve digest for ${image}:${tag} after ${max_attempts} attempts" >&2
+                return 1
+              fi
+              echo "Image ${image}:${tag} not ready (attempt ${attempt}/${max_attempts}); waiting ${sleep_seconds}s..." >&2
+              sleep "${sleep_seconds}"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          automl_digest=$(resolve_digest "${QUAY_AUTOML}")
+          autorag_digest=$(resolve_digest "${QUAY_AUTORAG}")
+
+          echo "automl_digest=${automl_digest}" >> "${GITHUB_OUTPUT}"
+          echo "autorag_digest=${autorag_digest}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved AutoML: ${QUAY_AUTOML}:${tag} -> ${RH_AUTOML}@${automl_digest}"
+          echo "Resolved AutoRAG: ${QUAY_AUTORAG}:${tag} -> ${RH_AUTORAG}@${autorag_digest}"
+
+      - name: Setup Python CI
+        uses: ./.github/actions/setup-python-ci
+        with:
+          python-version: "3.11"
+
+      - name: Compile managed pipelines
+        env:
+          RELATED_IMAGE_ODH_AUTOML_IMAGE: ${{ env.RH_AUTOML }}@${{ steps.images.outputs.automl_digest }}
+          RELATED_IMAGE_ODH_AUTORAG_IMAGE: ${{ env.RH_AUTORAG }}@${{ steps.images.outputs.autorag_digest }}
+        run: |
+          # -o writes the catalog manifest outside the repo; only pipeline.yaml paths are committed.
+          uv run python -m scripts.generate_managed_pipelines.generate_managed_pipelines \
+            -o "${RUNNER_TEMP}/managed-pipelines.json"
+
+      - name: Commit and push refreshed YAML artifacts
+        env:
+          AUTOML_DIGEST: ${{ steps.images.outputs.automl_digest }}
+          AUTORAG_DIGEST: ${{ steps.images.outputs.autorag_digest }}
+        run: |
+          set -euo pipefail
+          find pipelines -name pipeline.yaml -print0 | xargs -0 -r git add
+          if git diff --cached --quiet; then
+            echo "Managed pipeline YAMLs already up to date; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit \
+            -m "chore: refresh pipeline YAMLs for ${RELEASE_BRANCH}" \
+            -m "AutoML: ${RH_AUTOML}@${AUTOML_DIGEST}" \
+            -m "AutoRAG: ${RH_AUTORAG}@${AUTORAG_DIGEST}"
+          git push
