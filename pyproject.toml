@@ -39,7 +39,6 @@ test = [
     # Once KFP fixes this, these can be removed and tests can use
     # SubprocessRunner(use_venv=True) instead.
     "sdg-hub>=0.7.0,<1.0",
-    "scikit-learn>=1.3.0",
     # Required for pipeline validation (validate_examples, validate_base_images)
     "kfp-kubernetes",
 ]
