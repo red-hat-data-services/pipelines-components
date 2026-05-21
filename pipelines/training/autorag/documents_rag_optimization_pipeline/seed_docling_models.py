@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Populate Docling artifact dirs for offline use (matches docling 2.73.x layout models).
+"""Populate Docling artifact dirs from RHAI OCI model images (application/x-mlmodel).
 
-Two modes:
-  --download     Fetch from Hugging Face (needs network; used by default image builds).
-  --hermeto-dir  Copy from Hermeto generic output (deps/generic/...); paths must match
-                 artifacts.lock.yaml ``filename`` entries (networkless Konflux builds).
+OCI sources (registry.redhat.io/rhai):
+  docling-project-docling-layout-heron:3.0  -> docling-layout-heron/
+  docling-project-docling-models:3.0        -> docling-models-3.0/
 
-See https://docling-project.github.io/docling/usage/advanced_options/ and
-https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
+Files are copied under DOCLING_ARTIFACTS_PATH using HuggingFace-cache directory names
+expected by docling at runtime:
+
+  docling-project--docling-layout-heron/
+  docling-project--docling-models/
+
+See https://docling-project.github.io/docling/usage/advanced_options/
 """
 
 from __future__ import annotations
@@ -17,56 +21,66 @@ import shutil
 import sys
 from pathlib import Path
 
-LAYOUT_REPO = "docling-project/docling-layout-heron"
-LAYOUT_REV = "main"
-MODELS_REPO = "docling-project/docling-models"
-MODELS_REV = "v2.3.0"
+# OCI artifact root folder names (inside each mlmodel image).
+LAYOUT_SOURCE_NAMES = (
+    "docling-layout-heron",
+    "docling-project--docling-layout-heron",
+)
+MODELS_SOURCE_NAMES = (
+    "docling-models-3.0",
+    "docling-models",
+    "docling-project--docling-models",
+)
+
+# Directory names docling resolves under DOCLING_ARTIFACTS_PATH.
+LAYOUT_DEST_NAME = "docling-project--docling-layout-heron"
+MODELS_DEST_NAME = "docling-project--docling-models"
 
 
-def _download(dest: Path) -> None:
-    from huggingface_hub import snapshot_download
-
-    dest.mkdir(parents=True, exist_ok=True)
-    layout_name = LAYOUT_REPO.replace("/", "--")
-    models_name = MODELS_REPO.replace("/", "--")
-    snapshot_download(
-        LAYOUT_REPO,
-        revision=LAYOUT_REV,
-        local_dir=str(dest / layout_name),
-        local_dir_use_symlinks=False,
-    )
-    snapshot_download(
-        MODELS_REPO,
-        revision=MODELS_REV,
-        local_dir=str(dest / models_name),
-        local_dir_use_symlinks=False,
-    )
-
-
-def _from_hermeto(source: Path, dest: Path) -> None:
-    """Hermeto stores files under deps/generic/ using lockfile ``filename`` (may include subdirs).
-
-    Only paths whose first component starts with ``docling-project--`` are copied so other generic
-    artifacts (e.g. SQLite source tarballs) can share the same Hermeto lockfile without landing
-    under ``DOCLING_ARTIFACTS_PATH``.
-    """
-    if not source.is_dir():
-        print(f"error: Hermeto directory not found: {source}", file=sys.stderr)
+def _resolve_bundle_dir(root: Path, known_names: tuple[str, ...]) -> Path:
+    """Return the directory that contains model files under *root*."""
+    if not root.is_dir():
+        print(f"error: model root not found: {root}", file=sys.stderr)
         sys.exit(1)
+
+    if (root / "config.json").is_file() or (root / "model.safetensors").is_file():
+        return root
+
+    for name in known_names:
+        candidate = root / name
+        if candidate.is_dir():
+            return candidate
+
+    subdirs = sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
+    if len(subdirs) == 1:
+        return subdirs[0]
+
+    print(
+        f"error: could not resolve model bundle under {root} "
+        f"(expected one of {known_names!r} or a single subdirectory)",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def _copy_tree(src: Path, dest: Path) -> int:
+    """Copy *src* into *dest*, replacing any existing tree. Returns file count."""
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, dest, symlinks=False)
+    return sum(1 for path in dest.rglob("*") if path.is_file())
+
+
+def _install_from_oci(layout_root: Path, models_root: Path, dest: Path) -> None:
+    layout_src = _resolve_bundle_dir(layout_root, LAYOUT_SOURCE_NAMES)
+    models_src = _resolve_bundle_dir(models_root, MODELS_SOURCE_NAMES)
     dest.mkdir(parents=True, exist_ok=True)
-    copied = 0
-    for path in sorted(source.rglob("*")):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(source)
-        if rel.parts and not rel.parts[0].startswith("docling-project--"):
-            continue
-        target = dest / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, target)
-        copied += 1
-    if copied == 0:
-        print(f"error: no files under {source}", file=sys.stderr)
+
+    layout_files = _copy_tree(layout_src, dest / LAYOUT_DEST_NAME)
+    models_files = _copy_tree(models_src, dest / MODELS_DEST_NAME)
+    if layout_files == 0 or models_files == 0:
+        print("error: one or more model trees are empty after copy", file=sys.stderr)
         sys.exit(1)
 
 
@@ -77,25 +91,22 @@ def main() -> None:
         "--dest",
         type=Path,
         required=True,
-        help="Directory that will contain docling-project--* model folders (same as DOCLING_ARTIFACTS_PATH).",
+        help="Directory that will contain docling-project--* model folders (DOCLING_ARTIFACTS_PATH).",
     )
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--download",
-        action="store_true",
-        help="Download pinned repos from Hugging Face Hub.",
-    )
-    group.add_argument(
-        "--hermeto-dir",
+    parser.add_argument(
+        "--layout-root",
         type=Path,
-        metavar="DIR",
-        help="Hermeto generic deps directory (e.g. .../deps/generic).",
+        required=True,
+        help="Filesystem root copied from the docling-layout-heron OCI image.",
+    )
+    parser.add_argument(
+        "--models-root",
+        type=Path,
+        required=True,
+        help="Filesystem root copied from the docling-models OCI image.",
     )
     args = parser.parse_args()
-    if args.download:
-        _download(args.dest)
-    else:
-        _from_hermeto(args.hermeto_dir, args.dest)
+    _install_from_oci(args.layout_root, args.models_root, args.dest)
 
 
 if __name__ == "__main__":
