@@ -1,5 +1,11 @@
 # This container is used to run the AutoRAG components of the training pipeline.
 
+# Docling layout/table models (application/x-mlmodel OCI artifacts on registry.redhat.io/rhai).
+ARG DOCLING_LAYOUT_IMAGE=registry.redhat.io/rhai/docling-project-docling-layout-heron:3.0
+ARG DOCLING_MODELS_IMAGE=registry.redhat.io/rhai/docling-project-docling-models:3.0
+FROM ${DOCLING_LAYOUT_IMAGE} AS docling-layout-src
+FROM ${DOCLING_MODELS_IMAGE} AS docling-models-src
+
 #ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.3"
 ARG BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9@sha256:e42e1d0b52b4f2d2906b302f75987d353248279fa69eead69f907f6fff8d708c"
 FROM ${BASE_IMAGE}
@@ -28,14 +34,16 @@ RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoa
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi-whl.txt
 
-# Docling models for offline text extraction. Hermeto: prefetch with generic lockfile (see /tmp/artifacts.lock.yaml)
-# and mount output at ${HERMETO_GENERIC_DEPS}; https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
+# Docling models for offline text extraction (OCI mlmodel images, not Hugging Face).
 ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-artifacts/models
-RUN if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS}" 2>/dev/null)" ]; then \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
-    else \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --download; \
-    fi
+COPY --from=docling-layout-src / /tmp/docling-oci/layout-root/
+COPY --from=docling-models-src / /tmp/docling-oci/models-root/
+RUN mkdir -p /opt/app-root/docling-artifacts \
+    && python3 /tmp/seed_docling_models.py \
+         --dest /opt/app-root/docling-artifacts/models \
+         --layout-root /tmp/docling-oci/layout-root \
+         --models-root /tmp/docling-oci/models-root \
+    && rm -rf /tmp/docling-oci
 
 LABEL com.redhat.component="odh-autorag-container" \
       name="managed-open-data-hub/odh-autorag-rhel9" \
