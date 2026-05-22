@@ -1,20 +1,16 @@
 ---
-# Refresh committed managed pipeline.yaml artifacts on RHOAI release branches.
-# See docs/rhoai-release-pipeline-yaml-refresh.md
+# Verify committed managed pipeline.yaml artifacts on RHOAI release branches.
 #
-# Images: resolve digest from quay.io/rhoai/odh-*-rhel9:<branch>, compile with
-# registry.redhat.io/rhoai/odh-*-rhel9@<digest> via RELATED_IMAGE_ODH_* env vars.
-#
-# Konflux image builds are out of scope here; coordinate path filters in
-# konflux-central so commits that only touch pipeline.yaml do not re-trigger builds.
+# Resolves runtime digests from quay.io/rhoai/odh-*-rhel9:<release-branch>, compiles with
+# registry.redhat.io/rhoai/odh-*-rhel9@<digest> via RELATED_IMAGE_ODH_* env vars, and fails
+# if pipelines/**/pipeline.yaml differs from git. Does not commit or push.
 
-name: Refresh pipeline YAMLs (RHOAI release)
+name: Check pipeline YAMLs
 
 on:
   push:
     branches:
       - rhoai-3.5-ea.2
-    # Do not use pipelines/** — it includes pipeline.yaml and would re-trigger on bot commits.
     paths:
       - components/**
       - pipelines/**/pipeline.py
@@ -26,6 +22,23 @@ on:
       - utils/**
       - pyproject.toml
       - uv.lock
+      - .github/workflows/check-pipeline-yamls-rhoai.yaml
+  pull_request:
+    branches:
+      - rhoai-3.5-ea.2
+    paths:
+      - components/**
+      - pipelines/**/pipeline.py
+      - pipelines/**/metadata.yaml
+      - pipelines/**/pipeline.yaml
+      - pipelines/**/Containerfile
+      - pipelines/**/requirements*.txt
+      - scripts/generate_managed_pipelines/**
+      - scripts/lib/**
+      - utils/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/check-pipeline-yamls-rhoai.yaml
   workflow_dispatch:
     inputs:
       release_branch:
@@ -34,26 +47,22 @@ on:
         default: rhoai-3.5-ea.2
         type: string
 
-permissions:
-  contents: write
-
 concurrency:
-  group: refresh-managed-pipelines-${{ github.ref_name }}
+  group: check-pipeline-yamls-${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.base_ref || github.ref_name }}
   cancel-in-progress: false
 
 env:
   RELEASE_BRANCH: >-
-    ${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.ref_name }}
+    ${{ github.event_name == 'workflow_dispatch' && inputs.release_branch || github.base_ref || github.ref_name }}
   QUAY_AUTOML: quay.io/rhoai/odh-automl-rhel9
   QUAY_AUTORAG: quay.io/rhoai/odh-autorag-rhel9
   RH_AUTOML: registry.redhat.io/rhoai/odh-automl-rhel9
   RH_AUTORAG: registry.redhat.io/rhoai/odh-autorag-rhel9
 
 jobs:
-  refresh:
+  check:
+    name: Check pipeline.yaml artifacts
     runs-on: ubuntu-24.04
-    # Avoid loops if this workflow pushes a follow-up commit.
-    if: github.actor != 'github-actions[bot]'
 
     steps:
       - name: Checkout repository
@@ -101,30 +110,28 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Compile managed pipelines
+      - name: Verify managed pipeline YAMLs match release images
         env:
           RELATED_IMAGE_ODH_AUTOML_IMAGE: ${{ env.RH_AUTOML }}@${{ steps.images.outputs.automl_digest }}
           RELATED_IMAGE_ODH_AUTORAG_IMAGE: ${{ env.RH_AUTORAG }}@${{ steps.images.outputs.autorag_digest }}
         run: |
-          # -o writes the catalog manifest outside the repo; only pipeline.yaml paths are committed.
+          set -euo pipefail
+
           uv run python -m scripts.generate_managed_pipelines.generate_managed_pipelines \
             -o "${RUNNER_TEMP}/managed-pipelines.json"
 
-      - name: Commit and push refreshed YAML artifacts
-        env:
-          AUTOML_DIGEST: ${{ steps.images.outputs.automl_digest }}
-          AUTORAG_DIGEST: ${{ steps.images.outputs.autorag_digest }}
-        run: |
-          set -euo pipefail
-          find pipelines -name pipeline.yaml -print0 | xargs -0 -r git add
-          if git diff --cached --quiet; then
-            echo "Managed pipeline YAMLs already up to date; nothing to commit."
+          mapfile -t yaml_files < <(find pipelines -name pipeline.yaml | sort)
+          if git diff --quiet -- "${yaml_files[@]}"; then
+            echo "Managed pipeline YAMLs are up to date for ${RELEASE_BRANCH}."
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit \
-            -m "chore: refresh pipeline YAMLs for ${RELEASE_BRANCH}" \
-            -m "AutoML: ${RH_AUTOML}@${AUTOML_DIGEST}" \
-            -m "AutoRAG: ${RH_AUTORAG}@${AUTORAG_DIGEST}"
-          git push
+
+          echo "::error::Committed pipeline.yaml files do not match compile output for ${RELEASE_BRANCH}."
+          git diff --stat -- "${yaml_files[@]}"
+          echo ""
+          echo "Current release runtime images (${RELEASE_BRANCH}):"
+          echo "  ${RELATED_IMAGE_ODH_AUTOML_IMAGE}"
+          echo "  ${RELATED_IMAGE_ODH_AUTORAG_IMAGE}"
+
+          git checkout -- "${yaml_files[@]}"
+          exit 1
