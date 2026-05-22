@@ -12,6 +12,8 @@ last), then performs a two-stage **per-series temporal** split for efficient Aut
 
 The test set is written to S3 artifact, while train CSVs are written to the PVC workspace for sharing across pipeline steps.
 
+After cleansing, at least **100** valid records must remain; otherwise the component fails with a clear error so downstream AutoGluon training does not run on datasets too small to split reliably.
+
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
@@ -85,7 +87,7 @@ def example_pipeline(
   - timeseries
   - automl
   - data-loading
-- **Last Verified**: 2026-04-02 00:00:00+00:00
+- **Last Verified**: 2026-05-22 00:00:00+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski

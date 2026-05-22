@@ -41,6 +41,10 @@ def timeseries_data_loader(
     The test set is written to S3 artifact, while train CSVs are written
     to the PVC workspace for sharing across pipeline steps.
 
+    After cleansing, at least **100** valid records must remain; otherwise the component
+    fails with a clear error so downstream AutoGluon training does not run on datasets too
+    small to split reliably.
+
     Args:
         file_key: S3 object key of the CSV file containing time series data.
         bucket_name: S3 bucket name containing the file.
@@ -65,6 +69,7 @@ def timeseries_data_loader(
     logger = logging.getLogger(__name__)
 
     MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB limit in bytes
+    MIN_VALID_RECORDS_AFTER_CLEANSING = 100
     PANDAS_CHUNK_SIZE = 10000  # Rows per batch for streaming read
     DEFAULT_TEST_SIZE = 0.2
 
@@ -289,6 +294,14 @@ def timeseries_data_loader(
         )
 
     df = _clean_timeseries_dataframe(df, id_column, timestamp_column, logger)
+
+    n_valid = len(df)
+    if n_valid < MIN_VALID_RECORDS_AFTER_CLEANSING:
+        raise ValueError(
+            f"After data cleansing, only {n_valid} valid record(s) remain; "
+            f"at least {MIN_VALID_RECORDS_AFTER_CLEANSING} are required for AutoML training. "
+            "Provide a larger dataset or fix invalid timestamps, null ids, and duplicate keys."
+        )
 
     # Create workspace datasets directory
     datasets_dir = Path(workspace_path) / "datasets"
