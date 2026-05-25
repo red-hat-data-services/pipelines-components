@@ -4,6 +4,8 @@ ignore: |
   .tekton/
   # KFP-compiled pipeline IR; indentation/line-length do not match hand-written YAML rules.
   pipelines/**/pipeline.yaml
+  # Hermeto lockfiles; long download URLs and checksums are not practical to wrap.
+  pipelines/**/artifacts.lock.yaml
 rules:
   line-length:
     max: 120

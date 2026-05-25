@@ -1,7 +1,10 @@
 ---
 # Hermeto generic fetcher lockfile (https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md).
-# Docling models are supplied as OCI artifacts (application/x-mlmodel) via multi-stage COPY in
-# Containerfile / Dockerfile.konflux.autorag — not listed here.
+#
+# Docling models (RHAI OCI application/x-mlmodel artifacts) cannot use buildah FROM; they are
+# prefetched here and installed by install_docling_models.sh. Regenerate layer entries after RHAI
+# updates using generate_docling_rhai_lockfile.sh on a host with registry.redhat.io access.
+#
 # Pin: sqlite-autoconf 3510300 (system libsqlite3 replacement; see install_sqlite_from_source.sh).
 metadata:
   version: "1.0"
@@ -9,3 +12,39 @@ artifacts:
   - download_url: "https://sqlite.org/2026/sqlite-autoconf-3510300.tar.gz"
     checksum: "sha256:81f5be397049b0cae1b167f2225af7646fc0f82e4a9b3c48c9ea3a533e21d77a"
     filename: "sqlite-autoconf-3510300.tar.gz"
+  # registry.redhat.io/rhai/docling-project-docling-layout-heron:3.0@sha256:8f3f5df82afb2d0bcb40110d85cf1879b9d762f1600cca79c94f2a6b7173575b
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-layout-heron/blobs/sha256:175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6"
+    checksum: "sha256:175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6"
+    filename: "docling-layout-heron-3.0"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-layout-heron/blobs/sha256:fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d"
+    checksum: "sha256:fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d"
+    filename: "docling-layout-heron-3.0-layer2"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-layout-heron/blobs/sha256:e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e"
+    checksum: "sha256:e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e"
+    filename: "docling-layout-heron-3.0-layer3"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-layout-heron/blobs/sha256:00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c"
+    checksum: "sha256:00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c"
+    filename: "docling-layout-heron-3.0-layer4"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-layout-heron/blobs/sha256:cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1"
+    checksum: "sha256:cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1"
+    filename: "docling-layout-heron-3.0-layer5"
+# registry.redhat.io/rhai/docling-project-docling-models:3.0@sha256:ce28b996df65c0d12e0646b038ac4d3387b19feb6d8f13d74da720e3d4ecd4ce
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:638053f2c976547e6d3de9f4ff1efb386715f1795e8fe9500a5150245845b591"
+    checksum: "sha256:638053f2c976547e6d3de9f4ff1efb386715f1795e8fe9500a5150245845b591"
+    filename: "docling-models-3.0"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9"
+    checksum: "sha256:9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9"
+    filename: "docling-models-3.0-layer2"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9"
+    checksum: "sha256:2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9"
+    filename: "docling-models-3.0-layer3"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd"
+    checksum: "sha256:984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd"
+    filename: "docling-models-3.0-layer4"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718"
+    checksum: "sha256:3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718"
+    filename: "docling-models-3.0-layer5"
+  - download_url: "https://registry.redhat.io/v2/rhai/docling-project-docling-models/blobs/sha256:dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a"
+    checksum: "sha256:dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a"
+    filename: "docling-models-3.0-layer6"
+

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Populate Docling artifact dirs from RHAI OCI model images (application/x-mlmodel).
+"""Populate Docling artifact dirs from RHAI OCI model artifacts (application/x-mlmodel).
 
-OCI sources (registry.redhat.io/rhai):
+OCI sources (registry.redhat.io/rhai), pulled with oras or prefetched via Hermeto:
   docling-project-docling-layout-heron:3.0  -> docling-layout-heron/
   docling-project-docling-models:3.0        -> docling-models-3.0/
 
-Files are copied under DOCLING_ARTIFACTS_PATH using HuggingFace-cache directory names
-expected by docling at runtime:
+Installed under DOCLING_ARTIFACTS_PATH using HuggingFace-cache directory names:
 
   docling-project--docling-layout-heron/
   docling-project--docling-models/
@@ -84,6 +83,28 @@ def _install_from_oci(layout_root: Path, models_root: Path, dest: Path) -> None:
         sys.exit(1)
 
 
+def _from_hermeto(source: Path, dest: Path) -> None:
+    """Copy docling-project--* trees from Hermeto generic output (per-file lockfile layout)."""
+    if not source.is_dir():
+        print(f"error: Hermeto directory not found: {source}", file=sys.stderr)
+        sys.exit(1)
+    dest.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for path in sorted(source.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(source)
+        if rel.parts and not rel.parts[0].startswith("docling-project--"):
+            continue
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+        copied += 1
+    if copied == 0:
+        print(f"error: no docling-project--* files under {source}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main() -> None:
     """Parse CLI arguments and populate the Docling artifact tree."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -93,20 +114,31 @@ def main() -> None:
         required=True,
         help="Directory that will contain docling-project--* model folders (DOCLING_ARTIFACTS_PATH).",
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "--layout-root",
         type=Path,
-        required=True,
-        help="Filesystem root copied from the docling-layout-heron OCI image.",
+        help="Filesystem root from the docling-layout-heron OCI artifact (requires --models-root).",
+    )
+    group.add_argument(
+        "--hermeto-dir",
+        type=Path,
+        metavar="DIR",
+        help="Hermeto generic deps directory (e.g. /cachi2/output/deps/generic).",
     )
     parser.add_argument(
         "--models-root",
         type=Path,
-        required=True,
-        help="Filesystem root copied from the docling-models OCI image.",
+        help="Filesystem root from the docling-models OCI artifact (requires --layout-root).",
     )
     args = parser.parse_args()
-    _install_from_oci(args.layout_root, args.models_root, args.dest)
+    if args.hermeto_dir is not None:
+        _from_hermeto(args.hermeto_dir, args.dest)
+    else:
+        if args.models_root is None:
+            print("error: --models-root is required with --layout-root", file=sys.stderr)
+            sys.exit(2)
+        _install_from_oci(args.layout_root, args.models_root, args.dest)
 
 
 if __name__ == "__main__":
