@@ -565,6 +565,14 @@ def parse_and_chunk(
                 run()
     ''')
 
+    from kubernetes import client as k8s_client
+    from kubernetes import config as k8s_config
+
+    try:
+        k8s_config.load_incluster_config()
+    except k8s_config.ConfigException:
+        k8s_config.load_kube_config()
+
     from codeflare_sdk import ManagedClusterConfig, RayJob
     from kubernetes.client import (
         V1PersistentVolumeClaimVolumeSource,
@@ -643,14 +651,6 @@ def parse_and_chunk(
         ),
         ttl_seconds_after_finished=300,
     )
-
-    from kubernetes import client as k8s_client
-    from kubernetes import config as k8s_config
-
-    try:
-        k8s_config.load_incluster_config()
-    except k8s_config.ConfigException:
-        k8s_config.load_kube_config()
 
     custom_api = k8s_client.CustomObjectsApi()
     rayjob_group = "ray.io"
