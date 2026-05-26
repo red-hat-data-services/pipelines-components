@@ -1,5 +1,5 @@
 ---
-name: autogluon_timeseries_models_full_refit
+name: autogluon_timeseries_models_training
 stability: alpha
 dependencies:
   kubeflow:
@@ -9,5 +9,5 @@ tags:
   - training
   - timeseries
   - automl
-  - model-refit
-lastVerified: 2026-04-21T12:00:00Z
+  - model-selection
+lastVerified: 2026-04-10T12:00:00Z
