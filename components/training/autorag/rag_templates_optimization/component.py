@@ -453,6 +453,7 @@ def rag_templates_optimization(
         mapping["INPUT_DATA_KEY"] = input_data_key
 
         mapping["OGX_SSL_VERIFY"] = ogx_ssl_verify
+        mapping["OGX_CLIENT_BASE_URL"] = (os.environ.get("OGX_CLIENT_BASE_URL") or "").strip()
 
         return mapping
 
