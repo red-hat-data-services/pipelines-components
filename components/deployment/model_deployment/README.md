@@ -56,8 +56,12 @@ Creates a vLLM NVIDIA GPU ServingRuntime and InferenceService matching the RHOAI
 - **Owners**:
   - Approvers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
   - Reviewers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
 
 ## Additional Resources 📚
 

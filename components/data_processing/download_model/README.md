@@ -43,8 +43,12 @@ If the model is already present on the PVC, skips the download.
 - **Owners**:
   - Approvers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
   - Reviewers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
 
 ## Additional Resources 📚
 

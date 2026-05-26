@@ -51,8 +51,12 @@ Uses vLLM with ``--task embedding`` on GPU to serve an OpenAI-compatible ``/v1/e
 - **Owners**:
   - Approvers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
   - Reviewers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
 
 ## Additional Resources 📚
 

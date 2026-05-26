@@ -97,8 +97,12 @@ Multi-step RAG pipeline: parse PDFs, ingest into Milvus, deploy LLM.
 - **Owners**:
   - Approvers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
   - Reviewers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
 
 ## Additional Resources 📚
 
