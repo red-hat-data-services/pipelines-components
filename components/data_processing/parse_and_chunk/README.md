@@ -64,8 +64,12 @@ Parse PDFs and write chunked JSONL files to S3.
 - **Owners**:
   - Approvers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
   - Reviewers:
     - szaher
+    - kryanbeane
+    - CathalOConnorRH
 
 ## Additional Resources 📚
 
