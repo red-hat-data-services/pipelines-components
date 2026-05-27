@@ -246,7 +246,10 @@ def autogluon_timeseries_models_training(
             if cell.get("cell_type") != "code":
                 continue
             new_source = []
-            for line in cell.get("source", []):
+            src = cell.get("source", [])
+            if isinstance(src, str):
+                src = [src]
+            for line in src:
                 for placeholder, value in replacements.items():
                     line = line.replace(placeholder, value)
                 new_source.append(line)

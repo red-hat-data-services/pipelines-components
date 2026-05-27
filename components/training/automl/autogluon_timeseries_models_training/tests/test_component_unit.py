@@ -174,6 +174,12 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_read_csv.assert_any_call("/tmp/test.csv")
         mock_ts_df_cls.from_data_frame.assert_any_call(train_df, id_column="item_id", timestamp_column="timestamp")
         mock_ts_df_cls.from_data_frame.assert_any_call(test_df, id_column="item_id", timestamp_column="timestamp")
+        mock_ts_df_cls.from_path.assert_called_once_with(
+            path=extra_train_path,
+            id_column="item_id",
+            timestamp_column="timestamp",
+        )
+        mock_concat.assert_called_once_with([train_ts, extra_ts], axis=0)
 
         assert result.top_models == ["DeepAR", "TFT"]
         assert result.eval_metric == "MASE"
@@ -239,6 +245,12 @@ class TestTimeseriesModelsTrainingUnitTests:
         # Check that first predictor call (selection) has known_covariates
         assert mock_predictor_cls.call_args_list[0][1]["known_covariates_names"] == covariates
         assert result.model_config["known_covariates_names"] == covariates
+        mock_ts_df_cls.from_path.assert_called_once_with(
+            path=extra_train_path,
+            id_column="item_id",
+            timestamp_column="timestamp",
+        )
+        mock_concat.assert_called_once()
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
