@@ -48,6 +48,12 @@ jobs:
         include:
           - name: example
             context: docs/examples
+          - name: components-training-autorag-rag_templates_optimization
+            context: components/training/autorag/rag_templates_optimization
+          - name: pipelines-training-automl-autogluon_tabular_training_pipeline
+            context: pipelines/training/automl/autogluon_tabular_training_pipeline
+          - name: pipelines-training-autorag-documents_rag_optimization_pipeline
+            context: pipelines/training/autorag/documents_rag_optimization_pipeline
 
     steps:
       - name: Checkout repository
