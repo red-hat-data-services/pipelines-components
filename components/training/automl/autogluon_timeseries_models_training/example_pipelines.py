@@ -12,6 +12,7 @@ def example_pipeline(
     id_column: str = "item_id",
     timestamp_column: str = "timestamp",
     train_data_path: str = "/tmp/train_data",
+    extra_train_data_path: str = "/tmp/extra_train_data",
     top_n: int = 3,
     workspace_path: str = "/tmp/workspace",
     prediction_length: int = 1,
@@ -25,6 +26,7 @@ def example_pipeline(
         id_column: Name of the ID column.
         timestamp_column: Name of the timestamp column.
         train_data_path: Path to the training data.
+        extra_train_data_path: Path to extra training data for full refit.
         top_n: Number of top models to select.
         workspace_path: Path to the workspace directory.
         prediction_length: Number of time steps to predict.
@@ -45,5 +47,6 @@ def example_pipeline(
         workspace_path=workspace_path,
         pipeline_name=pipeline_name,
         run_id=run_id,
+        extra_train_data_path=extra_train_data_path,
         prediction_length=prediction_length,
     )
