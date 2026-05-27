@@ -26,10 +26,10 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 | `run_id` | `str` | `None` | Pipeline run id used in generated notebook placeholders. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Combined output artifact containing all refitted models. |
 | `notebooks` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded notebook templates. |
-| `sample_rows` | `str` | `[]` | Optional sample rows JSON string used in generated notebook placeholders. |
+| `extra_train_data_path` | `str` | `None` | Path to extra train split for full refit. |
+| `sample_rows` | `str` | `[]` | Sample rows JSON string used in generated notebook placeholders. |
 | `sampling_config` | `Optional[dict]` | `None` | Optional sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Optional split config stored in artifact metadata. |
-| `extra_train_data_path` | `str` | `""` | Path to extra train split for full refit. |
 | `prediction_length` | `int` | `1` | Forecast horizon (number of timesteps). |
 | `known_covariates_names` | `Optional[List[str]]` | `None` | Optional list of known covariate column names. |
 
@@ -56,6 +56,7 @@ def example_pipeline(
     id_column: str = "item_id",
     timestamp_column: str = "timestamp",
     train_data_path: str = "/tmp/train_data",
+    extra_train_data_path: str = "/tmp/extra_train_data",
     top_n: int = 3,
     workspace_path: str = "/tmp/workspace",
     prediction_length: int = 1,
@@ -69,6 +70,7 @@ def example_pipeline(
         id_column: Name of the ID column.
         timestamp_column: Name of the timestamp column.
         train_data_path: Path to the training data.
+        extra_train_data_path: Path to extra training data for full refit.
         top_n: Number of top models to select.
         workspace_path: Path to the workspace directory.
         prediction_length: Number of time steps to predict.
@@ -89,6 +91,7 @@ def example_pipeline(
         workspace_path=workspace_path,
         pipeline_name=pipeline_name,
         run_id=run_id,
+        extra_train_data_path=extra_train_data_path,
         prediction_length=prediction_length,
     )
 
@@ -106,7 +109,7 @@ def example_pipeline(
   - timeseries
   - automl
   - model-selection
-- **Last Verified**: 2026-04-10 12:00:00+00:00
+- **Last Verified**: 2026-05-27 12:00:00+00:00
 - **Owners**:
   - Approvers:
     - LukaszCmielowski
