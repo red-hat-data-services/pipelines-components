@@ -501,7 +501,7 @@ deploymentSpec:
           \        header_row: str,\n        table_body: str,\n        best_pattern_name:\
           \ str,\n        num_patterns: int,\n        eval_metric: str,\n        colgroup_html:\
           \ str = \"\",\n    ) -> str:\n        \"\"\"Build a styled HTML document\
-          \ for the RAG leaderboard (aligned with autorag leaderboard style).\"\"\"\
+          \ for the RAG leaderboard (aligned with AutoML leaderboard style).\"\"\"\
           \n        metric_label = html.escape(_metric_display_name(eval_metric))\n\
           \        return f\"\"\"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta\
           \ charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width,\
