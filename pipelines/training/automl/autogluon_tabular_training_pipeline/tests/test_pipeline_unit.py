@@ -16,7 +16,7 @@ _EXPECTED_ROOT_DAG_TASK_IDS = (
     "autogluon-models-training",
     "automl-data-loader",
     "leaderboard-evaluation",
-    "run-status-artifact-initialization",
+    "publish-pipeline-manifest",
 )
 
 

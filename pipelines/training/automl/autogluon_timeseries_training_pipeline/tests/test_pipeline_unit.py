@@ -14,7 +14,7 @@ from ..pipeline import autogluon_timeseries_training_pipeline
 _EXPECTED_ROOT_DAG_TASK_IDS = (
     "autogluon-timeseries-models-training",
     "leaderboard-evaluation",
-    "run-status-artifact-initialization",
+    "publish-pipeline-manifest",
     "timeseries-data-loader",
 )
 

@@ -27,7 +27,7 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Combined output artifact containing all refitted models. |
 | `notebooks` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded notebook templates. |
 | `extra_train_data_path` | `str` | `None` | Path to extra train split for full refit. |
-| `run_status_artifact` | `dsl.Output[dsl.Artifact]` | `None` | KFP artifact with a snapshot of ``.automl/run_status.json``. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sample_rows` | `str` | `[]` | Sample rows JSON string used in generated notebook placeholders. |
 | `sampling_config` | `Optional[dict]` | `None` | Optional sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Optional split config stored in artifact metadata. |

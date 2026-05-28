@@ -61,8 +61,7 @@ def publish_pipeline_manifest(
 
     if not manifest_path.exists():
         raise FileNotFoundError(
-            f"Pipeline manifest not found: {manifest_path}. "
-            f"Expected manifest file for pipeline_id='{pipeline_id}'"
+            f"Pipeline manifest not found: {manifest_path}. Expected manifest file for pipeline_id='{pipeline_id}'"
         )
 
     with manifest_path.open("r", encoding="utf-8") as f:

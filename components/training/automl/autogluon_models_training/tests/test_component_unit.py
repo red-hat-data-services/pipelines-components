@@ -131,16 +131,16 @@ def _mock_leaderboard_top_models(mock_predictor, names: list):
     chain.__getitem__.return_value.values.tolist.return_value = names
 
 
-def _make_run_status_artifact(tmp_path):
+def _make_component_status_artifact(tmp_path):
     art = mock.MagicMock()
-    art.path = str(tmp_path / "run_status_out")
+    art.path = str(tmp_path / "component_status_out")
     art.metadata = {}
     return art
 
 
 def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None):
     """Return minimal valid kwargs for autogluon_models_training.python_func."""
-    rs = _make_run_status_artifact(tmp_path) if tmp_path is not None else mock.MagicMock(path="/tmp/rs", metadata={})
+    rs = _make_component_status_artifact(tmp_path) if tmp_path is not None else mock.MagicMock(path="/tmp/rs", metadata={})
     return dict(
         label_column="target",
         task_type="regression",
@@ -152,7 +152,7 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None)
         run_id=RUN_ID,
         sample_row=SAMPLE_ROW,
         models_artifact=models_artifact,
-        run_status_artifact=rs,
+        component_status=rs,
         extra_train_data_path="/tmp/extra.csv",
     )
 

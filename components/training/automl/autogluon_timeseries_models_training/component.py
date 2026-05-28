@@ -20,7 +20,7 @@ def autogluon_timeseries_models_training(
     models_artifact: dsl.Output[dsl.Model],
     notebooks: dsl.EmbeddedInput[dsl.Dataset],
     extra_train_data_path: str,
-    run_status_artifact: dsl.Output[dsl.Artifact] = None,
+    component_status: dsl.Output[dsl.Artifact],
     sample_rows: str = "[]",
     sampling_config: Optional[dict] = None,
     split_config: Optional[dict] = None,
@@ -61,7 +61,7 @@ def autogluon_timeseries_models_training(
         split_config: Optional split config stored in artifact metadata.
         prediction_length: Forecast horizon (number of timesteps).
         known_covariates_names: Optional list of known covariate column names.
-        run_status_artifact: KFP artifact with a snapshot of ``.automl/run_status.json``.
+        component_status: Output artifact containing stage-level progress tracking for this component.
 
     Returns:
         NamedTuple: top_models list, predictor_path, eval_metric, model_config.
@@ -76,14 +76,9 @@ def autogluon_timeseries_models_training(
 
     logger = logging.getLogger(__name__)
 
-    from kfp_components.components.training.automl.shared.run_status import (
-        COMPONENT_TIMESERIES_MODELS_TRAINING,
-        RUN_STATUS_ARTIFACT_DISPLAY_NAME,
-        RunStatusRecorder,
-    )
+    from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
 
-    run_status = RunStatusRecorder(workspace_path, COMPONENT_TIMESERIES_MODELS_TRAINING)
-    run_status.begin()
+    status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
 
     # Set constants
     DEFAULT_PRESETS = "fast_training"
@@ -126,8 +121,8 @@ def autogluon_timeseries_models_training(
         raise TypeError("sample_rows must be a string.")
     if models_artifact is not None and not hasattr(models_artifact, "path"):
         raise TypeError("models_artifact must be a KFP output artifact or None.")
-    if run_status_artifact is not None and not hasattr(run_status_artifact, "path"):
-        raise TypeError("run_status_artifact must be a KFP output artifact or None.")
+    if not hasattr(component_status, "path"):
+        raise TypeError("component_status must be a KFP output artifact.")
     if not hasattr(models_artifact, "path"):
         raise TypeError("models_artifact must be a KFP output artifact.")
     if not hasattr(notebooks, "path"):
@@ -139,6 +134,7 @@ def autogluon_timeseries_models_training(
     sampling_config = sampling_config or {}
     split_config = split_config or {}
 
+    status.record("load_data", "started")
     train_df = pd.read_csv(train_data_path)
     test_df = pd.read_csv(test_data.path)
     logger.info("Loaded train=%s test=%s rows", len(train_df), len(test_df))
@@ -149,7 +145,7 @@ def autogluon_timeseries_models_training(
         timestamp_column=timestamp_column,
     )
     logger.info("Train TimeSeriesDataFrame: %s rows, %s items", len(train_ts), train_ts.num_items)
-    run_status.record("load_data", "completed")
+    status.record("load_data", "completed")
 
     # Convert test data to TimeSeriesDataFrame
     test_ts = TimeSeriesDataFrame.from_data_frame(
@@ -178,7 +174,7 @@ def autogluon_timeseries_models_training(
         DEFAULT_TIME_LIMIT,
         prediction_length,
     )
-    run_status.record("model_selection", "started")
+    status.record("model_selection", "started")
     try:
         predictor.fit(
             train_data=train_ts,
@@ -203,11 +199,12 @@ def autogluon_timeseries_models_training(
         )
 
     top_models = leaderboard.head(top_n)["model"].values.tolist()
-    run_status.record(
+    status.record(
         "model_selection",
         "completed",
         top_n=top_n,
         selected_models=top_models,
+        steps=["model_training", "holdout_evaluation"],
     )
     logger.info(
         "Timeseries selection done: top_%s=%s best_score_test=%s",
@@ -235,10 +232,8 @@ def autogluon_timeseries_models_training(
             "Skipping combined full-refit stage; missing models_artifact or extra_train_data_path. "
             "Returning selection-only outputs for backward compatibility."
         )
-        run_status.complete()
-        if run_status_artifact is not None:
-            run_status.publish_artifact(run_status_artifact.path)
-            run_status_artifact.metadata["display_name"] = RUN_STATUS_ARTIFACT_DISPLAY_NAME
+        status.save()
+        component_status.metadata["display_name"] = "Timeseries Models Training Status"
         outputs = NamedTuple(
             "outputs",
             top_models=List[str],
@@ -282,7 +277,7 @@ def autogluon_timeseries_models_training(
     models_metadata = []
     failed_models = []
 
-    run_status.record("refit_full", "started")
+    status.record("refit_full", "started")
 
     def replace_placeholder_in_notebook(notebook, replacements):
         for cell in notebook.get("cells", []):
@@ -396,12 +391,10 @@ def autogluon_timeseries_models_training(
     if not model_names_full:
         raise RuntimeError("All models failed refit. No artifacts written.")
 
-    run_status.record("refit_full", "completed", model_count=len(model_names_full))
-    run_status.record("evaluate_models", "completed", eval_metric=eval_metric)
-    run_status.complete()
-    if run_status_artifact is not None:
-        run_status.publish_artifact(run_status_artifact.path)
-        run_status_artifact.metadata["display_name"] = RUN_STATUS_ARTIFACT_DISPLAY_NAME
+    status.record("refit_full", "completed", model_count=len(model_names_full))
+    status.record("evaluate_models", "completed", eval_metric=eval_metric)
+    status.save()
+    component_status.metadata["display_name"] = "Timeseries Models Training Status"
 
     models_artifact.metadata["model_names"] = json.dumps(model_names_full)
     models_artifact.metadata["context"] = {

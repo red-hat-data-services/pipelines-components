@@ -5,34 +5,22 @@ from unittest import mock
 import pytest
 
 
-def _make_run_status_artifact(tmp_path):
+def _make_component_status_artifact(tmp_path):
     art = mock.MagicMock()
-    art.path = str(tmp_path / "run_status_artifact")
+    art.path = str(tmp_path / "component_status")
     art.metadata = {}
     return art
 
 
 @pytest.fixture(autouse=True)
-def inject_run_status_defaults(monkeypatch, tmp_path):
-    """Inject KFP placeholder args when tests omit pipeline_name and run_id."""
+def inject_component_status(monkeypatch, tmp_path):
+    """Inject component_status when tests omit it."""
     from ..component import automl_data_loader
 
     original = automl_data_loader.python_func
 
     def wrapper(*args, **kwargs):
-        kwargs.setdefault("run_status_artifact", _make_run_status_artifact(tmp_path))
-        if "workspace_path" in kwargs:
-            from kfp_components.components.training.automl.shared.run_status import (
-                PIPELINE_TABULAR_TRAINING,
-                init_run_status,
-            )
-
-            init_run_status(
-                kwargs["workspace_path"],
-                kfp_run_id="test-run-id",
-                pipeline_name="test-pipeline",
-                run_status_pipeline_id=PIPELINE_TABULAR_TRAINING,
-            )
+        kwargs.setdefault("component_status", _make_component_status_artifact(tmp_path))
         return original(*args, **kwargs)
 
     monkeypatch.setattr(automl_data_loader, "python_func", wrapper)

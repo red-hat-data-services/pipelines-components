@@ -183,16 +183,19 @@ def _make_test_artifact(tmp_path, name="test_output.csv"):
     return art
 
 
-class TestRunStatusArtifact:
-    """Tests for workspace run_status.json written by the data loader."""
+class TestComponentStatusArtifact:
+    """Tests for component_status.json written by the data loader."""
 
     @mock.patch.dict("os.environ", mocked_env_variables)
-    def test_writes_run_status_json(self, tmp_path, monkeypatch):
-        """Test that run_status.json is written to workspace."""
+    def test_writes_component_status_json(self, tmp_path, monkeypatch):
+        """Test that component_status.json is written to the output artifact."""
         monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
         csv_content = "a,b,c\n1,2,3\n4,5,6\n"
         body_stream = _csv_body(csv_content)
         sampled_test = _make_test_artifact(tmp_path)
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "component_status_out")
+        component_status.metadata = {}
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
             automl_data_loader.python_func(
@@ -201,27 +204,26 @@ class TestRunStatusArtifact:
                 workspace_path=str(tmp_path),
                 label_column="c",
                 sampled_test_dataset=sampled_test,
+                component_status=component_status,
             )
 
-        status_path = tmp_path / ".automl" / "run_status.json"
-        assert status_path.exists()
+        status_path = Path(component_status.path) / "component_status.json"
+        assert status_path.is_file()
         payload = json.loads(status_path.read_text())
-        assert payload["kfp_run_id"] == "test-run-id"
-        loader = next(c for c in payload["components"] if c["id"] == "automl_data_loader")
-        assert loader["state"] == "completed"
-        stage_ids = [s["id"] for s in loader["stages"]]
+        assert payload["component_id"] == "automl_data_loader"
+        stage_ids = [stage["id"] for stage in payload["stages"]]
         assert "read_and_sample" in stage_ids
         assert "split" in stage_ids
 
     @mock.patch.dict("os.environ", mocked_env_variables)
-    def test_publishes_run_status_kfp_artifact(self, tmp_path):
-        """Test that run_status KFP artifact is published."""
+    def test_sets_component_status_display_name(self, tmp_path):
+        """Test that component_status artifact metadata is set."""
         csv_content = "a,b,c\n1,2,3\n"
         body_stream = _csv_body(csv_content)
         sampled_test = _make_test_artifact(tmp_path)
-        run_status = mock.MagicMock()
-        run_status.path = str(tmp_path / "run_status_out")
-        run_status.metadata = {}
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "component_status_out")
+        component_status.metadata = {}
 
         with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}):
             automl_data_loader.python_func(
@@ -230,12 +232,11 @@ class TestRunStatusArtifact:
                 workspace_path=str(tmp_path),
                 label_column="c",
                 sampled_test_dataset=sampled_test,
-                run_status_artifact=run_status,
+                component_status=component_status,
             )
 
-        artifact_file = Path(run_status.path) / "run_status.json"
-        assert artifact_file.exists()
-        assert run_status.metadata["display_name"] == "automl_run_status"
+        assert (Path(component_status.path) / "component_status.json").is_file()
+        assert component_status.metadata["display_name"] == "Data Loader Status"
 
 
 class TestAutomlDataLoaderUnitTests:

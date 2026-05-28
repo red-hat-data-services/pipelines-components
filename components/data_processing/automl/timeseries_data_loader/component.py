@@ -15,7 +15,7 @@ def timeseries_data_loader(
     id_column: str,
     timestamp_column: str,
     sampled_test_dataset: dsl.Output[dsl.Dataset],
-    run_status_artifact: dsl.Output[dsl.Artifact],
+    component_status: dsl.Output[dsl.Artifact],
     selection_train_size: float = 0.3,
 ) -> NamedTuple(
     "outputs",
@@ -54,7 +54,7 @@ def timeseries_data_loader(
         id_column: Name of the column identifying each time series (item_id).
         timestamp_column: Name of the timestamp/datetime column.
         sampled_test_dataset: Output dataset artifact for the test split.
-        run_status_artifact: KFP artifact with a snapshot of ``.automl/run_status.json``.
+        component_status: Output artifact containing stage-level progress tracking for this component.
         selection_train_size: Fraction of train portion for model selection (default: 0.3).
 
     Returns:
@@ -92,15 +92,11 @@ def timeseries_data_loader(
     if file_key.startswith("/") or file_key.endswith("/") or "//" in file_key:
         raise ValueError("file_key must be a valid S3 object key and must not start/end with '/' or contain '//'.")
 
-    from kfp_components.components.training.automl.shared.run_status import (
-        COMPONENT_TIMESERIES_DATA_LOADER,
-        RUN_STATUS_ARTIFACT_DISPLAY_NAME,
-        RunStatusRecorder,
-    )
+    from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
 
-    run_status = RunStatusRecorder(workspace_path, COMPONENT_TIMESERIES_DATA_LOADER)
-    run_status.begin()
-    run_status.record("validate_inputs", "completed")
+    status = ComponentStatusTracker(component_status.path, "timeseries_data_loader")
+    status.record("validate_inputs", "started")
+    status.record("validate_inputs", "completed")
 
     def get_s3_client(verify=True):
         """Create and return an S3 client using credentials from environment variables."""
@@ -290,7 +286,7 @@ def timeseries_data_loader(
 
         return out.reset_index(drop=True)
 
-    run_status.record(
+    status.record(
         "read_and_sample",
         "started",
         source=f"s3://{bucket_name}/{file_key}",
@@ -310,8 +306,8 @@ def timeseries_data_loader(
             f"with columns {sorted(required_columns)}."
         )
 
-    run_status.record("read_and_sample", "completed", rows=len(df))
-    run_status.record("cleanse", "started")
+    status.record("read_and_sample", "completed", rows=len(df))
+    status.record("cleanse", "started")
 
     df = _clean_timeseries_dataframe(df, id_column, timestamp_column, logger)
 
@@ -323,8 +319,8 @@ def timeseries_data_loader(
             "Provide a larger dataset or fix invalid timestamps, null ids, and duplicate keys."
         )
 
-    run_status.record("cleanse", "completed", rows=n_valid)
-    run_status.record("split", "started")
+    status.record("cleanse", "completed", rows=n_valid)
+    status.record("split", "started")
 
     # Create workspace datasets directory
     datasets_dir = Path(workspace_path) / "datasets"
@@ -392,7 +388,7 @@ def timeseries_data_loader(
             "each series has enough train rows for the selection segment."
         )
 
-    run_status.record(
+    status.record(
         "split",
         "completed",
         test_size=test_size,
@@ -426,10 +422,10 @@ def timeseries_data_loader(
         "selection_train_size": selection_train_size,
     }
 
-    run_status.record("write_outputs", "completed")
-    run_status.complete()
-    run_status.publish_artifact(run_status_artifact.path)
-    run_status_artifact.metadata["display_name"] = RUN_STATUS_ARTIFACT_DISPLAY_NAME
+    status.record("write_outputs", "started")
+    status.record("write_outputs", "completed")
+    status.save()
+    component_status.metadata["display_name"] = "Timeseries Data Loader Status"
 
     # Sample row for downstream use (JSON string to avoid NaN issues)
     sample_rows = test_df.tail(min(5, len(test_df))).to_json(orient="records")

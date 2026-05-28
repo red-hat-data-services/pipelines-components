@@ -5,20 +5,23 @@ from unittest import mock
 import pytest
 
 
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
 @pytest.fixture(autouse=True)
-def inject_run_status_defaults(monkeypatch, tmp_path):
-    """Inject workspace_path and run_status_artifact when tests omit them."""
+def inject_component_status(monkeypatch, tmp_path):
+    """Inject component_status when tests omit it."""
     from ..component import leaderboard_evaluation
 
     original = leaderboard_evaluation.python_func
 
     def wrapper(*args, **kwargs):
-        kwargs.setdefault("workspace_path", str(tmp_path))
-        if "run_status_artifact" not in kwargs:
-            art = mock.MagicMock()
-            art.path = str(tmp_path / "run_status_out")
-            art.metadata = {}
-            kwargs["run_status_artifact"] = art
+        if "component_status" not in kwargs:
+            kwargs["component_status"] = _make_component_status_artifact(tmp_path)
         return original(*args, **kwargs)
 
     monkeypatch.setattr(leaderboard_evaluation, "python_func", wrapper)
