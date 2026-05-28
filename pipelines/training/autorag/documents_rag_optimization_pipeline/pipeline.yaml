@@ -385,7 +385,7 @@ deploymentSpec:
           \ DOCUMENTS_DESCRIPTOR_FILENAME)\n    with open(descriptor_path, \"w\")\
           \ as f:\n        json.dump(descriptor, f, indent=2)\n\n    logger.info(\"\
           Documents descriptor written to %s\", descriptor_path)\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -501,7 +501,7 @@ deploymentSpec:
           \        header_row: str,\n        table_body: str,\n        best_pattern_name:\
           \ str,\n        num_patterns: int,\n        eval_metric: str,\n        colgroup_html:\
           \ str = \"\",\n    ) -> str:\n        \"\"\"Build a styled HTML document\
-          \ for the RAG leaderboard (aligned with AutoML leaderboard style).\"\"\"\
+          \ for the RAG leaderboard (aligned with autorag leaderboard style).\"\"\"\
           \n        metric_label = html.escape(_metric_display_name(eval_metric))\n\
           \        return f\"\"\"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta\
           \ charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width,\
@@ -666,7 +666,7 @@ deploymentSpec:
           \    )\n\n    Path(html_artifact.path).parent.mkdir(parents=True, exist_ok=True)\n\
           \    with open(html_artifact.path, \"w\", encoding=\"utf-8\") as f:\n  \
           \      f.write(html_content)\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 1.0
           memoryRequest: 4.294967296
@@ -994,7 +994,7 @@ deploymentSpec:
           readme_path\": str(readme_file),\n            }\n        )\n\n    responses_api_artifacts.metadata[\"\
           name\"] = \"responses_api_artifacts\"\n    responses_api_artifacts.metadata[\"\
           metadata\"] = {\"patterns\": written}\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 0.5
           memoryRequest: 2.147483648
@@ -1571,7 +1571,7 @@ deploymentSpec:
           \ / \"evaluation_results.json\").open(\"w+\", encoding=\"utf-8\") as f:\n\
           \            json_dump(evaluation_result_list, f, indent=2)\n\n    # TODO\
           \ autorag_run_artifact\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -1811,7 +1811,7 @@ deploymentSpec:
           \ |= selected_models_names\n\n    with open(search_space_prep_report.path,\
           \ \"w\") as report_file:\n        yml.safe_dump(verbose_search_space_repr,\
           \ report_file)\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -1901,7 +1901,7 @@ deploymentSpec:
           \        except JSONDecodeError as e:\n            raise TestDataLoaderException(\"\
           test_data_path must point to a valid JSON file.\") from e\n\n    get_test_data_s3()\n\
           \n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
@@ -2195,7 +2195,7 @@ deploymentSpec:
           \ completed. Total processed: %d/%d, Errors: %d\",\n        processed_count,\n\
           \        total_docs,\n        total_errors,\n    )\n    raise_if_threshold_exceeded(all_error_details,\
           \ total_docs, error_tolerance)\n\n"
-        image: registry.redhat.io/rhoai/odh-automl-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
+        image: registry.redhat.io/rhoai/odh-autorag-rhel9@sha256:340bd77aff070114591c80c236f395eab7d5f1f46d9e9d0cf66ac7cad1c2bd7e
         resources:
           cpuRequest: 2.0
           memoryRequest: 8.589934592
