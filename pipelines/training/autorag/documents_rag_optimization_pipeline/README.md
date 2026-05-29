@@ -55,11 +55,10 @@ The system integrates with OGX API for inference and vector database operations,
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
-    - filip-komarzyniec
-    - witold-nowogorski
   - Reviewers:
-    - LukaszCmielowski
-    - DorotaDR
+    - filip-komarzyniec
+    - jakub-walaszczyk
+    - MichalSteczko
 
 <!-- custom-content -->
 
