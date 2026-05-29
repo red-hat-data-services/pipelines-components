@@ -64,4 +64,5 @@ def example_pipeline(
     - DorotaDR
   - Reviewers:
     - filip-komarzyniec
-    - witold-nowogorski
+    - jakub-walaszczyk
+    - MichalSteczko

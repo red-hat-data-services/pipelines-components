@@ -6,7 +6,7 @@
 #      see artifacts.lock.yaml).
 #   2. Otherwise download from sqlite.org (networked builds, e.g. local Containerfile).
 #
-# This script is intentionally separate from seed_docling_models.py (Docling HF artifacts).
+# Docling models are baked in via modelcar COPY in the Containerfile (not this lockfile).
 
 set -euo pipefail
 
