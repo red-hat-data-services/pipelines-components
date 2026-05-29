@@ -96,3 +96,9 @@ def example_pipeline(
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
+
+<!-- custom-content -->
+
+### Component status artifact
+
+In the time series training pipeline, this component writes ``component_status.json`` under the ``component_status`` output artifact. The file includes ``component_id`` (``timeseries_data_loader``), timestamps, and per-stage status (e.g. ``validate_inputs``, ``read_and_sample``, ``split``, ``write_outputs``). Dashboards align stage ids with ``component_stage_map.json`` from ``publish-component-stage-map``.

@@ -134,7 +134,6 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
-"kfp_components.components.training.automl.autogluon_timeseries_models_training" = ["notebook_templates/*.ipynb"]
 "kfp_components.components.training.automl.shared" = [
     "*.html",
     "leaderboard_html_template.html",

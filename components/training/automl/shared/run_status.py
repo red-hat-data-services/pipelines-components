@@ -1,7 +1,12 @@
-"""Workspace run status for AutoML tabular and time series pipelines.
+"""AutoML pipeline catalog and legacy workspace run status helpers.
 
-Writes ``{workspace}/.automl/run_status.json`` so sequential pipeline tasks on a
-shared PVC can append per-component stages.
+**Dashboard progress (tabular/time series pipelines):** use
+``component_stage_map`` (static plan) and per-component ``component_status``
+artifacts via ``ComponentStatusTracker`` in ``component_status.py``.
+
+**Legacy workspace API:** ``init_run_status``, ``RunStatusRecorder``, and
+``publish_run_status_artifact`` write ``{workspace}/.automl/run_status.json`` for
+PVC-based flows. Tabular and time series training pipelines no longer use this path.
 
 Pipeline manifests live under ``shared/run_status_templates/pipelines/`` (JSON,
 one file per ``@dsl.pipeline`` ``name``). Components load them from the

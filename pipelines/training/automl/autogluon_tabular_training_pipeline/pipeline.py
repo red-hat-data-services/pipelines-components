@@ -51,6 +51,10 @@ def autogluon_tabular_training_pipeline(
     that balances computational cost with model quality. The pipeline automates the complete
     machine learning workflow from data loading to final model evaluation.
 
+    **Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or
+    string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns,
+    which reject multi-byte characters.
+
     **Storage strategy:**
 
     Training datasets are stored on a PVC workspace (not S3 artifacts) so that all

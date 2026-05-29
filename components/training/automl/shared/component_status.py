@@ -4,19 +4,20 @@ Each component publishes its own stage progress to an artifact. No workspace req
 The dashboard aggregates component statuses to show overall pipeline progress.
 
 Usage:
-    status = ComponentStatusTracker(artifact.path, "autogluon_models_training")
-    status.record("load_data", "started")
-    status.record("load_data", "completed", rows=1000)
-    status.record("model_selection", "started")
-    status.record("model_selection", "completed",
-                 steps=["feature_eng", "training", "stacking"])
-    status.save()
+    with ComponentStatusTracker(artifact.path, "autogluon_models_training") as status:
+        status.record("load_data", "started")
+        status.record("load_data", "completed", rows=1000)
+        with status.stage("model_selection"):
+            ...  # marks started/completed; marks failed on exception
+    # context exit saves best-effort and marks active stage failed on error
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -134,6 +135,53 @@ class ComponentStatusTracker:
             len(self.stages),
             output_file,
         )
+
+    def save_best_effort(self) -> None:
+        """Write status to the artifact, logging instead of raising on I/O errors."""
+        try:
+            self.save()
+        except Exception:
+            logger.exception(
+                "Failed to save component status for %s",
+                self.component_id,
+            )
+
+    def mark_active_failed(self, error: str) -> None:
+        """Mark the in-progress stage as failed, or the last open stage if none is active."""
+        active_statuses = (STATUS_STARTED, STATUS_RUNNING)
+        for stage in reversed(self.stages):
+            if stage.get("status") in active_statuses:
+                self.record(stage["id"], STATUS_FAILED, error=error)
+                return
+
+        if self.stages and self.stages[-1].get("status") != STATUS_COMPLETED:
+            self.record(self.stages[-1]["id"], STATUS_FAILED, error=error)
+            return
+
+        self.set_metadata(status=STATUS_FAILED, error=error)
+
+    @contextmanager
+    def stage(self, stage_id: str, **start_metadata: Any) -> Iterator[None]:
+        """Record stage started/completed, or failed when an exception escapes the block."""
+        self.record(stage_id, STATUS_STARTED, **start_metadata)
+        try:
+            yield
+        except Exception as exc:
+            self.record(stage_id, STATUS_FAILED, error=str(exc))
+            raise
+        else:
+            self.record(stage_id, STATUS_COMPLETED)
+
+    def __enter__(self) -> ComponentStatusTracker:
+        """Enter context: return this tracker."""
+        return self
+
+    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: Any) -> bool:
+        """On exit, mark active stage failed and save status best-effort."""
+        if exc is not None:
+            self.mark_active_failed(str(exc))
+        self.save_best_effort()
+        return False
 
 
 def load_component_status(artifact_path: str) -> dict[str, Any]:

@@ -35,3 +35,4 @@ def example_pipeline(
         models_artifact=models_artifact.output,
         eval_metric=eval_metric,
     )
+    # component_status output is created by KFP when composed in a pipeline.

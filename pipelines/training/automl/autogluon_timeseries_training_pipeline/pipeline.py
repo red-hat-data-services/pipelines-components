@@ -52,6 +52,10 @@ def autogluon_timeseries_training_pipeline(
     temporal holdout, refits the top models on the full train portion (selection + extra splits),
     and aggregates metrics into a leaderboard.
 
+    **Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or
+    string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns,
+    which reject multi-byte characters.
+
     Storage strategy:
 
     Train and test CSV splits are produced on the PVC workspace (``PipelineConfig.workspace``) so

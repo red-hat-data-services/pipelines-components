@@ -217,6 +217,12 @@ load_task = automl_data_loader(
 )
 ```
 
+<!-- custom-content -->
+
+### Component status artifact
+
+In the tabular training pipeline, this component writes ``component_status.json`` under the ``component_status`` output artifact. The file includes ``component_id`` (``automl_data_loader``), ``started_at``, ``completed_at``, a ``stages`` list (ids such as ``validate_inputs``, ``read_and_sample``, ``cleanse``, ``split``, ``write_outputs``), and optional ``metadata``. Match stage ids to the tabular pipeline entry in ``component_stage_map.json`` from the ``publish-component-stage-map`` task.
+
 ## Supported formats and limits 📋
 
 - **Format**: CSV only.

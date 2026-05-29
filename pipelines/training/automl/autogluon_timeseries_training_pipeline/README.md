@@ -8,6 +8,8 @@ AutoGluon time series training pipeline.
 
 Trains AutoGluon TimeSeries models on data loaded from S3, scores candidates on a per-series temporal holdout, refits the top models on the full train portion (selection + extra splits), and aggregates metrics into a leaderboard.
 
+**Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns, which reject multi-byte characters.
+
 Storage strategy:
 
 Train and test CSV splits are produced on the PVC workspace (``PipelineConfig.workspace``) so steps can read shared paths without re-downloading. The per-series test split is also exposed as a dataset artifact. S3 credentials for the initial load are supplied via the Kubernetes secret
@@ -76,6 +78,46 @@ prediction_length=14, top_n=3, )
     - DorotaDR
 
 <!-- custom-content -->
+
+### Progress and dashboard artifacts
+
+Besides model and data artifacts below, each run publishes:
+
+| KFP task | Output | File | Purpose |
+| -------- | ------ | ---- | ------- |
+| `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the time series pipeline (published once at run start). |
+| `timeseries-data-loader` | `component_status` | `component_status.json` | Stage progress for data loading and splitting. |
+| `autogluon-timeseries-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, and evaluation. |
+| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+
+Example artifact-store layout:
+
+```text
+<pipeline_name>/<run_id>/
+├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
+├── timeseries-data-loader/<task_id>/component_status/component_status.json
+├── autogluon-timeseries-models-training/<task_id>/component_status/component_status.json
+└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+```
+
+See [AutoML training components README](../../../components/training/automl/README.md) for JSON field details.
+
+#### Dashboard join keys
+
+Dashboards join the static map (`component_stage_map.json`) to live progress (`component_status.json`) using **snake_case component ids**, not KFP task names:
+
+| Layer | Naming | Time series data loader example |
+| ----- | ------ | ------------------------------- |
+| Template `components[].id` | snake_case | `timeseries_data_loader` |
+| Runtime `component_status.json` → `component_id` | snake_case | `timeseries_data_loader` |
+| KFP root DAG task id (compiled YAML) | kebab-case | `timeseries-data-loader` |
+| KFP output parameter | snake_case | `component_status` |
+| Artifact file | snake_case | `component_status.json` |
+
+Use `component_id` (and stage `id` fields inside each file) to correlate artifacts. KFP task names are only for locating artifact paths in the store.
+
+Canonical component ids are defined in the pipeline JSON templates under [`run_status_templates/pipelines/`](../../../components/training/automl/shared/run_status_templates/pipelines/) (e.g. `autogluon-timeseries-training-pipeline.json`). Legacy workspace helpers in [`run_status.py`](../../../components/training/automl/shared/run_status.py) expose the same ids as `COMPONENT_*` constants.
+
 ### Files stored in user storage
 
 Pipeline outputs are written to the artifact store (S3-compatible storage configured for Kubeflow Pipelines). The layout below matches what components write and what downstream consumers expect when loading the leaderboard or a refitted model.
