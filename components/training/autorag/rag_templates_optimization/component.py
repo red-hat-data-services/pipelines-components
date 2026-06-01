@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional
 
 from kfp import dsl
@@ -7,7 +6,8 @@ from kfp_components.utils.consts import AUTORAG_IMAGE  # pyright: ignore[reportM
 
 @dsl.component(
     base_image=AUTORAG_IMAGE,  # noqa: E501
-    embedded_artifact_path=str((Path(__file__).parent / "notebook_templates")),
+    embedded_artifact_path=("components/training/autorag/shared"),
+    install_kfp_package=False,
 )
 def rag_templates_optimization(
     extracted_text: dsl.InputPath(dsl.Artifact),
@@ -65,7 +65,7 @@ def rag_templates_optimization(
     from json import load as json_load
     from pathlib import Path
     from re import search
-    from string import Formatter
+    from string import Formatter, Template
     from typing import Any, Literal, Self
 
     import httpx
@@ -93,7 +93,7 @@ def rag_templates_optimization(
     def _create_ogx_client(base_url, api_key) -> OgxClient:
         """Creates OgxClient.
 
-        For the time being (temporarily), if self-signed certificate is detected in the certificates chain, then
+        If self-signed certificate is detected in the certificates chain, then
         OGXClient is created with `verify=False` option making it (insecurely) NOT validate the server-side certificate.
 
         Args:
@@ -334,7 +334,7 @@ def rag_templates_optimization(
             --------
             >>> nb = Notebook.load("existing_notebook.ipynb")
             """
-            with open(Path(embedded_artifact.path) / notebook_name, "r") as f:
+            with open(Path(embedded_artifact.path) / "notebook_templates" / notebook_name, "r") as f:
                 nb_dict = json_load(f)
 
             loaded_cells = []
@@ -709,17 +709,35 @@ def rag_templates_optimization(
             generation_model_id = rp.get("foundation_model")
         if not generation_model_id and hasattr(rp.get("foundation_model"), "model_id"):
             generation_model_id = getattr(rp.get("foundation_model"), "model_id", None)
-        return {
+        generation_system_message_text = (
+            generation.get(
+                "system_message_text",
+                (
+                    "Please answer the question I provide in the Question section below, based solely "
+                    "on the information I provide in the Context section. If unanswerable, say so."
+                ),
+            ),
+        )
+
+        provider = None
+        try:
+            provider = client.providers.retrieve(vector_io_provider_id)
+        except Exception:
+            _ssl_logger.warning(
+                "Could not retrieve provider_type attribute of vector store in use... Fallback to the default value.",
+                exc_info=True,
+            )
+
+        pattern = {
             "name": getattr(evaluation_result, "pattern_name", ""),
             "iteration": iteration,
             "max_combinations": max_combinations,
             "duration_seconds": getattr(evaluation_result, "execution_time", 0) or 0,
             "settings": {
-                "vector_store": {
-                    "datasource_type": idx.get("vector_store", {}).get("datasource_type")
-                    or rp.get("vector_store", {}).get("datasource_type")
-                    or vector_io_provider_id,
-                    "collection_name": getattr(evaluation_result, "collection", "") or "",
+                "vector_store_binding": {
+                    "provider_id": vector_io_provider_id,
+                    "provider_type": getattr(provider, "provider_type", "Unknown"),
+                    "vector_store_id": eval.collection,
                 },
                 "chunking": {
                     "method": chunking.get("method", "recursive"),
@@ -759,8 +777,26 @@ def rag_templates_optimization(
                     ),
                     **({"detected_language": detected_language} if detected_language else {}),
                 },
+                "responses_template": {
+                    "model": generation_model_id,
+                    "stream": False,  # Not supported yet
+                    "store": True,  # Responses API default
+                    "input": "<user_query_placeholder>",
+                    "instructions": generation_system_message_text,
+                    "tools": [{"type": "file_search", "vector_store_ids": [evaluation_result.collection]}],
+                    "include": ["file_search_call.results"],
+                },
             },
         }
+
+        if search_mode == "hybrid" and ranker_strategy == "rrf":
+            ranking_options = {"impact_factor": ranker_k}
+            pattern["settings"]["responses_template"]["tools"][0]["ranking_options"] = ranking_options
+        elif search_mode == "hybrid" and ranker_strategy == "weighted":
+            ranking_options = {"alpha": ranker_alpha}
+            pattern["settings"]["responses_template"]["tools"][0]["ranking_options"] = ranking_options
+
+        return pattern
 
     evaluations_list = list(rag_exp.results.evaluations)
     max_combinations = getattr(rag_exp.results, "max_combinations", len(evaluations_list)) or 24
@@ -793,6 +829,16 @@ def rag_templates_optimization(
         rag_patterns.metadata["metadata"]["patterns"].append(pattern_data)
         with (patt_dir / "pattern.json").open("w+", encoding="utf-8") as pattern_details:
             json_dump(pattern_data, pattern_details, indent=2)
+
+        template_context = {
+            "responses_template": pattern_data["settings"]["responses_template"],
+        }
+        with (Path(embedded_artifact.path) / "script_templates" / "create_model_response.py.templ").open(
+            "r", encoding="utf-8"
+        ) as f:
+            model_responses_templ = Template(f.read())
+            with (patt_dir / "create_model_response.py").open("w+", encoding="utf-8") as ff:
+                ff.write(model_responses_templ.substitute(template_context))
 
         eval_data = evaluation_data_list[i] if i < len(evaluation_data_list) else []
         try:
