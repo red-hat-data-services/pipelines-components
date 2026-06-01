@@ -137,7 +137,6 @@ packages = [
 "*" = ["*.yaml", "*.yml", "*.json"]
 "kfp_components.components.training.automl.shared" = [
     "*.html",
-    "leaderboard_html_template.html",
     "run_status_templates/**/*.json",
     "notebook_templates/*.ipynb",
 ]
