@@ -73,6 +73,7 @@ def autogluon_timeseries_models_training(
 
     import pandas as pd
     from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
+    from autogluon.timeseries.metrics import AVAILABLE_METRICS
 
     logger = logging.getLogger(__name__)
 

@@ -26,7 +26,9 @@ def isolated_sys_modules():
 
         # Mock additional autogluon submodules
         _metrics = mock.MagicMock()
-        _metrics.AVAILABLE_METRICS = {"MASE": mock.MagicMock(), "MSE": mock.MagicMock()}
+        _metrics.AVAILABLE_METRICS = {
+            k: mock.MagicMock() for k in ("MASE", "MSE", "WQL", "RMSSE", "MAE", "RMSE", "SQL")
+        }
         _metrics.__spec__ = None
         mocked_modules["autogluon.timeseries.metrics"] = _metrics
 
@@ -602,6 +604,28 @@ class TestTimeseriesModelsTrainingUnitTests:
                 notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
                 eval_metric="",
+            )
+
+    def test_unsupported_eval_metric_raises(self, mock_artifacts):  # noqa: F811
+        """eval_metric not in AVAILABLE_METRICS raises ValueError before training."""
+        models_artifact, notebooks, extra_train_path = mock_artifacts
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+        with pytest.raises(ValueError, match="eval_metric must be one of"):
+            autogluon_timeseries_models_training.python_func(
+                target="sales",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                train_data_path="/tmp/train.csv",
+                test_data=test_data,
+                top_n=1,
+                workspace_path="/tmp/workspace",
+                pipeline_name="ts-pipeline-123",
+                run_id="run-123",
+                models_artifact=models_artifact,
+                notebooks=notebooks,
+                extra_train_data_path=extra_train_path,
+                eval_metric="BADMETRIC",
             )
 
     @mock.patch("pandas.read_csv")

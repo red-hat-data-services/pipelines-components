@@ -88,6 +88,7 @@ def autogluon_models_training(
 
     import numpy as np
     import pandas as pd
+    from autogluon.core.metrics import METRICS
     from autogluon.tabular import TabularPredictor
 
     VALID_TASK_TYPES = {"binary", "multiclass", "regression"}
@@ -119,6 +120,11 @@ def autogluon_models_training(
         raise TypeError("positive_class must be a string or None.")
     if eval_metric and not eval_metric.strip():
         raise TypeError("eval_metric must be a non-empty string (or empty string '' to use the task-type default).")
+    if eval_metric and eval_metric not in METRICS.get(task_type, {}):
+        raise ValueError(
+            f"eval_metric {eval_metric!r} is not valid for task_type={task_type!r}. "
+            f"Valid options: {sorted(METRICS.get(task_type, {}))}."
+        )
 
     sampling_config = sampling_config or {}
     split_config = split_config or {}

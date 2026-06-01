@@ -28,6 +28,57 @@ def isolated_sys_modules():
             _m.__spec__ = None
             if sub == "autogluon.core":
                 _m.__path__ = []
+            if sub == "autogluon.core.metrics":
+                _m.METRICS = {
+                    "binary": {
+                        k: mock.MagicMock()
+                        for k in (
+                            "accuracy",
+                            "balanced_accuracy",
+                            "f1",
+                            "f1_macro",
+                            "f1_micro",
+                            "f1_weighted",
+                            "log_loss",
+                            "mcc",
+                            "roc_auc",
+                            "average_precision",
+                            "precision",
+                            "recall",
+                        )
+                    },
+                    "multiclass": {
+                        k: mock.MagicMock()
+                        for k in (
+                            "accuracy",
+                            "balanced_accuracy",
+                            "f1_macro",
+                            "f1_micro",
+                            "f1_weighted",
+                            "log_loss",
+                            "mcc",
+                            "roc_auc_ovo",
+                            "roc_auc_ovr",
+                        )
+                    },
+                    "regression": {
+                        k: mock.MagicMock()
+                        for k in (
+                            "r2",
+                            "mean_squared_error",
+                            "mse",
+                            "root_mean_squared_error",
+                            "rmse",
+                            "mean_absolute_error",
+                            "mae",
+                            "median_absolute_error",
+                            "mape",
+                            "smape",
+                            "spearmanr",
+                            "pearsonr",
+                        )
+                    },
+                }
             mocked_modules[sub] = _m
 
         def _roc_auc_score_side_effect(y_true, y_score):
@@ -1277,6 +1328,24 @@ class TestAutogluonModelsTrainingUnitTests:
                 models_artifact=self._minimal_artifact(),
                 notebooks=mock_notebooks,
                 eval_metric="   ",
+            )
+
+    def test_invalid_eval_metric_for_task_type_raises(self, mock_notebooks):
+        """eval_metric unknown for the given task_type raises ValueError before training."""
+        with pytest.raises(ValueError, match="is not valid for task_type="):
+            autogluon_models_training.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=1,
+                train_data_path="/tmp/train.csv",
+                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                workspace_path="/tmp/ws",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                models_artifact=self._minimal_artifact(),
+                notebooks=mock_notebooks,
+                eval_metric="accuracy",  # valid for binary/multiclass, not regression
             )
 
     # ── eval_metric parameter ─────────────────────────────────────────────────
