@@ -7,7 +7,8 @@ COPY pyproject.toml __init__.py /tmp/kfp-src/
 COPY components/ /tmp/kfp-src/components/
 COPY pipelines/ /tmp/kfp-src/pipelines/
 COPY utils/ /tmp/kfp-src/utils/
-RUN pip wheel --no-deps --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple -w /tmp/dist /tmp/kfp-src/
+RUN pip install --no-cache-dir setuptools && \
+    pip wheel --no-deps --no-build-isolation --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple -w /tmp/dist /tmp/kfp-src/
 
 FROM ${BASE_IMAGE}
 
