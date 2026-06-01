@@ -8,7 +8,7 @@ dependencies:
       version: '2.16.1'
   external_services:
     - name: ai4rag
-      version: "~=0.6.1"
+      version: "~=0.6.3"
     - name: OGX API
       version: ">=1.0.0"
     - name: RHOAI Connections API
