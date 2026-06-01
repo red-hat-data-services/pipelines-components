@@ -1,13 +1,13 @@
-"""OSFT (Orthogonal Subspace Fine-Tuning) Training Pipeline — Eval Hub variant.
+"""LoRA (Low-Rank Adaptation) Training Pipeline — Eval Hub variant.
 
-A 4-stage pipeline for continual learning without catastrophic forgetting:
+A 4-stage pipeline for parameter-efficient fine-tuning:
 1. Dataset Download
-2. OSFT Training (mini-trainer backend)
+2. LoRA Training (unsloth backend)
 3. Evaluation via Eval Hub (KServe InferenceService for model serving)
 4. Model Registry
 
-OSFT enables adapting pre-trained or instruction-tuned models to new tasks
-while preserving their original capabilities.
+LoRA enables efficient fine-tuning by training low-rank adapter matrices
+instead of full model weights, dramatically reducing compute and memory.
 """
 
 import kfp
@@ -18,8 +18,8 @@ from components.data_processing.dataset_download import dataset_download
 from components.deployment.kubeflow_model_registry import (
     kubeflow_model_registry as model_registry,
 )
-from components.evaluation.evalhub_kserve import evalhub_evaluator_kserve
-from components.training.finetuning.osft import train_model
+from components.evaluation.evalhub.kserve import evalhub_evaluator_kserve
+from components.training.finetuning.lora import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -27,13 +27,13 @@ from components.training.finetuning.osft import train_model
 PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
-PIPELINE_NAME = "osft-pipeline-evalhub"
+PIPELINE_NAME = "lora-pipeline-evalhub"
 # =============================================================================
 
 
 @dsl.pipeline(
     name=PIPELINE_NAME,
-    description="OSFT pipeline with Eval Hub evaluation via KServe, results optionally tracked in MLflow",
+    description="LoRA pipeline with Eval Hub evaluation via KServe, results optionally tracked in MLflow",
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
             size=PVC_SIZE,
@@ -46,46 +46,68 @@ PIPELINE_NAME = "osft-pipeline-evalhub"
         ),
     ),
 )
-def osft_pipeline_evalhub(
+def lora_pipeline_evalhub(
     # =========================================================================
     # KEY PARAMETERS (Required/Important) - Sorted by step
     # =========================================================================
     phase_01_dataset_man_data_uri: str,
     phase_02_train_man_train_batch: int = 128,
-    phase_02_train_man_train_epochs: int = 1,
+    phase_02_train_man_train_epochs: int = 2,
     phase_02_train_man_train_gpu: int = 1,
     phase_02_train_man_train_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    phase_02_train_man_train_tokens: int = 64000,
-    phase_02_train_man_train_unfreeze: float = 0.25,
-    phase_02_train_man_train_workers: int = 1,
+    phase_02_train_man_train_tokens: int = 32000,
+    phase_02_train_man_lora_r: int = 16,
+    phase_02_train_man_lora_alpha: int = 32,
     phase_03_eval_opt_evalhub_url: str = "",
     phase_03_eval_opt_collection: str = "",
     phase_04_registry_man_address: str = "",
     phase_04_registry_man_reg_author: str = "pipeline",
-    phase_04_registry_man_reg_name: str = "osft-model",
+    phase_04_registry_man_reg_name: str = "lora-model",
     phase_04_registry_man_reg_version: str = "1.0.0",
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
     phase_01_dataset_opt_subset: int = 0,
     phase_02_train_opt_annotations: str = "",
-    phase_02_train_opt_cpu: str = "8",
+    phase_02_train_opt_cpu: str = "4",
     phase_02_train_opt_env_vars: str = "",
     phase_02_train_opt_labels: str = "",
-    phase_02_train_opt_learning_rate: float = 5e-6,
+    phase_02_train_opt_learning_rate: float = 2e-4,
     phase_02_train_opt_lr_scheduler: str = "cosine",
-    phase_02_train_opt_lr_scheduler_kwargs: str = "",
     phase_02_train_opt_lr_warmup: int = 0,
     phase_02_train_opt_max_seq_len: int = 8192,
     phase_02_train_opt_memory: str = "32Gi",
     phase_02_train_opt_num_procs: str = "auto",
-    phase_02_train_opt_processed_data: bool = False,
     phase_02_train_opt_save_epoch: bool = False,
-    phase_02_train_opt_save_final: bool = True,
     phase_02_train_opt_seed: int = 42,
-    phase_02_train_opt_target_patterns: str = "",
-    phase_02_train_opt_unmask: bool = False,
     phase_02_train_opt_use_liger: bool = True,
+    phase_02_train_opt_lora_dropout: float = 0.0,
+    phase_02_train_opt_lora_target_modules: str = "",
+    phase_02_train_opt_lora_use_rslora: bool = False,
+    phase_02_train_opt_lora_use_dora: bool = False,
+    phase_02_train_opt_lora_load_in_4bit: bool = True,
+    phase_02_train_opt_lora_load_in_8bit: bool = False,
+    phase_02_train_opt_lora_sample_packing: bool = False,
+    phase_02_train_opt_micro_batch_size: int = 2,
+    phase_02_train_opt_grad_accum_steps: int = 1,
+    phase_02_train_opt_flash_attention: bool = True,
+    phase_02_train_opt_bf16: bool = True,
+    phase_02_train_opt_fp16: bool = False,
+    phase_02_train_opt_tf32: bool = True,
+    phase_02_train_opt_save_steps: int = 500,
+    phase_02_train_opt_eval_steps: int = 500,
+    phase_02_train_opt_logging_steps: int = 10,
+    phase_02_train_opt_save_total_limit: int = 3,
+    phase_02_train_opt_wandb_project: str = "",
+    phase_02_train_opt_wandb_entity: str = "",
+    phase_02_train_opt_wandb_run_name: str = "",
+    phase_02_train_opt_tensorboard_log_dir: str = "",
+    phase_02_train_opt_dataset_type: str = "",
+    phase_02_train_opt_field_messages: str = "",
+    phase_02_train_opt_field_instruction: str = "",
+    phase_02_train_opt_field_input: str = "",
+    phase_02_train_opt_field_output: str = "",
+    phase_02_train_opt_enable_model_splitting: bool = False,
     phase_02_train_opt_runtime: str = "training-hub",
     phase_03_eval_opt_benchmarks: list = [
         {"id": "leaderboard_ifeval", "provider_id": "lm_evaluation_harness"},
@@ -104,12 +126,12 @@ def osft_pipeline_evalhub(
     phase_04_registry_opt_format_version: str = "1.0",
     phase_04_registry_opt_port: int = 8080,
 ):
-    """OSFT Training Pipeline with Eval Hub evaluation (KServe).
+    """LoRA Training Pipeline with Eval Hub evaluation (KServe).
 
-    A 4-stage ML pipeline for fine-tuning language models with OSFT:
+    A 4-stage ML pipeline for fine-tuning language models with LoRA:
 
     1) Dataset Download - Prepares training data from HuggingFace, S3, or HTTP
-    2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
+    2) LoRA Training - Fine-tunes using unsloth backend (low-rank adapters)
     3) Evaluation - Evaluates via Eval Hub with a KServe InferenceService for
        model serving. Results optionally tracked in MLflow.
     4) Model Registry - Registers trained model to Kubeflow Model Registry
@@ -137,30 +159,51 @@ def osft_pipeline_evalhub(
         phase_02_train_man_train_gpu: GPUs per worker.
         phase_02_train_man_train_model: Base model (HuggingFace ID or path).
         phase_02_train_man_train_tokens: Max tokens per GPU (memory cap).
-        phase_02_train_man_train_unfreeze: Fraction to unfreeze
-            (0.1=minimal, 0.25=balanced, 0.5=strong).
-        phase_02_train_man_train_workers: Number of training pods.
+        phase_02_train_man_lora_r: Rank of the low-rank matrices (4, 8, 16, 32, 64).
+        phase_02_train_man_lora_alpha: Scaling factor (typically 2x lora_r).
         phase_02_train_opt_annotations: K8s annotations (key=val,...).
+        phase_02_train_opt_bf16: Use bfloat16 precision.
         phase_02_train_opt_cpu: CPU cores per worker.
+        phase_02_train_opt_dataset_type: Dataset format type.
+        phase_02_train_opt_enable_model_splitting: Enable model splitting
+            across GPUs.
         phase_02_train_opt_env_vars: Env vars (KEY=VAL,...).
+        phase_02_train_opt_eval_steps: Run evaluation every N steps.
+        phase_02_train_opt_field_input: Field name for input in dataset.
+        phase_02_train_opt_field_instruction: Field name for instruction.
+        phase_02_train_opt_field_messages: Field name for messages in dataset.
+        phase_02_train_opt_field_output: Field name for output in dataset.
+        phase_02_train_opt_flash_attention: Enable flash attention.
+        phase_02_train_opt_fp16: Use float16 precision.
+        phase_02_train_opt_grad_accum_steps: Gradient accumulation steps.
         phase_02_train_opt_labels: K8s labels (key=val,...).
-        phase_02_train_opt_learning_rate: Learning rate. 5e-6 for OSFT.
+        phase_02_train_opt_learning_rate: Learning rate. 2e-4 for LoRA.
+        phase_02_train_opt_logging_steps: Log metrics every N steps.
+        phase_02_train_opt_lora_dropout: Dropout rate for LoRA layers.
+        phase_02_train_opt_lora_load_in_4bit: Enable 4-bit quantization.
+        phase_02_train_opt_lora_load_in_8bit: Enable 8-bit quantization.
+        phase_02_train_opt_lora_sample_packing: Pack multiple samples.
+        phase_02_train_opt_lora_target_modules: Modules to apply LoRA
+            (empty=auto-detect).
+        phase_02_train_opt_lora_use_dora: Use Weight-Decomposed LoRA (DoRA).
+        phase_02_train_opt_lora_use_rslora: Use Rank-Stabilized LoRA.
         phase_02_train_opt_lr_scheduler: LR schedule (cosine, linear).
-        phase_02_train_opt_lr_scheduler_kwargs: Extra scheduler params
-            (key=val,...).
         phase_02_train_opt_lr_warmup: Warmup steps before full LR.
         phase_02_train_opt_max_seq_len: Max sequence length in tokens.
         phase_02_train_opt_memory: RAM per worker.
+        phase_02_train_opt_micro_batch_size: Micro batch size per GPU.
         phase_02_train_opt_num_procs: Processes per worker (auto = per GPU).
-        phase_02_train_opt_processed_data: True if dataset already tokenized.
         phase_02_train_opt_runtime: ClusterTrainingRuntime name.
         phase_02_train_opt_save_epoch: Save checkpoint at each epoch.
-        phase_02_train_opt_save_final: Save final checkpoint after all epochs.
+        phase_02_train_opt_save_steps: Save checkpoint every N steps.
+        phase_02_train_opt_save_total_limit: Max checkpoints to keep.
         phase_02_train_opt_seed: Random seed for reproducibility.
-        phase_02_train_opt_target_patterns: Module patterns to unfreeze
-            (empty=auto).
-        phase_02_train_opt_unmask: Unmask all tokens (False=assistant only).
+        phase_02_train_opt_tensorboard_log_dir: TensorBoard log directory.
+        phase_02_train_opt_tf32: Enable TF32 on Ampere+ GPUs.
         phase_02_train_opt_use_liger: Enable Liger kernel optimizations.
+        phase_02_train_opt_wandb_entity: Weights & Biases entity/team.
+        phase_02_train_opt_wandb_project: Weights & Biases project name.
+        phase_02_train_opt_wandb_run_name: Weights & Biases run name.
         phase_03_eval_opt_evalhub_url: Eval Hub API endpoint URL
             (empty = skip evaluation).
         phase_03_eval_opt_collection: Eval Hub collection ID
@@ -208,28 +251,31 @@ def osft_pipeline_evalhub(
     )
 
     # =========================================================================
-    # Stage 2: OSFT Training
+    # Stage 2: LoRA Training
     # =========================================================================
     training_task = train_model(
         pvc_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         dataset=dataset_download_task.outputs["train_dataset"],
         training_base_model=phase_02_train_man_train_model,
-        training_unfreeze_rank_ratio=phase_02_train_man_train_unfreeze,
         training_effective_batch_size=phase_02_train_man_train_batch,
         training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        training_target_patterns=phase_02_train_opt_target_patterns,
         training_seed=phase_02_train_opt_seed,
         training_num_epochs=phase_02_train_man_train_epochs,
+        training_lora_r=phase_02_train_man_lora_r,
+        training_lora_alpha=phase_02_train_man_lora_alpha,
+        training_lora_dropout=phase_02_train_opt_lora_dropout,
+        training_lora_target_modules=phase_02_train_opt_lora_target_modules,
+        training_lora_use_rslora=phase_02_train_opt_lora_use_rslora,
+        training_lora_use_dora=phase_02_train_opt_lora_use_dora,
+        training_lora_load_in_4bit=phase_02_train_opt_lora_load_in_4bit,
+        training_lora_load_in_8bit=phase_02_train_opt_lora_load_in_8bit,
+        training_lora_sample_packing=phase_02_train_opt_lora_sample_packing,
         training_use_liger=phase_02_train_opt_use_liger,
-        training_use_processed_dataset=phase_02_train_opt_processed_data,
-        training_unmask_messages=phase_02_train_opt_unmask,
         training_lr_scheduler=phase_02_train_opt_lr_scheduler,
         training_lr_warmup_steps=phase_02_train_opt_lr_warmup,
-        training_lr_scheduler_kwargs=phase_02_train_opt_lr_scheduler_kwargs,
         training_checkpoint_at_epoch=phase_02_train_opt_save_epoch,
-        training_save_final_checkpoint=phase_02_train_opt_save_final,
         training_envs=phase_02_train_opt_env_vars,
         training_metadata_labels=phase_02_train_opt_labels,
         training_metadata_annotations=phase_02_train_opt_annotations,
@@ -237,7 +283,27 @@ def osft_pipeline_evalhub(
         training_resource_gpu_per_worker=phase_02_train_man_train_gpu,
         training_resource_memory_per_worker=phase_02_train_opt_memory,
         training_resource_num_procs_per_worker=phase_02_train_opt_num_procs,
-        training_resource_num_workers=phase_02_train_man_train_workers,
+        training_resource_num_workers=1,
+        training_micro_batch_size=phase_02_train_opt_micro_batch_size,
+        training_gradient_accumulation_steps=phase_02_train_opt_grad_accum_steps,
+        training_flash_attention=phase_02_train_opt_flash_attention,
+        training_bf16=phase_02_train_opt_bf16,
+        training_fp16=phase_02_train_opt_fp16,
+        training_tf32=phase_02_train_opt_tf32,
+        training_save_steps=phase_02_train_opt_save_steps,
+        training_eval_steps=phase_02_train_opt_eval_steps,
+        training_logging_steps=phase_02_train_opt_logging_steps,
+        training_save_total_limit=phase_02_train_opt_save_total_limit,
+        training_wandb_project=phase_02_train_opt_wandb_project,
+        training_wandb_entity=phase_02_train_opt_wandb_entity,
+        training_wandb_run_name=phase_02_train_opt_wandb_run_name,
+        training_tensorboard_log_dir=phase_02_train_opt_tensorboard_log_dir,
+        training_dataset_type=phase_02_train_opt_dataset_type,
+        training_field_messages=phase_02_train_opt_field_messages,
+        training_field_instruction=phase_02_train_opt_field_instruction,
+        training_field_input=phase_02_train_opt_field_input,
+        training_field_output=phase_02_train_opt_field_output,
+        training_enable_model_splitting=phase_02_train_opt_enable_model_splitting,
         training_runtime=phase_02_train_opt_runtime,
     )
     training_task.set_caching_options(False)
@@ -271,7 +337,7 @@ def osft_pipeline_evalhub(
         benchmarks=phase_03_eval_opt_benchmarks,
         evalhub_model_name="finetuned-model",
         base_model_name=phase_02_train_man_train_model,
-        evalhub_job_name="osft-pipeline-eval",
+        evalhub_job_name="lora-pipeline-eval",
         evalhub_timeout=phase_03_eval_opt_timeout,
         evalhub_poll_interval=30,
         mlflow_experiment_name=phase_03_eval_opt_mlflow_experiment,
@@ -319,6 +385,6 @@ def osft_pipeline_evalhub(
 
 if __name__ == "__main__":
     kfp.compiler.Compiler().compile(
-        pipeline_func=osft_pipeline_evalhub,
+        pipeline_func=lora_pipeline_evalhub,
         package_path=__file__.replace(".py", ".yaml"),
     )

@@ -1,9 +1,9 @@
-"""LoRA (Low-Rank Adaptation) Training Pipeline — Eval Hub Minimal variant.
+"""SFT (Supervised Fine-Tuning) Training Pipeline — Eval Hub Minimal variant.
 
-A 4-stage pipeline for parameter-efficient fine-tuning with minimal
+A 4-stage pipeline for standard supervised fine-tuning with minimal
 evaluation configuration:
 1. Dataset Download
-2. LoRA Training (unsloth backend)
+2. SFT Training (instructlab-training backend)
 3. Evaluation via Eval Hub (KServe InferenceService for model serving)
 4. Model Registry
 """
@@ -13,11 +13,9 @@ import kfp.kubernetes
 from kfp import dsl
 
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.kubeflow_model_registry import (
-    kubeflow_model_registry as model_registry,
-)
-from components.evaluation.evalhub_kserve import evalhub_evaluator_kserve
-from components.training.finetuning.lora import train_model
+from components.deployment.kubeflow_model_registry import kubeflow_model_registry
+from components.evaluation.evalhub.kserve import evalhub_evaluator_kserve
+from components.training.finetuning.sft import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -25,13 +23,13 @@ from components.training.finetuning.lora import train_model
 PVC_SIZE = "50Gi"
 PVC_STORAGE_CLASS = "nfs-csi"
 PVC_ACCESS_MODES = ["ReadWriteMany"]
-PIPELINE_NAME = "lora-pipeline-evalhub-easy"
+PIPELINE_NAME = "sft-pipeline-evalhub-easy"
 # =============================================================================
 
 
 @dsl.pipeline(
     name=PIPELINE_NAME,
-    description="LoRA Eval Hub pipeline (Minimal): 5 leaderboard benchmarks, KServe serving, minimal config",
+    description="SFT Eval Hub pipeline (Minimal): 5 leaderboard benchmarks, KServe serving, minimal config",
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
             size=PVC_SIZE,
@@ -44,18 +42,17 @@ PIPELINE_NAME = "lora-pipeline-evalhub-easy"
         ),
     ),
 )
-def lora_pipeline_evalhub_easy(
+def sft_pipeline_evalhub_easy(
     # =========================================================================
     # KEY PARAMETERS (Required/Important) - Sorted by step
     # =========================================================================
     phase_01_dataset_man_data_uri: str,
     phase_02_train_man_train_batch: int = 128,
-    phase_02_train_man_train_epochs: int = 2,
-    phase_02_train_man_train_gpu: int = 1,
-    phase_02_train_man_train_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
-    phase_02_train_man_train_tokens: int = 32000,
-    phase_02_train_man_lora_r: int = 16,
-    phase_02_train_man_lora_alpha: int = 32,
+    phase_02_train_man_epochs: int = 1,
+    phase_02_train_man_gpu: int = 1,
+    phase_02_train_man_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
+    phase_02_train_man_tokens: int = 10000,
+    phase_02_train_man_workers: int = 4,
     phase_03_eval_opt_evalhub_url: str = "",
     phase_03_eval_opt_mlflow_experiment: str = "",
     phase_03_eval_opt_kserve_gpu_count: int = 1,
@@ -63,24 +60,24 @@ def lora_pipeline_evalhub_easy(
     phase_03_eval_opt_kserve_memory: str = "32Gi",
     phase_03_eval_opt_timeout: int = 7200,
     phase_04_registry_man_address: str = "",
-    phase_04_registry_man_reg_author: str = "pipeline",
-    phase_04_registry_man_reg_name: str = "lora-model",
-    phase_04_registry_man_reg_version: str = "1.0.0",
+    phase_04_registry_man_author: str = "pipeline",
+    phase_04_registry_man_name: str = "sft-model",
+    phase_04_registry_man_version: str = "1.0.0",
     # =========================================================================
     # OPTIONAL PARAMETERS - Sorted by step
     # =========================================================================
     phase_01_dataset_opt_subset: int = 0,
-    phase_02_train_opt_cpu: str = "4",
-    phase_02_train_opt_env_vars: str = "",
-    phase_02_train_opt_learning_rate: float = 2e-4,
+    phase_02_train_opt_env_vars: str = (
+        "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,NCCL_DEBUG=INFO,INSTRUCTLAB_NCCL_TIMEOUT_MS=600000"
+    ),
+    phase_02_train_opt_learning_rate: float = 5e-6,
     phase_02_train_opt_max_seq_len: int = 8192,
-    phase_02_train_opt_memory: str = "32Gi",
-    phase_02_train_opt_use_liger: bool = True,
-    phase_02_train_opt_lora_load_in_4bit: bool = True,
+    phase_02_train_opt_fsdp_sharding: str = "FULL_SHARD",
+    phase_02_train_opt_use_liger: bool = False,
     phase_02_train_opt_runtime: str = "training-hub",
     phase_04_registry_opt_port: int = 8080,
 ):
-    """LoRA Training Pipeline — Eval Hub Minimal.
+    """SFT Training Pipeline — Eval Hub Minimal.
 
     Minimal-config variant that runs 5 leaderboard benchmarks (ifeval, bbh,
     mmlu_pro, musr, math_hard) via KServe model serving — all public datasets,
@@ -97,19 +94,17 @@ def lora_pipeline_evalhub_easy(
     Args:
         phase_01_dataset_man_data_uri: Dataset location (hf://, s3://, https://).
         phase_01_dataset_opt_subset: Limit to first N examples (0 = all).
-        phase_02_train_man_train_batch: Effective batch size (samples per optimizer step).
-        phase_02_train_man_train_epochs: Number of training epochs.
-        phase_02_train_man_train_gpu: GPUs per worker.
-        phase_02_train_man_train_model: Base model (HuggingFace ID or path).
-        phase_02_train_man_train_tokens: Max tokens per GPU (memory cap).
-        phase_02_train_man_lora_r: Rank of the low-rank matrices (4, 8, 16, 32, 64).
-        phase_02_train_man_lora_alpha: Scaling factor (typically 2x lora_r).
-        phase_02_train_opt_cpu: CPU cores per worker.
-        phase_02_train_opt_env_vars: Env vars (KEY=VAL,...).
-        phase_02_train_opt_learning_rate: Learning rate. 2e-4 for LoRA.
-        phase_02_train_opt_lora_load_in_4bit: Enable 4-bit quantization.
-        phase_02_train_opt_max_seq_len: Max sequence length in tokens.
-        phase_02_train_opt_memory: RAM per worker.
+        phase_02_train_man_train_batch: Effective batch size per optimizer step.
+        phase_02_train_man_epochs: Number of training epochs.
+        phase_02_train_man_gpu: GPUs per worker.
+        phase_02_train_man_model: Base model (HuggingFace ID or path).
+        phase_02_train_man_tokens: Max tokens per GPU (memory cap).
+        phase_02_train_man_workers: Number of training pods.
+        phase_02_train_opt_env_vars: Environment variables (KEY=VAL,...).
+        phase_02_train_opt_fsdp_sharding: FSDP strategy (FULL_SHARD,
+            HYBRID_SHARD).
+        phase_02_train_opt_learning_rate: Learning rate for training.
+        phase_02_train_opt_max_seq_len: Maximum sequence length in tokens.
         phase_02_train_opt_runtime: ClusterTrainingRuntime name.
         phase_02_train_opt_use_liger: Enable Liger kernel optimizations.
         phase_03_eval_opt_evalhub_url: Eval Hub API endpoint URL
@@ -121,10 +116,10 @@ def lora_pipeline_evalhub_easy(
         phase_03_eval_opt_kserve_memory: Pod memory for the KServe predictor.
         phase_03_eval_opt_timeout: Max seconds to wait for evaluation.
         phase_04_registry_man_address: Model Registry address (empty = skip).
-        phase_04_registry_man_reg_author: Author name for the registered model.
-        phase_04_registry_man_reg_name: Model name in registry.
-        phase_04_registry_man_reg_version: Semantic version.
-        phase_04_registry_opt_port: Model registry server port.
+        phase_04_registry_man_author: Author name for the registered model.
+        phase_04_registry_man_name: Model name in registry.
+        phase_04_registry_man_version: Semantic version.
+        phase_04_registry_opt_port: Model Registry server port.
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -150,31 +145,31 @@ def lora_pipeline_evalhub_easy(
     )
 
     # =========================================================================
-    # Stage 2: LoRA Training (hardcoded safe defaults)
+    # Stage 2: SFT Training
     # =========================================================================
     training_task = train_model(
         pvc_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         dataset=dataset_download_task.outputs["train_dataset"],
-        training_base_model=phase_02_train_man_train_model,
+        training_base_model=phase_02_train_man_model,
         training_effective_batch_size=phase_02_train_man_train_batch,
-        training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
+        training_max_tokens_per_gpu=phase_02_train_man_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
         training_seed=42,
-        training_num_epochs=phase_02_train_man_train_epochs,
-        training_lora_r=phase_02_train_man_lora_r,
-        training_lora_alpha=phase_02_train_man_lora_alpha,
-        training_lora_load_in_4bit=phase_02_train_opt_lora_load_in_4bit,
+        training_num_epochs=phase_02_train_man_epochs,
         training_use_liger=phase_02_train_opt_use_liger,
         training_lr_scheduler="cosine",
         training_lr_warmup_steps=0,
-        training_checkpoint_at_epoch=False,
+        training_checkpoint_at_epoch=True,
+        training_save_samples=0,
+        training_accelerate_full_state_at_epoch=False,
+        training_fsdp_sharding_strategy=phase_02_train_opt_fsdp_sharding,
         training_envs=phase_02_train_opt_env_vars,
-        training_resource_cpu_per_worker=phase_02_train_opt_cpu,
-        training_resource_gpu_per_worker=phase_02_train_man_train_gpu,
-        training_resource_memory_per_worker=phase_02_train_opt_memory,
+        training_resource_cpu_per_worker="4",
+        training_resource_gpu_per_worker=phase_02_train_man_gpu,
+        training_resource_memory_per_worker="64Gi",
         training_resource_num_procs_per_worker="auto",
-        training_resource_num_workers=1,
+        training_resource_num_workers=phase_02_train_man_workers,
         training_runtime=phase_02_train_opt_runtime,
     )
     training_task.set_caching_options(False)
@@ -212,8 +207,8 @@ def lora_pipeline_evalhub_easy(
             {"id": "leaderboard_math_hard", "provider_id": "lm_evaluation_harness"},
         ],
         evalhub_model_name="finetuned-model",
-        base_model_name=phase_02_train_man_train_model,
-        evalhub_job_name="lora-pipeline-eval",
+        base_model_name=phase_02_train_man_model,
+        evalhub_job_name="sft-pipeline-eval",
         evalhub_timeout=phase_03_eval_opt_timeout,
         evalhub_poll_interval=30,
         mlflow_experiment_name=phase_03_eval_opt_mlflow_experiment,
@@ -235,7 +230,7 @@ def lora_pipeline_evalhub_easy(
     # =========================================================================
     # Stage 4: Model Registry
     # =========================================================================
-    model_registry_task = model_registry(
+    model_registry_task = kubeflow_model_registry(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         input_model=training_task.outputs["output_model"],
         input_metrics=training_task.outputs["output_metrics"],
@@ -243,12 +238,12 @@ def lora_pipeline_evalhub_easy(
         eval_results=eval_task.outputs["output_results"],
         registry_address=phase_04_registry_man_address,
         registry_port=phase_04_registry_opt_port,
-        model_name=phase_04_registry_man_reg_name,
-        model_version=phase_04_registry_man_reg_version,
+        model_name=phase_04_registry_man_name,
+        model_version=phase_04_registry_man_version,
         model_format_name="pytorch",
         model_format_version="1.0",
         model_description="",
-        author=phase_04_registry_man_reg_author,
+        author=phase_04_registry_man_author,
         shared_log_file="pipeline_log.txt",
         source_pipeline_name=PIPELINE_NAME,
         source_pipeline_run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
@@ -261,6 +256,6 @@ def lora_pipeline_evalhub_easy(
 
 if __name__ == "__main__":
     kfp.compiler.Compiler().compile(
-        pipeline_func=lora_pipeline_evalhub_easy,
+        pipeline_func=sft_pipeline_evalhub_easy,
         package_path=__file__.replace(".py", ".yaml"),
     )

@@ -62,7 +62,6 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 [tool.setuptools]
 packages = [
     "kfp_components",
-    "kfp_components.utils",
     "kfp_components.components",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.automl",
@@ -77,8 +76,8 @@ packages = [
     "kfp_components.components.data_processing.download_model",
     "kfp_components.components.data_processing.ingest_to_milvus",
     "kfp_components.components.data_processing.parse_and_chunk",
-    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.data_processing.sdg",
+    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
     "kfp_components.components.deployment.autorag",
     "kfp_components.components.deployment.autorag.build_responses_request_bodies",
@@ -86,6 +85,8 @@ packages = [
     "kfp_components.components.deployment.kubeflow_model_registry",
     "kfp_components.components.deployment.model_deployment",
     "kfp_components.components.evaluation",
+    "kfp_components.components.evaluation.evalhub",
+    "kfp_components.components.evaluation.evalhub.kserve",
     "kfp_components.components.evaluation.lm_eval",
     "kfp_components.components.training",
     "kfp_components.components.training.automl",
@@ -126,6 +127,13 @@ packages = [
     "kfp_components.pipelines.training.finetuning.osft_minimal",
     "kfp_components.pipelines.training.finetuning.sft",
     "kfp_components.pipelines.training.finetuning.sft_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub",
+    "kfp_components.pipelines.training.finetuning_evalhub.lora",
+    "kfp_components.pipelines.training.finetuning_evalhub.lora_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub.osft",
+    "kfp_components.pipelines.training.finetuning_evalhub.osft_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub.sft",
+    "kfp_components.pipelines.training.finetuning_evalhub.sft_minimal",
 ]
 
 [tool.setuptools.package-dir]
