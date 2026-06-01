@@ -44,6 +44,7 @@ def autogluon_timeseries_training_pipeline(
     known_covariates_names: Optional[List[str]] = None,
     prediction_length: int = 1,
     top_n: int = 3,
+    eval_metric: str = "MASE",
 ):
     """AutoGluon time series training pipeline.
 
@@ -102,6 +103,8 @@ def autogluon_timeseries_training_pipeline(
         prediction_length: Number of time steps to forecast (horizon length). Positive integer
             (default: 1).
         top_n: Number of top models to select for the leaderboard and output (default: 3).
+        eval_metric: Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or
+            snake_case form. Defaults to ``"MASE"``.
 
     Returns:
         This pipeline wires task outputs between components; compiled runs expose the combined models artifact
@@ -181,6 +184,7 @@ def autogluon_timeseries_training_pipeline(
         sampling_config=data_loader_task.outputs["sample_config"],
         split_config=data_loader_task.outputs["split_config"],
         extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
+        eval_metric=eval_metric,
     )
     training_task.set_caching_options(False)
     training_task.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)

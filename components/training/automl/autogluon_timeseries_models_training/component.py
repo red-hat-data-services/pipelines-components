@@ -25,6 +25,7 @@ def autogluon_timeseries_models_training(
     split_config: Optional[dict] = None,
     prediction_length: int = 1,
     known_covariates_names: Optional[List[str]] = None,
+    eval_metric: str = "MASE",
 ) -> NamedTuple(
     "outputs",
     top_models=List[str],
@@ -60,6 +61,7 @@ def autogluon_timeseries_models_training(
         prediction_length: Forecast horizon (number of timesteps).
         known_covariates_names: Optional list of known covariate column names.
         component_status: Output artifact containing stage-level progress tracking for this component.
+        eval_metric: Metric for model ranking (e.g. ``"MASE"``, ``"WQL"``). Defaults to ``"MASE"``.
 
     Returns:
         NamedTuple: top_models list, predictor_path, eval_metric, model_config.
@@ -132,6 +134,8 @@ def autogluon_timeseries_models_training(
             raise TypeError("sampling_config must be a dictionary or None.")
         if split_config is not None and not isinstance(split_config, dict):
             raise TypeError("split_config must be a dictionary or None.")
+        if not isinstance(eval_metric, str) or not eval_metric.strip():
+            raise TypeError("eval_metric must be a non-empty string.")
         sampling_config = sampling_config or {}
         split_config = split_config or {}
 
@@ -167,7 +171,6 @@ def autogluon_timeseries_models_training(
         # Create predictor path in workspace
         predictor_path = Path(workspace_path) / "timeseries_predictor"
 
-        eval_metric = DEFAULT_EVAL_METRIC
         # Create TimeSeriesPredictor
         predictor = TimeSeriesPredictor(
             prediction_length=prediction_length,

@@ -23,6 +23,7 @@ def autogluon_models_training(
     split_config: Optional[dict] = None,
     extra_train_data_path: str = "",
     positive_class: Optional[str] = None,
+    eval_metric: str = "",
 ) -> NamedTuple("outputs", eval_metric=str):
     """Train AutoGluon models, select the top N, and refit each on the full dataset.
 
@@ -61,6 +62,8 @@ def autogluon_models_training(
             (``int`` or ``str``, e.g. ``"1"`` or ``"yes"``). Passed to ``TabularPredictor`` when set.
             If ``None`` or empty, AutoGluon infers the positive class when ``fit`` runs (see note below).
             Ignored for ``multiclass`` and ``regression``.
+        eval_metric: Metric for model ranking (e.g. ``"r2"``, ``"accuracy"``). Defaults
+            to ``"r2"`` for regression and ``"accuracy"`` otherwise.
 
     Returns:
         NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``).
@@ -78,7 +81,7 @@ def autogluon_models_training(
     import shutil
     from concurrent.futures import ThreadPoolExecutor
     from pathlib import Path
-    from typing import Any
+    from typing import Any, NamedTuple
 
     import numpy as np
     import pandas as pd
@@ -165,6 +168,8 @@ def autogluon_models_training(
             )
         if test_data_df.empty:
             raise ValueError("Test CSV is empty. Ensure the data loader produced valid test data.")
+    if not eval_metric:
+        eval_metric = "r2" if task_type == "regression" else "accuracy"
 
         extra_train_df = None
         if extra_train_data_path.strip():
@@ -639,7 +644,7 @@ def autogluon_models_training(
         status.record("evaluate_models", "completed", eval_metric=str(predictor.eval_metric))
         component_status.metadata["display_name"] = "Models Training Status"
 
-    return NamedTuple("outputs", eval_metric=str)(eval_metric=str(predictor.eval_metric))
+    return NamedTuple("outputs", eval_metric=str)(eval_metric=eval_metric)
 
 
 if __name__ == "__main__":

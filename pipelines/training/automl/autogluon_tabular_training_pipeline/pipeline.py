@@ -42,6 +42,7 @@ def autogluon_tabular_training_pipeline(
     task_type: str,
     top_n: int = 3,
     positive_class: Optional[str] = None,
+    eval_metric: str = "",
 ):
     """AutoGluon Tabular Training Pipeline.
 
@@ -124,6 +125,7 @@ def autogluon_tabular_training_pipeline(
         task_type: "binary", "multiclass", or "regression"; drives metrics and model types.
         top_n: Number of top models to select and refit (default: 3); positive integer from range [1, 10].
         positive_class: Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values.
+        eval_metric: Metric used for model ranking. Empty string (default) lets AutoGluon pick the task-type default ("accuracy" for binary and multiclass classification, "r2" for regression).
 
     Returns:
         HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
@@ -199,6 +201,7 @@ def autogluon_tabular_training_pipeline(
         sampling_config=data_loader_task.outputs["sample_config"],
         split_config=data_loader_task.outputs["split_config"],
         extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
+        eval_metric=eval_metric,
     )
     training_task.set_caching_options(False)
     training_task.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)

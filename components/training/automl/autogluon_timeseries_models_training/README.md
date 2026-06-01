@@ -32,6 +32,7 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 | `split_config` | `Optional[dict]` | `None` | Optional split config stored in artifact metadata. |
 | `prediction_length` | `int` | `1` | Forecast horizon (number of timesteps). |
 | `known_covariates_names` | `Optional[List[str]]` | `None` | Optional list of known covariate column names. |
+| `eval_metric` | `str` | `MASE` | Metric for model ranking (e.g. ``"MASE"``, ``"WQL"``). Defaults to ``"MASE"``. |
 
 ## Outputs 📤
 
