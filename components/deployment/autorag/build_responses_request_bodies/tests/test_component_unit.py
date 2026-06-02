@@ -165,6 +165,36 @@ class TestBuildOgxV1ResponsesBody:
         body = json.loads((out / "p1" / OUTPUT_FILENAME).read_text(encoding="utf-8"))
         assert "ranking_options" not in body["tools"][0]
 
+    def test_detected_language_produces_explicit_instruction(self, tmp_path):
+        """When detected_language is in the pattern, instructions use explicit language name."""
+        pattern = _minimal_pattern()
+        pattern["settings"]["generation"]["detected_language"] = {
+            "code": "ja",
+            "name": "Japanese",
+        }
+        out, _ = _run_python_func(tmp_path, [("p1", pattern)])
+        body = json.loads((out / "p1" / OUTPUT_FILENAME).read_text(encoding="utf-8"))
+        assert "You MUST respond in Japanese." in body["instructions"]
+        assert "Respond in the same language as the user question." not in body["instructions"]
+
+    def test_no_detected_language_falls_back_to_generic(self, tmp_path):
+        """Without detected_language, instructions use generic language hint."""
+        out, _ = _run_python_func(tmp_path, [("p1", _minimal_pattern())])
+        body = json.loads((out / "p1" / OUTPUT_FILENAME).read_text(encoding="utf-8"))
+        assert "Respond in the same language as the user question." in body["instructions"]
+
+    def test_english_detected_language_does_not_add_explicit_instruction(self, tmp_path):
+        """English detected_language should not produce 'You MUST respond in English.'."""
+        pattern = _minimal_pattern()
+        pattern["settings"]["generation"]["detected_language"] = {
+            "code": "en",
+            "name": "English",
+        }
+        out, _ = _run_python_func(tmp_path, [("p1", pattern)])
+        body = json.loads((out / "p1" / OUTPUT_FILENAME).read_text(encoding="utf-8"))
+        assert "You MUST respond in English." not in body["instructions"]
+        assert "Respond in the same language as the user question." in body["instructions"]
+
     def test_input_uses_placeholder_not_generation_template(self, tmp_path):
         """``input`` uses the fixed placeholder, not ``user_message_text`` template expansion."""
         pattern = _minimal_pattern()
@@ -186,6 +216,18 @@ class TestBuildOgxV1ResponsesBody:
         assert "Context section" not in body["instructions"]
         assert "file_search results" in body["instructions"]
         assert "Respond in the same language as the user question." in body["instructions"]
+
+    def test_detected_language_instruction_not_duplicated(self, tmp_path):
+        """When system_message_text already has 'You MUST respond in X.', instructions don't double it."""
+        pattern = _minimal_pattern()
+        pattern["settings"]["generation"]["detected_language"] = {"code": "ja", "name": "Japanese"}
+        pattern["settings"]["generation"]["system_message_text"] = (
+            "You MUST respond in Japanese. Answer based on context only."
+        )
+        out, _ = _run_python_func(tmp_path, [("p1", pattern)])
+        body = json.loads((out / "p1" / OUTPUT_FILENAME).read_text(encoding="utf-8"))
+        count = body["instructions"].count("You MUST respond in Japanese.")
+        assert count == 1, f"Expected 1 occurrence, got {count}: {body['instructions']}"
 
     def test_script_supports_custom_ca_bundle_and_insecure_tls(self, tmp_path):
         """Generated helper exposes CA-bundle env vars and a dev-only insecure flag.
