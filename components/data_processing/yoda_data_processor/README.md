@@ -34,6 +34,7 @@ Downloads the yoda_sentences dataset from HuggingFace, renames columns to match 
   - translation
 - **Last Verified**: 2025-12-19 11:30:16+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - mprahl
     - nsingla

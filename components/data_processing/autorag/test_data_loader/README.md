@@ -59,6 +59,7 @@ def example_pipeline(
   - test-data
 - **Last Verified**: 2026-01-23 10:29:45+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR

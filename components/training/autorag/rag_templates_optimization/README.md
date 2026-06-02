@@ -88,6 +88,7 @@ def example_pipeline(
   - rag-patterns
 - **Last Verified**: 2026-05-14 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR

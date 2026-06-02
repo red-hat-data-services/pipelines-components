@@ -21,6 +21,7 @@ models_artifact.path / <model_name>_FULL / metrics / metrics.json predictor / pr
 | `models_artifact` | `dsl.Input[dsl.Model]` | `None` | Combined Model artifact from ``autogluon_models_training`` with ``metadata["model_names"]`` and per-model subdirectories. |
 | `eval_metric` | `str` | `None` | Metric name for ranking (e.g. ``"accuracy"``, ``"root_mean_squared_error"``); leaderboard sorted descending (AutoGluon uses higher-is-better convention). |
 | `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output artifact for the HTML-formatted leaderboard. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact with stage progress (``component_status.json``). KFP creates this automatically when the component is used inside a pipeline. |
 
 ## Outputs 📤
 
@@ -39,7 +40,19 @@ from kfp_components.components.training.automl.autogluon_leaderboard_evaluation 
 )
 
 
-@dsl.pipeline(name="autogluon-leaderboard-evaluation-example")
+@dsl.pipeline(
+    name="autogluon-leaderboard-evaluation-example",
+    pipeline_config=dsl.PipelineConfig(
+        workspace=dsl.WorkspaceConfig(
+            size="1Gi",
+            kubernetes=dsl.KubernetesWorkspaceConfig(
+                pvcSpecPatch={
+                    "accessModes": ["ReadWriteOnce"],
+                }
+            ),
+        ),
+    ),
+)
 def example_pipeline(
     eval_metric: str = "root_mean_squared_error",
 ):
@@ -56,6 +69,7 @@ def example_pipeline(
         models_artifact=models_artifact.output,
         eval_metric=eval_metric,
     )
+    # component_status output is created by KFP when composed in a pipeline.
 
 ```
 
@@ -71,6 +85,7 @@ def example_pipeline(
   - automl
 - **Last Verified**: 2026-03-06 11:05:29+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
@@ -79,6 +94,11 @@ def example_pipeline(
     - DorotaDR
 
 <!-- custom-content -->
+
+### Component status artifact
+
+Writes ``component_status.json`` under ``component_status`` with ``component_id`` ``leaderboard_evaluation`` and stage ``build_leaderboard``. Artifact metadata display name: **Leaderboard Evaluation Status**.
+
 ## Usage Examples 💡
 
 ### Basic usage with collected refit model artifacts

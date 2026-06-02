@@ -25,8 +25,8 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 | `pipeline_name` | `str` | `None` | Pipeline name used in generated notebook placeholders. |
 | `run_id` | `str` | `None` | Pipeline run id used in generated notebook placeholders. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Combined output artifact containing all refitted models. |
-| `notebooks` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded notebook templates. |
 | `extra_train_data_path` | `str` | `None` | Path to extra train split for full refit. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sample_rows` | `str` | `[]` | Sample rows JSON string used in generated notebook placeholders. |
 | `sampling_config` | `Optional[dict]` | `None` | Optional sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Optional split config stored in artifact metadata. |
@@ -111,9 +111,18 @@ def example_pipeline(
   - model-selection
 - **Last Verified**: 2026-05-27 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
+
+<!-- custom-content -->
+
+### Component status artifact
+
+Writes ``component_status.json`` under ``component_status`` with ``component_id`` ``autogluon_timeseries_models_training`` and training stages (``load_data``, ``model_selection``, ``refit_full``, ``evaluate_models``). Artifact metadata display name: **Timeseries Models Training Status**.
+
+Inference notebooks are loaded from ``shared/notebook_templates/timeseries_notebook.ipynb`` at runtime (same shared package data as tabular training).

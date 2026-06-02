@@ -1,0 +1,29 @@
+---
+name: osft_evalhub_pipeline
+stability: experimental
+dependencies:
+  kubeflow:
+    - name: Pipelines
+      version: ">=2.15.2"
+    - name: Trainer
+      version: ">=0.1.0"
+  external_services:
+    - name: Eval Hub
+      version: ">=0.1.0"
+    - name: KServe
+      version: ">=0.11.0"
+    - name: Kubernetes
+      version: ">=1.28.0"
+    - name: Model Registry
+      version: ">=0.3.4"
+tags:
+  - training
+  - fine_tuning
+  - osft
+  - orthogonal_subspace_fine_tuning
+  - eval_hub
+  - kserve
+  - pipeline
+lastVerified: 2026-05-20T00:00:00Z
+links:
+  documentation: https://github.com/opendatahub-io/eval-hub

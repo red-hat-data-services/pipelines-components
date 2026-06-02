@@ -44,6 +44,7 @@ Defines a pipeline to load, sample, extract text, and index documents for AutoRA
   - autorag
 - **Last Verified**: 2026-05-14 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR

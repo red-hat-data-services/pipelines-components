@@ -121,6 +121,17 @@ def prepare_responses_api_requests(
         """Placeholder user message in the JSON; interactive script overwrites at runtime."""
         return RESPONSES_BODY_DEFAULT_QUESTION
 
+    def _explicit_language_instruction(detected_language: object) -> str:
+        """Build explicit language instruction from detected_language metadata."""
+        if not isinstance(detected_language, dict):
+            return ""
+        if detected_language.get("code") == "en":
+            return ""
+        name = detected_language.get("name", "")
+        if not name:
+            return ""
+        return f"You MUST respond in {name}."
+
     def _language_instruction_from_user_message(user_message_text: object) -> str:
         """Extract language guidance from generation.user_message_text when present."""
         if not isinstance(user_message_text, str):
@@ -162,15 +173,20 @@ def prepare_responses_api_requests(
     def _compose_instructions(generation: dict) -> str:
         """Compose Responses API instructions from system/user generation fields."""
         system_text = _normalize_system_message_for_file_search(generation.get("system_message_text"))
-        language_hint = _language_instruction_from_user_message(generation.get("user_message_text"))
+        explicit_lang = _explicit_language_instruction(generation.get("detected_language"))
+        language_hint = explicit_lang or _language_instruction_from_user_message(generation.get("user_message_text"))
         if not system_text:
+            if explicit_lang:
+                return f"{grounding_instruction} {explicit_lang}"
             return default_instructions
 
         parts = [system_text]
         lowered = system_text.lower()
         if "file_search" not in lowered and "retriev" not in lowered:
             parts.append(grounding_instruction)
-        if language_hint:
+        if "you must respond in" in lowered:
+            pass
+        elif language_hint:
             if "same language as the user question" not in lowered and "language of the question" not in lowered:
                 parts.append(language_hint)
         elif "same language as the user question" not in lowered and "language of the question" not in lowered:

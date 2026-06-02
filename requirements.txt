@@ -36,8 +36,8 @@ google-resumable-media==2.8.2 \
     --hash=sha256:75454aa7c656878f62f386c5a093a5fe41a03b3f69c35dda8a12a2919afc9b3a
 googleapis-common-protos==1.74.0 \
     --hash=sha256:3ad314d4749d7f460d42039a22ac3e762bdae10bc26d4281a930cdd6d8f1e4b9
-idna==3.13 \
-    --hash=sha256:dca7f2ff2269802615148420ce18a161aa32c2456a40c7e8d86bd9839e8c6531
+idna==3.17 \
+    --hash=sha256:1df5df6ec731df1d0d954a1cf2f684ccdff1e9751969185cb347d08364b168e8
 kfp==2.16.1 \
     --hash=sha256:bb7aa559827e72e8b7fdb42fc2c5d699e631184c36db6c135879261a35a1dd0f
 kfp-kubernetes==2.16.1 \

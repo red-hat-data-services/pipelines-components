@@ -41,6 +41,7 @@ If the model is already present on the PVC, skips the download.
   - rag
 - **Last Verified**: 2026-04-28 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - szaher
     - kryanbeane

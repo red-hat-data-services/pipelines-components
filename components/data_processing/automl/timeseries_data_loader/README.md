@@ -25,6 +25,7 @@ After cleansing, at least **100** valid records must remain; otherwise the compo
 | `id_column` | `str` | `None` | Name of the column identifying each time series (item_id). |
 | `timestamp_column` | `str` | `None` | Name of the timestamp/datetime column. |
 | `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `selection_train_size` | `float` | `0.3` | Fraction of train portion for model selection (default: 0.3). |
 
 ## Outputs 📤
@@ -89,9 +90,20 @@ def example_pipeline(
   - data-loading
 - **Last Verified**: 2026-05-22 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
+
+<!-- custom-content -->
+
+### Component status artifact
+
+In the time series training pipeline, this component writes ``component_status.json`` under the
+``component_status`` output artifact. The file includes ``component_id`` (``timeseries_data_loader``),
+timestamps, and per-stage status (e.g. ``validate_inputs``, ``read_and_sample``, ``split``,
+``write_outputs``). Dashboards align stage ids with ``component_stage_map.json`` from
+``publish-component-stage-map``.

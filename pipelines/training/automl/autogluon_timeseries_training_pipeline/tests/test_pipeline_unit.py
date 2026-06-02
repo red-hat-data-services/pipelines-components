@@ -14,6 +14,7 @@ from ..pipeline import autogluon_timeseries_training_pipeline
 _EXPECTED_ROOT_DAG_TASK_IDS = (
     "autogluon-timeseries-models-training",
     "leaderboard-evaluation",
+    "publish-component-stage-map",
     "timeseries-data-loader",
 )
 
@@ -95,3 +96,21 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             pipeline_func=autogluon_timeseries_training_pipeline,
             expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
+
+    def test_compiled_pipeline_yaml_is_ascii_only(self):
+        """PipelineRuntimeManifest storage requires ASCII-only compiled YAML (MySQL utf8)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_bytes()
+            try:
+                content.decode("ascii")
+            except UnicodeDecodeError as exc:
+                pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)

@@ -34,6 +34,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 | `workspace_path` | `str` | `None` | PVC workspace directory where train CSVs will be written. |
 | `label_column` | `str` | `None` | Name of the label/target column in the dataset. |
 | `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_method` | `Optional[str]` | `None` | "first_n_rows", "stratified", or "random"; if None, derived from task_type. |
 | `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
 | `split_config` | `Optional[dict]` | `None` | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
@@ -95,6 +96,7 @@ def example_pipeline(
   - data-processing
 - **Last Verified**: 2026-05-22 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
@@ -215,6 +217,17 @@ load_task = automl_data_loader(
     task_type="binary",
 )
 ```
+
+<!-- custom-content -->
+
+### Component status artifact
+
+In the tabular training pipeline, this component writes ``component_status.json`` under the
+``component_status`` output artifact. The file includes ``component_id`` (``automl_data_loader``),
+``started_at``, ``completed_at``, a ``stages`` list (ids such as ``validate_inputs``,
+``read_and_sample``, ``cleanse``, ``split``, ``write_outputs``), and optional ``metadata``.
+Match stage ids to the tabular pipeline entry in ``component_stage_map.json`` from the
+``publish-component-stage-map`` task.
 
 ## Supported formats and limits 📋
 

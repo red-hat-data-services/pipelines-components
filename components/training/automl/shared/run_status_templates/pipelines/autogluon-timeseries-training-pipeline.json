@@ -1,0 +1,65 @@
+{
+  "pipeline_id": "autogluon-timeseries-training-pipeline",
+  "description": "Time series AutoGluon pipeline: load and split panel data, train and refit models, build leaderboard.",
+  "components": [
+    {
+      "id": "timeseries_data_loader",
+      "description": "Load time series data from S3, cleanse, and write per-series train/test splits.",
+      "stages": [
+        {
+          "id": "validate_inputs",
+          "description": "Validate pipeline inputs and split parameters."
+        },
+        {
+          "id": "read_and_sample",
+          "description": "Read source data from S3 (truncated to size limit)."
+        },
+        {
+          "id": "cleanse",
+          "description": "Parse timestamps, validate ids, and deduplicate panel keys."
+        },
+        {
+          "id": "split",
+          "description": "Apply per-series temporal train/test and selection/extra splits."
+        },
+        {
+          "id": "write_outputs",
+          "description": "Write train/validation CSVs and test artifact."
+        }
+      ]
+    },
+    {
+      "id": "autogluon_timeseries_models_training",
+      "description": "Train AutoGluon time series models, refit top N, and evaluate on holdout.",
+      "stages": [
+        {
+          "id": "load_data",
+          "description": "Load train/test CSVs and build TimeSeriesDataFrames."
+        },
+        {
+          "id": "model_selection",
+          "description": "Run TimeSeriesPredictor fit on selection train and rank on test.",
+          "steps": ["model_training", "holdout_evaluation"]
+        },
+        {
+          "id": "refit_full",
+          "description": "Refit each top model on selection plus extra train data."
+        },
+        {
+          "id": "evaluate_models",
+          "description": "Evaluate refit models and write metrics and notebooks."
+        }
+      ]
+    },
+    {
+      "id": "leaderboard_evaluation",
+      "description": "Build the AutoML leaderboard HTML from per-model metrics.",
+      "stages": [
+        {
+          "id": "build_leaderboard",
+          "description": "Aggregate model metrics, rank models, and render leaderboard HTML."
+        }
+      ]
+    }
+  ]
+}
