@@ -110,9 +110,9 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
                 pipeline_func=autogluon_timeseries_training_pipeline,
                 package_path=tmp_path,
             )
-            content = Path(tmp_path).read_bytes()
+            content_bytes = Path(tmp_path).read_bytes()
             try:
-                content.decode("ascii")
+                content = content_bytes.decode("ascii")
             except UnicodeDecodeError as exc:
                 pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
         finally:
