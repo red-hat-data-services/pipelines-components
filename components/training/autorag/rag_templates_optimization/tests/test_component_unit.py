@@ -522,3 +522,96 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data_key="small-dataset/benchmark.json",
                     vector_io_provider_id="milvus",
                 )
+
+
+class TestMultilingualPromptOverrides:
+    """Tests for detected_language prompt override and _build_system_message dedup."""
+
+    def _setup_with_language(self, tmp_path, detected_language=None):
+        """Set up mocks with detected_language in search space YAML."""
+        mocks = _make_all_mocks()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
+        mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.side_effect = _SentinelAbort
+
+        search_space_data = {}
+        if detected_language:
+            search_space_data["detected_language"] = detected_language
+
+        mock_yaml = mock.MagicMock()
+        mock_yaml.safe_load.return_value = search_space_data
+        mocks["yaml"] = mock_yaml
+
+        report = tmp_path / "report.yml"
+        report.write_text("{}")
+        test_data = tmp_path / "test_data.json"
+        test_data.write_text("[]")
+
+        return mocks, str(tmp_path / "extracted"), str(test_data), str(report)
+
+    def _run(self, mocks, extracted_text, test_data, report, **kwargs):
+        with (
+            mock.patch.dict(sys.modules, mocks),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+                    "OGX_CLIENT_API_KEY": "test-api-key",
+                },
+            ),
+        ):
+            rag_templates_optimization.python_func(
+                extracted_text=extracted_text,
+                test_data=test_data,
+                search_space_prep_report=report,
+                rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
+                embedded_artifact=mock.MagicMock(path="/tmp/embedded"),
+                test_data_key="small-dataset/benchmark.json",
+                vector_io_provider_id="milvus",
+                optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
+                **kwargs,
+            )
+
+    def test_detected_language_sets_prompts_on_foundation_models(self, tmp_path):
+        """When detected_language is present, foundation models get explicit language instruction."""
+        mocks, ext, td, report = self._setup_with_language(tmp_path, detected_language={"code": "de", "name": "German"})
+        mock_fm = mock.MagicMock()
+        mock_search_space = mock.MagicMock()
+        mock_search_space.__getitem__ = mock.MagicMock(return_value=mock.MagicMock(values=[mock_fm]))
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.return_value = mock_search_space
+
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
+
+        assert "You MUST respond in German." in mock_fm.system_message_text
+        assert "You MUST respond in German." in mock_fm.user_message_text
+
+    def test_no_detected_language_preserves_defaults(self, tmp_path):
+        """Without detected_language, foundation model prompts are untouched."""
+        mocks, ext, td, report = self._setup_with_language(tmp_path)
+        mock_fm = mock.MagicMock()
+        original_sys = mock_fm.system_message_text
+        mock_search_space = mock.MagicMock()
+        mock_search_space.__getitem__ = mock.MagicMock(return_value=mock.MagicMock(values=[mock_fm]))
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.return_value = mock_search_space
+
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
+
+        assert mock_fm.system_message_text == original_sys
+
+    def test_detected_language_popped_before_search_space_construction(self, tmp_path):
+        """detected_language must not leak into AI4RAGSearchSpace as a parameter."""
+        mocks, ext, td, report = self._setup_with_language(
+            tmp_path, detected_language={"code": "ja", "name": "Japanese"}
+        )
+
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
+
+        param_calls = mocks["ai4rag.search_space.src.parameter"].Parameter.call_args_list
+        param_names = [c.args[0] if c.args else c.kwargs.get("name", "") for c in param_calls]
+        assert "detected_language" not in param_names

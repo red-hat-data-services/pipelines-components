@@ -62,6 +62,7 @@ Parse PDFs and write chunked JSONL files to S3.
   - rag
 - **Last Verified**: 2026-04-28 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - szaher
     - kryanbeane

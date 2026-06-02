@@ -51,34 +51,10 @@ def mock_artifacts():
         models_artifact.metadata = {}
         Path(models_artifact.path).mkdir(parents=True, exist_ok=True)
 
-        # Create mock notebooks with a template
-        notebooks = mock.MagicMock()
-        notebooks.path = str(Path(tmpdir) / "notebooks")
-        Path(notebooks.path).mkdir(parents=True, exist_ok=True)
-        notebook_template = {
-            "cells": [
-                {
-                    "cell_type": "code",
-                    "source": [
-                        "# <REPLACE_RUN_ID>\n",
-                        "# <REPLACE_PIPELINE_NAME>\n",
-                        "# <REPLACE_MODEL_NAME>\n",
-                        "# <REPLACE_SAMPLE_ROW>\n",
-                        "# <REPLACE_ID_COLUMN>\n",
-                        "# <REPLACE_TIMESTAMP_COLUMN>\n",
-                        "# <REPLACE_KNOWN_COVARIATES_NAMES>\n",
-                    ],
-                }
-            ]
-        }
-        with open(Path(notebooks.path) / "timeseries_notebook.ipynb", "w") as f:
-            json.dump(notebook_template, f)
-
-        # Create mock extra_train CSV
         extra_train_path = str(Path(tmpdir) / "extra_train.csv")
         Path(extra_train_path).touch()
 
-        yield models_artifact, notebooks, extra_train_path
+        yield models_artifact, extra_train_path
 
 
 def _mock_leaderboard(model_names):
@@ -126,7 +102,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """Happy path returns top models, config, and predictor path with full refit."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         # Mock selection predictor
         mock_predictor = mock.MagicMock()
@@ -165,7 +141,6 @@ class TestTimeseriesModelsTrainingUnitTests:
             pipeline_name="ts-pipeline-123",
             run_id="run-123",
             models_artifact=models_artifact,
-            notebooks=notebooks,
             extra_train_data_path=extra_train_path,
             prediction_length=24,
         )
@@ -206,7 +181,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """Known covariates are passed to predictor ctor and returned in model_config."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         mock_predictor = mock.MagicMock()
         mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
@@ -237,7 +212,6 @@ class TestTimeseriesModelsTrainingUnitTests:
             pipeline_name="ts-pipeline-123",
             run_id="run-123",
             models_artifact=models_artifact,
-            notebooks=notebooks,
             extra_train_data_path=extra_train_path,
             known_covariates_names=covariates,
         )
@@ -263,7 +237,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """top_n exceeding trained model count raises ValueError."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         mock_predictor = mock.MagicMock()
         mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR", "AutoARIMA"])
@@ -288,13 +262,12 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
     def test_invalid_top_n_zero_raises(self, mock_artifacts):  # noqa: F811
         """top_n must be in range (0, TOP_N_MAX] (see component TOP_N_MAX)."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
         with pytest.raises(ValueError, match=r"top_n must be an integer in the range \(0, 7\]; got 0\."):
@@ -309,13 +282,12 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
     def test_invalid_top_n_above_max_raises(self, mock_artifacts):  # noqa: F811
         """top_n above TOP_N_MAX is rejected before training."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
         with pytest.raises(ValueError, match=r"top_n must be an integer in the range \(0, 7\]; got 8\."):
@@ -330,13 +302,12 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
     def test_invalid_prediction_length_raises(self, mock_artifacts):  # noqa: F811
         """prediction_length must be a positive integer."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
         with pytest.raises(ValueError, match="prediction_length must be greater than 0"):
@@ -351,7 +322,6 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
                 prediction_length=0,
             )
@@ -367,7 +337,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """Training errors are wrapped in ValueError with component-specific message."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         mock_predictor = mock.MagicMock()
         mock_predictor.fit.side_effect = RuntimeError("boom")
@@ -389,7 +359,6 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
@@ -404,7 +373,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """Leaderboard errors are wrapped in ValueError with component-specific message."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         mock_predictor = mock.MagicMock()
         mock_predictor.leaderboard.side_effect = RuntimeError("no leaderboard")
@@ -426,7 +395,6 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
@@ -444,7 +412,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         caplog,
     ):
         """When eval metric is NaN/Inf, error is caught, logged, and RuntimeError raised if all models fail."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         # Mock selection predictor
         mock_predictor = mock.MagicMock()
@@ -484,7 +452,6 @@ class TestTimeseriesModelsTrainingUnitTests:
                     pipeline_name="ts-pipeline-123",
                     run_id="run-123",
                     models_artifact=models_artifact,
-                    notebooks=notebooks,
                     extra_train_data_path=extra_train_path,
                 )
 
@@ -506,7 +473,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         caplog,
     ):
         """When some models fail refit, component succeeds with partial results and warnings."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         # Mock selection predictor
         mock_predictor = mock.MagicMock()
@@ -545,7 +512,6 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )
 
@@ -572,7 +538,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_artifacts,  # noqa: F811
     ):
         """When all models fail refit, component raises RuntimeError."""
-        models_artifact, notebooks, extra_train_path = mock_artifacts
+        models_artifact, extra_train_path = mock_artifacts
 
         # Mock selection predictor
         mock_predictor = mock.MagicMock()
@@ -608,6 +574,5 @@ class TestTimeseriesModelsTrainingUnitTests:
                 pipeline_name="ts-pipeline-123",
                 run_id="run-123",
                 models_artifact=models_artifact,
-                notebooks=notebooks,
                 extra_train_data_path=extra_train_path,
             )

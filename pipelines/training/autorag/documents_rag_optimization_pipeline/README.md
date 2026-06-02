@@ -52,6 +52,7 @@ The system integrates with OGX API for inference and vector database operations,
   - rag-optimization
 - **Last Verified**: 2026-05-14 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR

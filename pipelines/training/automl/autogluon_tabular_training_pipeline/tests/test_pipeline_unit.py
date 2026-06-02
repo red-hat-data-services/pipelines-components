@@ -16,6 +16,7 @@ _EXPECTED_ROOT_DAG_TASK_IDS = (
     "autogluon-models-training",
     "automl-data-loader",
     "leaderboard-evaluation",
+    "publish-component-stage-map",
 )
 
 
@@ -91,6 +92,24 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             pipeline_func=autogluon_tabular_training_pipeline,
             expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
+
+    def test_compiled_pipeline_yaml_is_ascii_only(self):
+        """PipelineRuntimeManifest storage requires ASCII-only compiled YAML (MySQL utf8)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_bytes()
+            try:
+                content.decode("ascii")
+            except UnicodeDecodeError as exc:
+                pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
 
     def test_compiled_pipeline_wires_loader_outputs_to_training_task(self):
         """Training step consumes data-loader outputs (sample_row, paths, configs)."""

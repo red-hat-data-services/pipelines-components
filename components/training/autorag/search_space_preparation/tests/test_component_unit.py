@@ -256,6 +256,155 @@ class TestSearchSpacePreparationUnitTests:
                     )
 
 
+class TestLanguageDetection:
+    """Tests for LLM-based language detection in search_space_preparation.
+
+    The component runs to completion (writing the YAML report) so we can read
+    back detected_language from the output and assert its value.
+    """
+
+    def _make_ogx_with_chat(self, llm_response_text):
+        """Build OGX mock that returns a chat completion with given text."""
+        ogx_mod = _make_ogx_client_module()
+
+        mock_model = mock.MagicMock()
+        mock_model.identifier = "test-llm"
+        mock_model.model_type = "llm"
+
+        mock_models_response = mock.MagicMock()
+        mock_models_response.data = [mock_model]
+
+        mock_choice = mock.MagicMock()
+        mock_choice.message.content = llm_response_text
+        mock_chat_response = mock.MagicMock()
+        mock_chat_response.choices = [mock_choice]
+
+        mock_client = mock.MagicMock()
+        mock_client.models.list.return_value = mock_models_response
+        mock_client.chat.completions.create.return_value = mock_chat_response
+        ogx_mod.OgxClient.return_value = mock_client
+
+        return ogx_mod, mock_client
+
+    def _setup_and_run(self, tmp_path, llm_response_text, ogx_mod=None, mock_client=None, **run_kwargs):
+        """Run the component to completion and return (detected_language, mock_client).
+
+        Lets prepare_search_space_with_ogx return a minimal mock search space,
+        then the component writes the YAML report. We read it back to get detected_language.
+        """
+        import pandas as pd
+
+        mocks = _make_all_mocks()
+
+        benchmark_df = pd.DataFrame(
+            [{"question": "Was ist das?", "correct_answers": [["etwas"]], "correct_answer_document_ids": [["d"]]}]
+        )
+        mock_pd = mock.MagicMock()
+        mock_pd.read_json.return_value = benchmark_df
+        mock_pd.DataFrame = pd.DataFrame
+        mocks["pandas"] = mock_pd
+
+        if ogx_mod is None:
+            ogx_mod, mock_client = self._make_ogx_with_chat(llm_response_text)
+        mocks["ogx_client"] = ogx_mod
+
+        mock_search_space = mock.MagicMock()
+        mock_search_space.__getitem__ = mock.MagicMock(return_value=mock.MagicMock(values=[]))
+        mock_search_space._search_space = {}
+        mocks[
+            "ai4rag.search_space.prepare.prepare_search_space"
+        ].prepare_search_space_with_ogx.return_value = mock_search_space
+
+        mock_yaml = mock.MagicMock()
+        captured = {}
+
+        def fake_safe_dump(data, stream):
+            captured.update(data)
+
+        mock_yaml.safe_dump = fake_safe_dump
+        mock_yaml.safe_load = mock.MagicMock(return_value={})
+        mocks["yaml"] = mock_yaml
+
+        test_data_art = mock.MagicMock(path=str(tmp_path / "test_data.json"))
+        extracted_art = mock.MagicMock(path=str(tmp_path / "ext"))
+        report_path = tmp_path / "report.yml"
+        report_art = mock.MagicMock(path=str(report_path))
+
+        with (
+            mock.patch.dict(sys.modules, mocks),
+            mock.patch.dict(
+                "os.environ", {"OGX_CLIENT_BASE_URL": "https://ogx.example.com", "OGX_CLIENT_API_KEY": "key"}
+            ),
+        ):
+            search_space_preparation.python_func(
+                test_data=test_data_art,
+                extracted_text=extracted_art,
+                search_space_prep_report=report_art,
+                **run_kwargs,
+            )
+
+        return captured.get("detected_language"), mock_client
+
+    def test_detects_german(self, tmp_path):
+        """LLM returns 'de' → detected_language is {code: de, name: German}."""
+        detected, mock_client = self._setup_and_run(tmp_path, "de")
+        assert detected == {"code": "de", "name": "German"}
+        mock_client.chat.completions.create.assert_called_once()
+
+    def test_english_returns_english_dict(self, tmp_path):
+        """LLM returns 'en' → detected_language is {code: en, name: English}."""
+        detected, _ = self._setup_and_run(tmp_path, "en")
+        assert detected == {"code": "en", "name": "English"}
+
+    def test_unsupported_code_returns_none(self, tmp_path):
+        """LLM returns unsupported code 'fi' → detected_language is None (not written)."""
+        detected, _ = self._setup_and_run(tmp_path, "fi")
+        assert detected is None
+
+    def test_llm_failure_returns_none(self, tmp_path):
+        """When LLM call fails, detected_language is None."""
+        ogx_mod = _make_ogx_client_module()
+        mock_model = mock.MagicMock()
+        mock_model.identifier = "test-llm"
+        mock_model.model_type = "llm"
+        mock_models_response = mock.MagicMock()
+        mock_models_response.data = [mock_model]
+        mock_client = mock.MagicMock()
+        mock_client.models.list.return_value = mock_models_response
+        mock_client.chat.completions.create.side_effect = RuntimeError("LLM unavailable")
+        ogx_mod.OgxClient.return_value = mock_client
+
+        detected, _ = self._setup_and_run(tmp_path, "", ogx_mod=ogx_mod, mock_client=mock_client)
+        assert detected is None
+
+    def test_prefers_allowed_generation_models(self, tmp_path):
+        """When generation_models is provided, uses that model for detection."""
+        ogx_mod = _make_ogx_client_module()
+        mock_embed = mock.MagicMock()
+        mock_embed.identifier = "embed-model"
+        mock_embed.model_type = "embedding"
+        mock_llm = mock.MagicMock()
+        mock_llm.identifier = "preferred-llm"
+        mock_llm.model_type = "llm"
+        mock_models_response = mock.MagicMock()
+        mock_models_response.data = [mock_embed, mock_llm]
+        mock_choice = mock.MagicMock()
+        mock_choice.message.content = "de"
+        mock_chat_response = mock.MagicMock()
+        mock_chat_response.choices = [mock_choice]
+        mock_client = mock.MagicMock()
+        mock_client.models.list.return_value = mock_models_response
+        mock_client.chat.completions.create.return_value = mock_chat_response
+        ogx_mod.OgxClient.return_value = mock_client
+
+        detected, _ = self._setup_and_run(
+            tmp_path, "de", ogx_mod=ogx_mod, mock_client=mock_client, generation_models=["preferred-llm"]
+        )
+        assert detected == {"code": "de", "name": "German"}
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert call_kwargs["model"] == "preferred-llm"
+
+
 class TestSSLFallbackSearchSpacePreparation:
     """Tests for SSL retry logic in _create_ogx_client."""
 

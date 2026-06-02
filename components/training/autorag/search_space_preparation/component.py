@@ -109,6 +109,118 @@ def search_space_preparation(
     METRIC = "faithfulness"
     SAMPLE_SIZE = 5
     SEED = 17
+    LANGUAGE_DETECTION_SAMPLE_SIZE = 10
+
+    # English-only names: KFP's MySQL backend rejects multi-byte UTF-8 in
+    # PipelineRuntimeManifest, so no non-ASCII literals in component source.
+    LANGUAGE_MAP: dict[str, str] = {
+        "ja": "Japanese",
+        "ko": "Korean",
+        "zh-cn": "Chinese",
+        "zh-tw": "Chinese",
+        "en": "English",
+        "de": "German",
+        "fr": "French",
+        "es": "Spanish",
+        "pt": "Portuguese",
+        "it": "Italian",
+        "ru": "Russian",
+        "ar": "Arabic",
+        "hi": "Hindi",
+        "th": "Thai",
+        "vi": "Vietnamese",
+        "pl": "Polish",
+        "nl": "Dutch",
+        "sv": "Swedish",
+        "cs": "Czech",
+        "tr": "Turkish",
+    }
+
+    def _detect_language_via_llm(
+        questions: list[str],
+        llm_client: OgxClient,
+        allowed_generation_models: list[str] | None = None,
+    ) -> dict[str, str] | None:
+        """Detect the dominant language by asking an LLM.
+
+        Sends a few sample questions to a generation model and asks for the ISO 639-1 code.
+        Prefers models from allowed_generation_models when provided.
+        Returns a dict with code/name, or None for English.
+        """
+        sample_text = "\n".join(f"- {q}" for q in questions[:5])
+        valid_codes = ", ".join(sorted(LANGUAGE_MAP.keys()))
+
+        try:
+            models_response = llm_client.models.list()
+            models_list = models_response.data if hasattr(models_response, "data") else list(models_response)
+            registered_ids = {(m.identifier if hasattr(m, "identifier") else str(m.id)) for m in models_list}
+
+            model_id = None
+            if allowed_generation_models:
+                for gm in allowed_generation_models:
+                    if gm in registered_ids:
+                        model_id = gm
+                        break
+            if not model_id:
+                for m in models_list:
+                    if hasattr(m, "model_type") and getattr(m, "model_type", "") == "llm":
+                        model_id = m.identifier if hasattr(m, "identifier") else str(m.id)
+                        break
+            if not model_id:
+                _ssl_logger.warning("No models available for LLM language detection.")
+                return None
+
+            response = llm_client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a language detection assistant. "
+                            "Given text samples, respond with ONLY the ISO 639-1 language code "
+                            f"(one of: {valid_codes}). "
+                            "Nothing else — just the code."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"What language are these questions written in?\n{sample_text}",
+                    },
+                ],
+                max_completion_tokens=10,
+                temperature=0.0,
+            )
+            raw = response.choices[0].message.content.strip().lower().replace('"', "").replace("'", "")
+            detected_code = raw.split()[0] if raw else None
+
+            if not detected_code:
+                return None
+            if detected_code == "en":
+                return {"code": "en", "name": "English"}
+
+            name = LANGUAGE_MAP.get(detected_code)
+            if not name:
+                _ssl_logger.warning("LLM returned unsupported language code: %s", detected_code)
+                return None
+            _ssl_logger.info("Language detected via LLM: %s (%s)", detected_code, name)
+            return {"code": detected_code, "name": name}
+
+        except Exception as exc:
+            _ssl_logger.warning("LLM language detection failed: %s", exc)
+            return None
+
+    def _detect_benchmark_language(df: pd.DataFrame, llm_client: OgxClient) -> dict[str, str] | None:
+        """Detect the dominant language from benchmark questions.
+
+        Uses LLM via OGX for accurate detection across all languages.
+        Returns a dict with code/name, or None for English / on failure.
+        """
+        questions = df["question"].dropna().astype(str).tolist()
+        if not questions:
+            return None
+
+        sample = questions[:LANGUAGE_DETECTION_SAMPLE_SIZE]
+        return _detect_language_via_llm(sample, llm_client, allowed_generation_models=generation_models)
 
     supported_metrics = ["faithfulness", "answer_correctness", "context_correctness"]
 
@@ -212,7 +324,9 @@ def search_space_preparation(
 
     search_space = prepare_ai4rag_search_space()
 
-    benchmark_data = BenchmarkData(pd.read_json(Path(test_data.path)))
+    benchmark_df = pd.read_json(Path(test_data.path))
+    detected_language = _detect_benchmark_language(benchmark_df, llm_client=client)
+    benchmark_data = BenchmarkData(benchmark_df)
     documents = load_as_langchain_doc(extracted_text.path)
 
     if (
@@ -248,6 +362,9 @@ def search_space_preparation(
         if k not in ("foundation_model", "embedding_model")
     }
     verbose_search_space_repr |= selected_models_names
+
+    if detected_language:
+        verbose_search_space_repr["detected_language"] = detected_language
 
     with open(search_space_prep_report.path, "w") as report_file:
         yml.safe_dump(verbose_search_space_repr, report_file)

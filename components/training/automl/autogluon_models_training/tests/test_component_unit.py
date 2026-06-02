@@ -125,27 +125,26 @@ _MINIMAL_NOTEBOOK = {
 }
 
 
-@pytest.fixture()
-def mock_notebooks(tmp_path):
-    """Temp directory with minimal regression and classification notebook templates."""
-    notebooks_dir = tmp_path / "notebooks_input"
-    notebooks_dir.mkdir()
-    for name in ("regression_notebook.ipynb", "classification_notebook.ipynb"):
-        with open(notebooks_dir / name, "w") as f:
-            json.dump(_MINIMAL_NOTEBOOK, f)
-    artifact = mock.MagicMock()
-    artifact.path = str(notebooks_dir)
-    return artifact
-
-
 def _mock_leaderboard_top_models(mock_predictor, names: list):
     """Make leaderboard().head(n)['model'].values.tolist() return ``names``."""
     chain = mock_predictor.leaderboard.return_value.head.return_value
     chain.__getitem__.return_value.values.tolist.return_value = names
 
 
-def _base_call_kwargs(workspace_path, models_artifact, test_data, notebooks):
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
+def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None):
     """Return minimal valid kwargs for autogluon_models_training.python_func."""
+    rs = (
+        _make_component_status_artifact(tmp_path)
+        if tmp_path is not None
+        else mock.MagicMock(path="/tmp/rs", metadata={})
+    )
     return dict(
         label_column="target",
         task_type="regression",
@@ -157,12 +156,12 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, notebooks):
         run_id=RUN_ID,
         sample_row=SAMPLE_ROW,
         models_artifact=models_artifact,
-        notebooks=notebooks,
+        component_status=rs,
         extra_train_data_path="/tmp/extra.csv",
     )
 
 
-_NOTEBOOK_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "notebook_templates"
+_NOTEBOOK_TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "shared" / "notebook_templates"
 
 
 class TestAutogluonModelsTrainingUnitTests:
@@ -193,7 +192,7 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_regression_happy_path(self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path):
+    def test_regression_happy_path(self, mock_predictor_class, mock_read_csv, tmp_path):
         """Full regression flow: fit, select top 2, refit_full batch, per-model artifacts."""
         top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -222,7 +221,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_test_data.path = "/tmp/test.csv"
 
         result = autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock_test_data, mock_notebooks),
+            **_base_call_kwargs(workspace_path, mock_models_artifact, mock_test_data, tmp_path),
             sampling_config={"sample": True},
             split_config={"split": 0.8},
         )
@@ -333,7 +332,7 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_without_extra_train_data(self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path):
+    def test_without_extra_train_data(self, mock_predictor_class, mock_read_csv, tmp_path):
         """Empty extra_train_data_path passes train_data_extra=None to refit_full."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -369,7 +368,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
             extra_train_data_path="",
         )
 
@@ -384,7 +382,6 @@ class TestAutogluonModelsTrainingUnitTests:
         self,
         mock_predictor_class,
         mock_read_csv,
-        mock_notebooks,
         tmp_path,
     ):
         """Explicit positive_class is forwarded to TabularPredictor for binary tasks."""
@@ -429,7 +426,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.metadata = {}
 
         call_kwargs = _base_call_kwargs(
-            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), mock_notebooks
+            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path
         )
         call_kwargs["task_type"] = "binary"
         call_kwargs["positive_class"] = "0"
@@ -450,7 +447,6 @@ class TestAutogluonModelsTrainingUnitTests:
         self,
         mock_predictor_class,
         mock_read_csv,
-        mock_notebooks,
         caplog,
         tmp_path,
     ):
@@ -481,9 +477,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(
-                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), mock_notebooks
-            ),
+            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path),
             positive_class="yes",
         )
 
@@ -502,7 +496,6 @@ class TestAutogluonModelsTrainingUnitTests:
         self,
         mock_predictor_class,
         mock_read_csv,
-        mock_notebooks,
         tmp_path,
     ):
         """Binary classification uses predict_proba + detailed_report evaluate_predictions."""
@@ -564,7 +557,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         mock_predictor_clone.predict.assert_not_called()
@@ -599,7 +591,6 @@ class TestAutogluonModelsTrainingUnitTests:
         self,
         mock_predictor_class,
         mock_read_csv,
-        mock_notebooks,
         tmp_path,
     ):
         """Multiclass classification writes curves.json with multiclass task_type."""
@@ -661,7 +652,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         mock_predictor_clone.predict.assert_not_called()
@@ -684,7 +674,6 @@ class TestAutogluonModelsTrainingUnitTests:
         self,
         mock_predictor_class,
         mock_read_csv,
-        mock_notebooks,
         tmp_path,
     ):
         """OvR curves skip classes absent from test labels but still write curves for others."""
@@ -738,7 +727,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         curves_path = Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "metrics" / "curves.json"
@@ -753,9 +741,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("shutil.rmtree")
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_operations_called_in_correct_order(
-        self, mock_predictor_class, mock_read_csv, mock_rmtree, mock_notebooks, tmp_path
-    ):
+    def test_operations_called_in_correct_order(self, mock_predictor_class, mock_read_csv, mock_rmtree, tmp_path):
         """Verify call order for a single model: fit → clone → refit_full → Phase A (predict → evaluate → fi) → Phase B (set_model_best → clone_for_deployment) → rmtree.
 
         Phase A (metrics + notebook) runs via ThreadPoolExecutor across models, but within
@@ -810,7 +796,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         # Global ordering invariants (single model, so no inter-model concurrency to worry about)
@@ -829,9 +814,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("shutil.rmtree")
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_work_path_is_on_pvc_and_cleaned_up(
-        self, mock_predictor_class, mock_read_csv, mock_rmtree, mock_notebooks, tmp_path
-    ):
+    def test_work_path_is_on_pvc_and_cleaned_up(self, mock_predictor_class, mock_read_csv, mock_rmtree, tmp_path):
         """Clone work path is inside workspace_path (PVC), not inside models_artifact (S3)."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -865,7 +848,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         expected_work_path = Path(workspace_path) / "refit_work"
@@ -878,9 +860,7 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_refit_full_called_once_with_all_top_models(
-        self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path
-    ):
+    def test_refit_full_called_once_with_all_top_models(self, mock_predictor_class, mock_read_csv, tmp_path):
         """refit_full is called exactly once with the full list of top models (batch, not per-model)."""
         top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -915,7 +895,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         mock_predictor_clone.refit_full.assert_called_once_with(model=top_models, train_data_extra=None)
@@ -924,7 +903,7 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_context_models_metadata(self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path):
+    def test_context_models_metadata(self, mock_predictor_class, mock_read_csv, tmp_path):
         """context['models'] contains one entry per model with correct name, location, and metrics."""
         top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -967,7 +946,6 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
-            notebooks=mock_notebooks,
         )
 
         context = mock_models_artifact.metadata["context"]
@@ -1014,7 +992,7 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_raises_on_invalid_problem_type(self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path):
+    def test_raises_on_invalid_problem_type(self, mock_predictor_class, mock_read_csv, tmp_path):
         """ValueError raised when AutoGluon resolves problem_type to an unsupported value."""
         mock_predictor = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
@@ -1043,12 +1021,11 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=mock_models_artifact,
-                notebooks=mock_notebooks,
             )
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_raises_on_refit_failure(self, mock_predictor_class, mock_read_csv, mock_notebooks, tmp_path):
+    def test_raises_on_refit_failure(self, mock_predictor_class, mock_read_csv, tmp_path):
         """ValueError from refit_full propagates to the caller."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1079,7 +1056,6 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=mock_models_artifact,
-                notebooks=mock_notebooks,
             )
 
     # ── Input validation ───────────────────────────────────────────────────────
@@ -1091,7 +1067,7 @@ class TestAutogluonModelsTrainingUnitTests:
         a.metadata = {}
         return a
 
-    def test_rejects_empty_label_column(self, mock_notebooks):
+    def test_rejects_empty_label_column(self):
         """Reject blank ``label_column``."""
         with pytest.raises(TypeError, match="label_column must be a non-empty string"):
             autogluon_models_training.python_func(
@@ -1105,10 +1081,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_invalid_task_type(self, mock_notebooks):
+    def test_rejects_invalid_task_type(self):
         """Reject unknown ``task_type``."""
         with pytest.raises(ValueError, match="task_type must be one of"):
             autogluon_models_training.python_func(
@@ -1122,10 +1097,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_empty_train_data_path(self, mock_notebooks):
+    def test_rejects_empty_train_data_path(self):
         """Reject empty ``train_data_path``."""
         with pytest.raises(TypeError, match="train_data_path must be a non-empty string"):
             autogluon_models_training.python_func(
@@ -1139,10 +1113,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_empty_workspace_path(self, mock_notebooks):
+    def test_rejects_empty_workspace_path(self):
         """Reject empty ``workspace_path``."""
         with pytest.raises(TypeError, match="workspace_path must be a non-empty string"):
             autogluon_models_training.python_func(
@@ -1156,10 +1129,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_top_n_zero(self, mock_notebooks):
+    def test_rejects_top_n_zero(self):
         """Reject ``top_n`` of zero."""
         with pytest.raises(ValueError, match="top_n must be an integer in the range"):
             autogluon_models_training.python_func(
@@ -1173,10 +1145,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_top_n_exceeds_max(self, mock_notebooks):
+    def test_rejects_top_n_exceeds_max(self):
         """Reject ``top_n`` above the allowed maximum."""
         with pytest.raises(ValueError, match="top_n must be an integer in the range"):
             autogluon_models_training.python_func(
@@ -1190,10 +1161,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_empty_pipeline_name(self, mock_notebooks):
+    def test_rejects_empty_pipeline_name(self):
         """Reject empty ``pipeline_name``."""
         with pytest.raises(TypeError, match="pipeline_name must be a non-empty string"):
             autogluon_models_training.python_func(
@@ -1207,10 +1177,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_empty_run_id(self, mock_notebooks):
+    def test_rejects_empty_run_id(self):
         """Reject blank ``run_id``."""
         with pytest.raises(TypeError, match="run_id must be a non-empty string"):
             autogluon_models_training.python_func(
@@ -1224,10 +1193,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id="  ",
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_invalid_sample_row_json(self, mock_notebooks):
+    def test_rejects_invalid_sample_row_json(self):
         """Reject ``sample_row`` that is not valid JSON."""
         with pytest.raises(TypeError, match="sample_row must be valid JSON array"):
             autogluon_models_training.python_func(
@@ -1241,10 +1209,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row="not valid json{{{",
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_sample_row_not_list(self, mock_notebooks):
+    def test_rejects_sample_row_not_list(self):
         """Reject ``sample_row`` JSON that is not a list."""
         with pytest.raises(ValueError, match="sample_row must be a JSON array"):
             autogluon_models_training.python_func(
@@ -1258,10 +1225,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row='{"key": "value"}',
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
             )
 
-    def test_rejects_invalid_sampling_config_type(self, mock_notebooks):
+    def test_rejects_invalid_sampling_config_type(self):
         """Reject non-dict ``sampling_config``."""
         with pytest.raises(TypeError, match="sampling_config must be a dictionary or None"):
             autogluon_models_training.python_func(
@@ -1275,11 +1241,10 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
                 sampling_config="invalid",
             )
 
-    def test_rejects_invalid_split_config_type(self, mock_notebooks):
+    def test_rejects_invalid_split_config_type(self):
         """Reject non-dict ``split_config``."""
         with pytest.raises(TypeError, match="split_config must be a dictionary or None"):
             autogluon_models_training.python_func(
@@ -1293,6 +1258,5 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
-                notebooks=mock_notebooks,
                 split_config=[],
             )

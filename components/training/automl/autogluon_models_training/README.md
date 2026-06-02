@@ -26,7 +26,7 @@ mutates predictor state. All artifacts are written under a single output artifac
 | `run_id` | `str` | `None` | Pipeline run ID written into the generated notebook. |
 | `sample_row` | `str` | `None` | JSON array of row dicts for the notebook example input; label column is stripped. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Output Model artifact containing all refitted model subdirectories. |
-| `notebooks` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded notebook templates injected by the KFP runtime. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_config` | `Optional[dict]` | `None` | Data sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Data split config stored in artifact metadata. |
 | `extra_train_data_path` | `str` | `""` | Optional path to extra training CSV passed to ``refit_full``. |
@@ -50,6 +50,7 @@ mutates predictor state. All artifacts are written under a single output artifac
   - automl
 - **Last Verified**: 2026-05-20 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
@@ -58,6 +59,14 @@ mutates predictor state. All artifacts are written under a single output artifac
     - DorotaDR
 
 <!-- custom-content -->
+
+### Component status artifact
+
+Writes ``component_status.json`` under the ``component_status`` output artifact with ``component_id``
+``autogluon_models_training`` and stages such as ``load_data``, ``model_selection`` (optional ``steps``
+when completed), ``refit_full``, and ``evaluate_models``. Artifact metadata display name:
+**Models Training Status**.
+
 ## Usage Examples 💡
 
 This component is typically used inside a KFP pipeline. It depends on a PVC workspace (for predictor storage) and a test dataset artifact (for leaderboard evaluation).

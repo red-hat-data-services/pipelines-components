@@ -52,6 +52,7 @@ def example_pipeline():
   - text-extraction
 - **Last Verified**: 2026-04-21 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
     - DorotaDR

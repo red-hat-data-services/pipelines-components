@@ -34,6 +34,7 @@ Creates sample input data, runs the LLM test flow via the SDG Hub component, and
   - llm
   - data_processing
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - beatsmonster
     - shivchander

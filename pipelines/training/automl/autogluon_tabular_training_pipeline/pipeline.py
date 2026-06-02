@@ -4,13 +4,17 @@ from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
 from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_models_training import autogluon_models_training
+from kfp_components.components.training.automl.component_stage_map_publisher import publish_component_stage_map
 
 MAX_CPUS = "32"
 MAX_MEMORY = "64Gi"
 
+# Must match run_status_templates/pipelines/<name>.json
+PIPELINE_NAME = "autogluon-tabular-training-pipeline"
+
 
 @dsl.pipeline(
-    name="autogluon-tabular-training-pipeline",
+    name=PIPELINE_NAME,
     description=(
         "End-to-end AutoGluon tabular training pipeline implementing a two-stage approach: "
         "first builds and selects top-performing models on sampled data, then refits them "
@@ -47,6 +51,10 @@ def autogluon_tabular_training_pipeline(
     that balances computational cost with model quality. The pipeline automates the complete
     machine learning workflow from data loading to final model evaluation.
 
+    **Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or
+    string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns,
+    which reject multi-byte characters.
+
     **Storage strategy:**
 
     Training datasets are stored on a PVC workspace (not S3 artifacts) so that all
@@ -55,6 +63,9 @@ def autogluon_tabular_training_pipeline(
     component). The workspace is provisioned via ``PipelineConfig.workspace``.
 
     **Pipeline Stages:**
+
+    0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP
+       artifact for dashboards before any data I/O.
 
     1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible
        object storage bucket using AWS credentials configured via Kubernetes secrets.
@@ -142,6 +153,16 @@ def autogluon_tabular_training_pipeline(
     """  # noqa: E501
     from kfp.kubernetes import use_secret_as_env
 
+    # Publish component-to-stage-to-step map first so dashboards know expected structure
+    component_stage_map_task = publish_component_stage_map(
+        pipeline_id=PIPELINE_NAME,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+    )
+    component_stage_map_task.set_caching_options(False)
+    component_stage_map_task.set_cpu_request("0.5").set_memory_request("512Mi").set_cpu_limit("1").set_memory_limit(
+        "1Gi"
+    )
+
     data_loader_task = automl_data_loader(
         bucket_name=train_data_bucket_name,
         file_key=train_data_file_key,
@@ -149,6 +170,7 @@ def autogluon_tabular_training_pipeline(
         label_column=label_column,
         task_type=task_type,
     )
+    data_loader_task.after(component_stage_map_task)
     data_loader_task.set_caching_options(False)
     data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 

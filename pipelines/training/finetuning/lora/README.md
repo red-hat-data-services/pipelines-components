@@ -63,9 +63,6 @@ A 4-stage ML pipeline for fine-tuning language models with LoRA:
 | `phase_02_train_opt_wandb_entity` | `str` | `""` | Weights & Biases entity/team |
 | `phase_02_train_opt_wandb_run_name` | `str` | `""` | Weights & Biases run name |
 | `phase_02_train_opt_tensorboard_log_dir` | `str` | `""` | TensorBoard log directory |
-| `phase_02_train_opt_mlflow_tracking_uri` | `str` | `""` | MLflow tracking server URI |
-| `phase_02_train_opt_mlflow_experiment_name` | `str` | `""` | MLflow experiment name |
-| `phase_02_train_opt_mlflow_run_name` | `str` | `""` | MLflow run name |
 | `phase_02_train_opt_dataset_type` | `str` | `""` | Dataset format type |
 | `phase_02_train_opt_field_messages` | `str` | `""` | Field name for messages in dataset |
 | `phase_02_train_opt_field_instruction` | `str` | `""` | Field name for instruction in dataset |
@@ -104,6 +101,7 @@ A 4-stage ML pipeline for fine-tuning language models with LoRA:
   - pipeline
 - **Last Verified**: 2026-01-14 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - briangallagher
     - Fiona-Waters
