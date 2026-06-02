@@ -84,6 +84,7 @@ joblib==1.5.3
 kfp==2.16.1
 kfp-pipeline-spec==2.16.1
 kfp-server-api==2.16.1
+kfp-kubernetes==2.16.1
 kiwisolver==1.5.0
 kubernetes==35.0.0
 lightgbm==4.6.0
