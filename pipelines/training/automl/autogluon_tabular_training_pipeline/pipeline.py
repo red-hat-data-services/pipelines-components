@@ -16,12 +16,10 @@ PIPELINE_NAME = "autogluon-tabular-training-pipeline"
 @dsl.pipeline(
     name=PIPELINE_NAME,
     description=(
-        "End-to-end AutoGluon tabular training pipeline implementing a two-stage approach: "
-        "first builds and selects top-performing models on sampled data, then refits them "
-        "on the full dataset. The pipeline loads data from S3, splits it into train/test sets, "
-        "trains multiple AutoGluon models using ensembling (stacking and bagging), selects the "
-        "top N performers, refits each on the complete training data sequentially, and finally "
-        "evaluates all refitted models to generate a comprehensive leaderboard with performance metrics."
+        "AutoML tabular training pipeline for building high-quality models on structured data with minimal "
+        "effort. Powered by AutoGluon, it automates discovery, ensembling, and selection, then refits top "
+        "candidates for maximum accuracy. Delivers production-ready predictors, clear metrics, and a ranked "
+        "leaderboard to choose the best deployment option."
     ),
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(

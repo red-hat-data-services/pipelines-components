@@ -13,6 +13,7 @@ files:
     - pandas
   "components/**/shared/*":
     - pandas
+    - numpy
     - component
   "pipelines/**/tests/*":
     - tests

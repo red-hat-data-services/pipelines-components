@@ -47,7 +47,7 @@
         },
         {
           "id": "evaluate_models",
-          "description": "Evaluate refit models and write metrics and notebooks."
+          "description": "Evaluate refit models; write metrics, back_testing.json, and notebooks."
         }
       ]
     },
