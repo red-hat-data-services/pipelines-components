@@ -119,7 +119,8 @@ class TestTimeseriesModelsTrainingUnitTests:
         train_ts, test_ts = _mock_ts_df(), _mock_ts_df()
         extra_ts = _mock_ts_df()
         full_train_ts = _mock_ts_df()
-        mock_ts_df_cls.from_data_frame.side_effect = [train_ts, test_ts]
+        # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact
+        mock_ts_df_cls.from_data_frame.side_effect = [train_ts, test_ts, _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = extra_ts
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
@@ -192,7 +193,8 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_refit_predictor.evaluate.return_value = {"MASE": 0.5}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -492,7 +494,8 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_refit_3.evaluate.return_value = {"MASE": 0.6, "MSE": 1.2}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_1, mock_refit_2, mock_refit_3]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        # from_data_frame is called for: train, test, and for successful models (DeepAR, AutoARIMA) in build_predict_sample_artifact
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -608,7 +611,8 @@ class TestMetricsJsonSignConvention:
         mock_refit_predictor.evaluate.return_value = {"MASE": -0.42, "MSE": -1.0}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -668,7 +672,8 @@ class TestBackTestingArtifactFailure:
         mock_refit_predictor.evaluate.return_value = {"MASE": 0.5, "MSE": 1.0}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
