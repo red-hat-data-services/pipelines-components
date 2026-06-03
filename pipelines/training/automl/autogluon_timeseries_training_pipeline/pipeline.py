@@ -18,11 +18,10 @@ PIPELINE_NAME = "autogluon-timeseries-training-pipeline"
 @dsl.pipeline(
     name=PIPELINE_NAME,
     description=(
-        "End-to-end AutoGluon time series forecasting pipeline. Loads time series data from S3 in "
-        "TimeSeriesDataFrame format (item_id, timestamp, target), trains multiple AutoGluon TimeSeries models "
-        "(local statistical and global deep learning), ranks them by the chosen eval metric, and produces a "
-        "leaderboard and the top N trained predictors for deployment. Supports optional known covariates and "
-        "configurable prediction_length."
+        "AutoML time series forecasting pipeline for building accurate, deployment-ready forecasters with "
+        "minimal tuning. Powered by AutoGluon TimeSeries, it compares statistical and deep learning "
+        "approaches, refits the best models, and delivers top predictors, back-testing insights, and a "
+        "ranked leaderboard for model selection."
     ),
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(

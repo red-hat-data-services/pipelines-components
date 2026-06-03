@@ -32,7 +32,12 @@ SUPPORTED_OPTIMIZATION_METRICS = frozenset({"faithfulness", "answer_correctness"
 
 @dsl.pipeline(
     name="documents-rag-optimization-pipeline",
-    description="Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications",
+    description=(
+        "AutoRAG pipeline for building high-quality RAG applications from your documents with minimal "
+        "configuration. Powered by ai4rag, it explores and optimizes retrieval and generation design choices "
+        "against your quality goals. Delivers ranked, production-ready patterns, OGX deployment payloads, "
+        "and a leaderboard of the best configurations."
+    ),
 )
 def documents_rag_optimization_pipeline(
     test_data_secret_name: str,

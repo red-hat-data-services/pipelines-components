@@ -9,7 +9,12 @@ from kfp_components.components.data_processing.autorag.text_extraction.component
 
 @dsl.pipeline(
     name="AutoRAG Documents Indexing Pipeline",
-    description="Pipeline to load test data, discover and extract documents, then index them into a vector store.",
+    description=(
+        "AutoRAG pipeline for preparing a high-quality knowledge base for accurate RAG retrieval. It "
+        "transforms unstructured documents into optimized vector indexes for semantic search and downstream "
+        "RAG workflows. Delivers production-grade embeddings, flexible indexing controls, and a reliable "
+        "foundation for scalable RAG applications."
+    ),
 )
 def documents_indexing_pipeline(
     ogx_secret_name: str,
