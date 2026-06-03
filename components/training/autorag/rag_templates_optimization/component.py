@@ -709,13 +709,6 @@ def rag_templates_optimization(
             generation_model_id = rp.get("foundation_model")
         if not generation_model_id and hasattr(rp.get("foundation_model"), "model_id"):
             generation_model_id = getattr(rp.get("foundation_model"), "model_id", None)
-        generation_system_message_text = generation.get(
-            "system_message_text",
-            (
-                "Please answer the question I provide in the Question section below, based solely "
-                "on the information I provide in the Context section. If unanswerable, say so."
-            ),
-        )
 
         provider = None
         try:
@@ -756,8 +749,8 @@ def rag_templates_optimization(
                     "number_of_chunks": number_of_chunks,
                     **({"search_mode": search_mode} if search_mode is not None else {}),
                     **({"ranker_strategy": ranker_strategy} if ranker_strategy is not None else {}),
-                    **({"ranker_k": ranker_k} if ranker_k is not None else {}),
-                    **({"ranker_alpha": ranker_alpha} if ranker_alpha is not None else {}),
+                    **({"ranker_k": ranker_k} if ranker_strategy == "rrf" else {}),
+                    **({"ranker_alpha": ranker_alpha} if ranker_strategy == "weighted" else {}),
                 },
                 "generation": {
                     "model_id": generation_model_id or "",
@@ -782,7 +775,7 @@ def rag_templates_optimization(
                     "stream": False,  # Not supported yet
                     "store": False,  # OGX-client default (but ResponsesAPI default is True)
                     "input": "<user_query_placeholder>",
-                    "instructions": generation_system_message_text,
+                    "instructions": _build_system_message(generation.get("system_message_text"), detected_language),
                     "tools": [{"type": "file_search", "vector_store_ids": [evaluation_result.collection]}],
                     "include": ["file_search_call.results"],
                 },
