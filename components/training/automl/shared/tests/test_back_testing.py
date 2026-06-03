@@ -65,9 +65,7 @@ class TestSerialization:
         """metrics.json keeps raw AutoGluon signs; back_testing.json normalizes to natural form."""
         raw_autogluon = {"MASE": -0.42, "MAPE": -5.0, "RMSE": -10.5}
         metrics_json_values = {
-            k: v
-            for k, v in raw_autogluon.items()
-            if isinstance(v, (int, float)) and math.isfinite(v)
+            k: v for k, v in raw_autogluon.items() if isinstance(v, (int, float)) and math.isfinite(v)
         }
 
         timestamps = ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04"]
@@ -317,8 +315,7 @@ class TestSeriesAnalysis:
             #   - 2 calls in first pass (computing metrics)
             #   - 2 more calls when building best/worst payloads
             assert mock_forecast.call_count == 2, (
-                f"Expected 2 calls (1 per item×window), got {mock_forecast.call_count}. "
-                "Double computation detected!"
+                f"Expected 2 calls (1 per item×window), got {mock_forecast.call_count}. Double computation detected!"
             )
 
             # Verify analysis structure is still correct

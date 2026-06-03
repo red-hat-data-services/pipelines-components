@@ -389,14 +389,10 @@ def _build_series_analysis(
     per_item_window_metrics: dict[Any, list[dict[str, float]]] = {item_id: [] for item_id in item_ids}
 
     # Single pass: generate forecast data once, compute metrics from it
-    for window_id, (predictions, targets_window) in enumerate(
-        zip(predictions_windows, targets_windows, strict=True)
-    ):
+    for window_id, (predictions, targets_window) in enumerate(zip(predictions_windows, targets_windows, strict=True)):
         for item_id in item_ids:
             # Generate forecast data once
-            forecast_data = _forecast_data_for_item(
-                predictions, targets_window, item_id, target, prediction_length
-            )
+            forecast_data = _forecast_data_for_item(predictions, targets_window, item_id, target, prediction_length)
             # Compute metrics from the forecast data (no redundant generation)
             metrics = _compute_metrics_from_forecast_data(forecast_data)
             if metrics:
