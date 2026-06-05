@@ -650,7 +650,8 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_refit_predictor.evaluate.return_value = {"WQL": 0.3, "MASE": 0.5}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        # from_data_frame: train, test, and once per model in build_predict_sample_artifact (1 model)
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()

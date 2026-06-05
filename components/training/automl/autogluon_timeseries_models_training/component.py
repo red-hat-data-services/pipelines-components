@@ -80,8 +80,6 @@ def autogluon_timeseries_models_training(
     logger = logging.getLogger(__name__)
 
     from kfp_components.components.training.automl.shared.back_testing import build_back_testing_json
-    from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
-    from kfp_components.components.training.automl.shared.run_status import shared_automl_dir
     from kfp_components.components.training.automl.shared.timeseries_notebook_utils import (
         build_predict_sample_artifact,
     )
@@ -89,6 +87,8 @@ def autogluon_timeseries_models_training(
     status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
     with status:
         TOP_N_MAX = 7
+        DEFAULT_PRESETS = "fast_training"
+        DEFAULT_TIME_LIMIT = 600  # 10 minutes
 
         # Input validation
         for param, value in (
