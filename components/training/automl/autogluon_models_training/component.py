@@ -83,8 +83,8 @@ def autogluon_models_training(
     from pathlib import Path
     from typing import (
         Any,
-        NamedTuple,
-    )  # NamedTuple must be imported inside the function body for KFP container execution
+        NamedTuple,  # NamedTuple must be imported inside the function body for KFP container execution
+    )
 
     import numpy as np
     import pandas as pd
