@@ -54,11 +54,13 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             "task_type",
             "top_n",
             "positive_class",
+            "eval_metric",
         }
         inputs = autogluon_tabular_training_pipeline.component_spec.inputs
         params = set(inputs.keys())
         assert params == expected_params, f"Pipeline params {params} != expected {expected_params}"
         assert inputs["top_n"].default == 3
+        assert inputs["eval_metric"].default == ""
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that the compiled pipeline YAML contains expected pipeline inputs."""
@@ -79,6 +81,7 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
                 "task_type",
                 "top_n",
                 "positive_class",
+                "eval_metric",
             ):
                 assert name in content, f"Expected pipeline input '{name}' in compiled YAML"
         except Exception as e:
@@ -134,6 +137,22 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
         assert "outputParameterKey: sample_config" in content
         assert "outputParameterKey: extra_train_data_path" in content
         assert "positive_class" in content
+
+    def test_compiled_pipeline_wires_eval_metric_to_training_task(self):
+        """eval_metric pipeline input is forwarded into the training task and its output wired to the leaderboard."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "componentInputParameter: eval_metric" in content
+        assert "outputParameterKey: eval_metric" in content
 
     def test_compiled_pipeline_data_loader_declares_task_type_and_label(self):
         """Tabular data loader component exposes task_type and label_column inputs."""
