@@ -54,6 +54,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             "known_covariates_names",
             "prediction_length",
             "top_n",
+            "eval_metric",
         }
         inputs = autogluon_timeseries_training_pipeline.component_spec.inputs
         params = set(inputs.keys())
@@ -61,6 +62,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert inputs["prediction_length"].default == 1
         assert inputs["top_n"].default == 3
         assert inputs["known_covariates_names"].default is None
+        assert inputs["eval_metric"].default == "MASE"
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that compiled pipeline YAML contains expected pipeline input names."""
@@ -83,6 +85,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
                 "known_covariates_names",
                 "prediction_length",
                 "top_n",
+                "eval_metric",
             ):
                 assert name in content, f"Expected pipeline input '{name}' in compiled YAML"
         except Exception as e:
@@ -107,10 +110,12 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
                 pipeline_func=autogluon_timeseries_training_pipeline,
                 package_path=tmp_path,
             )
-            content = Path(tmp_path).read_bytes()
+            content_bytes = Path(tmp_path).read_bytes()
             try:
-                content.decode("ascii")
+                content = content_bytes.decode("ascii")
             except UnicodeDecodeError as exc:
                 pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
         finally:
             Path(tmp_path).unlink(missing_ok=True)
+        assert "componentInputParameter: eval_metric" in content
+        assert "outputParameterKey: eval_metric" in content

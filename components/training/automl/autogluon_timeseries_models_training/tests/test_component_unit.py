@@ -26,7 +26,9 @@ def isolated_sys_modules():
 
         # Mock additional autogluon submodules
         _metrics = mock.MagicMock()
-        _metrics.AVAILABLE_METRICS = {"MASE": mock.MagicMock(), "MSE": mock.MagicMock()}
+        _metrics.AVAILABLE_METRICS = {
+            k: mock.MagicMock() for k in ("MASE", "MSE", "WQL", "RMSSE", "MAE", "RMSE", "SQL")
+        }
         _metrics.__spec__ = None
         mocked_modules["autogluon.timeseries.metrics"] = _metrics
 
@@ -579,6 +581,105 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
             )
+
+    # ── eval_metric parameter ─────────────────────────────────────────────────
+
+    def test_empty_eval_metric_raises(self, mock_artifacts):  # noqa: F811
+        """eval_metric must be a non-empty string."""
+        models_artifact, extra_train_path = mock_artifacts
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+        with pytest.raises(TypeError, match="eval_metric must be a non-empty string"):
+            autogluon_timeseries_models_training.python_func(
+                target="sales",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                train_data_path="/tmp/train.csv",
+                test_data=test_data,
+                top_n=1,
+                workspace_path="/tmp/workspace",
+                pipeline_name="ts-pipeline-123",
+                run_id="run-123",
+                models_artifact=models_artifact,
+                extra_train_data_path=extra_train_path,
+                eval_metric="",
+            )
+
+    def test_unsupported_eval_metric_raises(self, mock_artifacts):  # noqa: F811
+        """eval_metric not in AVAILABLE_METRICS raises ValueError before training."""
+        models_artifact, extra_train_path = mock_artifacts
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+        with pytest.raises(ValueError, match="eval_metric must be one of"):
+            autogluon_timeseries_models_training.python_func(
+                target="sales",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                train_data_path="/tmp/train.csv",
+                test_data=test_data,
+                top_n=1,
+                workspace_path="/tmp/workspace",
+                pipeline_name="ts-pipeline-123",
+                run_id="run-123",
+                models_artifact=models_artifact,
+                extra_train_data_path=extra_train_path,
+                eval_metric="BADMETRIC",
+            )
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_custom_eval_metric_passed_to_predictors_and_returned(
+        self,
+        mock_predictor_cls,
+        mock_ts_df_cls,
+        mock_concat,
+        mock_read_csv,
+        mock_artifacts,  # noqa: F811
+    ):
+        """Custom eval_metric is passed to both TimeSeriesPredictor constructors, stored in model_config, and returned."""  # noqa: E501
+        models_artifact, extra_train_path = mock_artifacts
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+
+        mock_refit_predictor = mock.MagicMock()
+        mock_refit_predictor.evaluate.return_value = {"WQL": 0.3, "MASE": 0.5}
+
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        # from_data_frame: train, test, and once per model in build_predict_sample_artifact (1 model)
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        result = autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="item_id",
+            timestamp_column="timestamp",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            eval_metric="WQL",
+        )
+
+        for call in mock_predictor_cls.call_args_list:
+            assert call.kwargs["eval_metric"] == "WQL"
+
+        assert result.eval_metric == "WQL"
+        assert result.model_config["eval_metric"] == "WQL"
+        assert models_artifact.metadata["context"]["model_config"]["eval_metric"] == "WQL"
 
 
 class TestMetricsJsonSignConvention:
