@@ -25,6 +25,7 @@ def autogluon_timeseries_models_training(
     split_config: Optional[dict] = None,
     prediction_length: int = 1,
     known_covariates_names: Optional[List[str]] = None,
+    eval_metric: str = "MASE",
 ) -> NamedTuple(
     "outputs",
     top_models=List[str],
@@ -60,6 +61,7 @@ def autogluon_timeseries_models_training(
         prediction_length: Forecast horizon (number of timesteps).
         known_covariates_names: Optional list of known covariate column names.
         component_status: Output artifact containing stage-level progress tracking for this component.
+        eval_metric: Metric for model ranking (e.g. ``"MASE"``, ``"WQL"``). Defaults to ``"MASE"``.
 
     Returns:
         NamedTuple: top_models list, predictor_path, eval_metric, model_config.
@@ -71,24 +73,22 @@ def autogluon_timeseries_models_training(
 
     import pandas as pd
     from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
+    from autogluon.timeseries.metrics import AVAILABLE_METRICS
+    from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
+    from kfp_components.components.training.automl.shared.run_status import shared_automl_dir
 
     logger = logging.getLogger(__name__)
 
     from kfp_components.components.training.automl.shared.back_testing import build_back_testing_json
-    from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
-    from kfp_components.components.training.automl.shared.run_status import shared_automl_dir
     from kfp_components.components.training.automl.shared.timeseries_notebook_utils import (
         build_predict_sample_artifact,
     )
 
     status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
     with status:
-        # Set constants
-        DEFAULT_PRESETS = "fast_training"
-        DEFAULT_EVAL_METRIC = "MASE"
-        DEFAULT_TIME_LIMIT = 600  # 10 minutes
-
         TOP_N_MAX = 7
+        DEFAULT_PRESETS = "fast_training"
+        DEFAULT_TIME_LIMIT = 600  # 10 minutes
 
         # Input validation
         for param, value in (
@@ -97,9 +97,12 @@ def autogluon_timeseries_models_training(
             ("timestamp_column", timestamp_column),
             ("train_data_path", train_data_path),
             ("workspace_path", workspace_path),
+            ("eval_metric", eval_metric),
         ):
             if not isinstance(value, str) or not value.strip():
                 raise TypeError(f"{param} must be a non-empty string.")
+        if eval_metric not in AVAILABLE_METRICS:
+            raise ValueError(f"eval_metric must be one of {sorted(AVAILABLE_METRICS)}; got {eval_metric!r}.")
         if not isinstance(top_n, int):
             raise TypeError("top_n must be an integer.")
         if top_n <= 0 or top_n > TOP_N_MAX:
@@ -167,7 +170,6 @@ def autogluon_timeseries_models_training(
         # Create predictor path in workspace
         predictor_path = Path(workspace_path) / "timeseries_predictor"
 
-        eval_metric = DEFAULT_EVAL_METRIC
         # Create TimeSeriesPredictor
         predictor = TimeSeriesPredictor(
             prediction_length=prediction_length,
