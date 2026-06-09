@@ -58,7 +58,7 @@ prediction_length=14, top_n=3, )
 
 ## Metadata 🗂️
 
-- **Name**: autogluon_timeseries_training_pipeline
+- **Name**: autogluon-timeseries-training-pipeline
 - **Stability**: beta
 - **Managed**: Yes
 - **Dependencies**:
@@ -70,7 +70,7 @@ prediction_length=14, top_n=3, )
   - pipeline
   - automl
   - autogluon-timeseries-training-pipeline
-- **Last Verified**: 2026-05-07 12:00:00+00:00
+- **Last Verified**: 2026-06-09 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
