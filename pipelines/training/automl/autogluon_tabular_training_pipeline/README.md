@@ -63,7 +63,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 
 ## Metadata 🗂️
 
-- **Name**: autogluon_tabular_training_pipeline
+- **Name**: autogluon-tabular-training-pipeline
 - **Stability**: beta
 - **Managed**: Yes
 - **Dependencies**:
@@ -75,7 +75,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
   - pipeline
   - automl
   - autogluon-tabular-training-pipeline
-- **Last Verified**: 2026-05-20 12:00:00+00:00
+- **Last Verified**: 2026-06-09 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

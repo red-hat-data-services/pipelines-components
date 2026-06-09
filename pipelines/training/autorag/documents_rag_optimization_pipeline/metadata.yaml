@@ -1,5 +1,5 @@
 ---
-name: documents_rag_optimization_pipeline
+name: documents-rag-optimization-pipeline
 stability: beta  # New pipeline without proven track record
 managed: true
 dependencies:
@@ -26,4 +26,4 @@ tags:
   - pipeline
   - autorag
   - rag-optimization
-lastVerified: 2026-05-14T00:00:00Z
+lastVerified: 2026-06-09T12:00:00Z

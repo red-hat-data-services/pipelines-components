@@ -31,7 +31,7 @@ The system integrates with OGX API for inference and vector database operations,
 
 ## Metadata 🗂️
 
-- **Name**: documents_rag_optimization_pipeline
+- **Name**: documents-rag-optimization-pipeline
 - **Stability**: beta
 - **Managed**: Yes
 - **Dependencies**:
@@ -50,7 +50,7 @@ The system integrates with OGX API for inference and vector database operations,
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-05-14 00:00:00+00:00
+- **Last Verified**: 2026-06-09 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
