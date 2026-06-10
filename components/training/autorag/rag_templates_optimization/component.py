@@ -675,7 +675,7 @@ def rag_templates_optimization(
     def _build_system_message(custom_text: str | None, lang: dict | None) -> str:
         """Build system message with explicit language instruction when detected."""
         base = custom_text if custom_text else _DEFAULT_SYSTEM_MSG
-        if not lang:
+        if not lang or lang.get("code") == "en":
             return base
         lang_name = lang.get("name", "")
         if not lang_name:
