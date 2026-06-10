@@ -10,7 +10,10 @@ authors = [{ name = "Kubeflow Community" }]
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["kfp>=2.16.1", "kfp-kubernetes>=2.16.1"]
+dependencies = [
+    "kfp>=2.16.1",
+    "kfp-kubernetes>=2.16.1",
+]
 
 [project.optional-dependencies]
 lint = [
@@ -40,7 +43,12 @@ test = [
     "kfp-kubernetes",
 ]
 # Dependencies for AutoGluon pipeline integration tests (RHOAI + S3 + KFP)
-test_automl = ["kfp-components[test]", "boto3", "kubernetes", "python-dotenv"]
+test_automl = [
+    "kfp-components[test]",
+    "boto3",
+    "kubernetes",
+    "python-dotenv",
+]
 # Local development (extends test with additional tools)
 dev = ["kfp-components[lint]", "kfp-components[test]"]
 
@@ -72,6 +80,7 @@ packages = [
     "kfp_components.components.data_processing.sdg",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
+    "kfp_components.components.deployment.deploy_embedding_model",
     "kfp_components.components.deployment.kubeflow_model_registry",
     "kfp_components.components.deployment.model_deployment",
     "kfp_components.components.evaluation",
@@ -190,6 +199,16 @@ testpaths = ["scripts"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-markers = ["integration: marks test as integration/functional/e2e (requires RHOAI cluster and .env config)."]
+markers = [
+    "integration: marks test as integration/functional/e2e (requires RHOAI cluster and .env config).",
+]
 # Don't search these directories
-norecursedirs = [".git", ".venv", "build", "dist", "__pycache__", "components", "pipelines"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "components",
+    "pipelines",
+]
