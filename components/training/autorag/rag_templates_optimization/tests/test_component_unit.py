@@ -408,29 +408,32 @@ class TestSSLFallbackRagTemplatesOptimization:
         },
     )
     def test_ogx_client_ssl_retry_non_200_reraises(self, tmp_path):
-        """Self-signed cert detected but verify=False probe returns non-200 re-raises the error."""
+        """Self-signed cert detected creates OgxClient with verify=False (no probe step)."""
         mocks = _make_all_mocks()
         httpx_mod = mocks["httpx"]
 
-        get_call_count = 0
-
-        def fake_get(url, **kwargs):
-            nonlocal get_call_count
-            get_call_count += 1
-            if get_call_count == 1:
-                raise httpx_mod.ConnectError("self-signed certificate in certificate chain")
-            return types.SimpleNamespace(status_code=500)
-
-        httpx_mod.get = fake_get
+        httpx_mod.get = mock.MagicMock(
+            side_effect=httpx_mod.ConnectError("self-signed certificate in certificate chain"),
+        )
 
         ogx_mod = _make_ogx_client_module()
+        ogx_kwargs_history = []
+
+        def fake_ogx_client(**kwargs):
+            ogx_kwargs_history.append(kwargs)
+            client = mock.MagicMock()
+            client.models.list.return_value = []
+            return client
+
+        ogx_mod.OgxClient.side_effect = fake_ogx_client
         mocks["ogx_client"] = ogx_mod
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
         rag_patterns, embedded_artifact = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(httpx_mod.ConnectError):
+            with pytest.raises(_SentinelAbort):
                 rag_templates_optimization.python_func(
                     extracted_text=extracted_text,
                     test_data=test_data,
@@ -440,6 +443,10 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data_key="small-dataset/benchmark.json",
                     vector_io_provider_id="milvus",
                 )
+
+        assert len(ogx_kwargs_history) == 1
+        assert isinstance(ogx_kwargs_history[0].get("http_client"), httpx_mod.Client)
+        assert ogx_kwargs_history[0]["http_client"].kwargs.get("verify") is False
 
     @mock.patch.dict(
         "os.environ",
