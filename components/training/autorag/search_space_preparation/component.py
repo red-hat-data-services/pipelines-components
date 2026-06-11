@@ -195,8 +195,6 @@ def search_space_preparation(
 
             if not detected_code:
                 return None
-            if detected_code == "en":
-                return {"code": "en", "name": "English"}
 
             name = LANGUAGE_MAP.get(detected_code)
             if not name:

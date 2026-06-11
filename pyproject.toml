@@ -80,8 +80,6 @@ packages = [
     "kfp_components.components.data_processing.sdg",
     "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
-    "kfp_components.components.deployment.autorag",
-    "kfp_components.components.deployment.autorag.build_responses_request_bodies",
     "kfp_components.components.deployment.deploy_embedding_model",
     "kfp_components.components.deployment.kubeflow_model_registry",
     "kfp_components.components.deployment.model_deployment",
@@ -97,6 +95,7 @@ packages = [
     "kfp_components.components.training.automl.component_stage_map_publisher",
     "kfp_components.components.training.automl.shared",
     "kfp_components.components.training.autorag",
+    "kfp_components.components.training.autorag.shared",
     "kfp_components.components.training.autorag.leaderboard_evaluation",
     "kfp_components.components.training.autorag.rag_templates_optimization",
     "kfp_components.components.training.autorag.search_space_preparation",
@@ -149,7 +148,7 @@ packages = [
     "run_status_templates/pipelines/*.json",
     "notebook_templates/*.ipynb",
 ]
-"kfp_components.components.training.autorag.rag_templates_optimization" = ["notebook_templates/*.ipynb"]
+"kfp_components.components.training.autorag.shared" = ["**/*.ipynb", "**/*.templ"]
 
 [tool.ruff]
 line-length = 120
@@ -162,7 +161,7 @@ exclude = [
     "__pycache__",
     "node_modules",
     "**/_generated/",
-    "**/test_data/**",  # Test fixtures may have intentional styles (quote types, etc.)
+    "**/test_data/**", # Test fixtures may have intentional styles (quote types, etc.)
 ]
 
 [tool.ruff.lint]
