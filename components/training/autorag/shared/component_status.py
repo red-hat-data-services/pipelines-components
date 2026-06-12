@@ -16,6 +16,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from collections.abc import Iterator
@@ -25,6 +26,27 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+class ComponentStatusEncoder(json.JSONEncoder):
+    """Custom JSON encoder for component status data.
+
+    Handles types commonly found in component metadata that aren't JSON-serializable
+    by default: datetime, Path, bytes, sets, and other objects.
+    """
+
+    def default(self, obj: Any) -> Any:
+        """Convert non-serializable objects to JSON-compatible types."""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, Path):
+            return str(obj)
+        if isinstance(obj, bytes):
+            return base64.b64encode(obj).decode("ascii")
+        if isinstance(obj, set):
+            return list(obj)
+        # Fallback: convert to string with type information
+        return f"<{type(obj).__name__}: {str(obj)}>"
 
 COMPONENT_STATUS_FILENAME = "component_status.json"
 
@@ -55,7 +77,7 @@ class ComponentStatusTracker:
     @staticmethod
     def _utc_now_iso() -> str:
         """Return current UTC timestamp in ISO format."""
-        return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def record(self, stage_id: str, status: str, **metadata: Any) -> None:
         """Record or update a stage's status."""
@@ -102,7 +124,7 @@ class ComponentStatusTracker:
 
         output_file = self.artifact_path / COMPONENT_STATUS_FILENAME
         with output_file.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, cls=ComponentStatusEncoder)
 
         logger.info(
             "COMPONENT_STATUS component=%s saved status with %d stages to %s",
@@ -121,19 +143,25 @@ class ComponentStatusTracker:
                 self.component_id,
             )
 
-    def mark_active_failed(self, error: str) -> None:
+    def mark_active_failed(self, error: str | BaseException) -> None:
         """Mark the in-progress stage as failed, or the last open stage if none is active."""
+        # Handle empty str(exc) by including exception type
+        if isinstance(error, BaseException):
+            error_msg = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
+        else:
+            error_msg = error
+
         active_statuses = (STATUS_STARTED, STATUS_RUNNING)
         for stage in reversed(self.stages):
             if stage.get("status") in active_statuses:
-                self.record(stage["id"], STATUS_FAILED, error=error)
+                self.record(stage["id"], STATUS_FAILED, error=error_msg)
                 return
 
         if self.stages and self.stages[-1].get("status") != STATUS_COMPLETED:
-            self.record(self.stages[-1]["id"], STATUS_FAILED, error=error)
+            self.record(self.stages[-1]["id"], STATUS_FAILED, error=error_msg)
             return
 
-        self.set_metadata(status=STATUS_FAILED, error=error)
+        self.set_metadata(status=STATUS_FAILED, error=error_msg)
 
     @contextmanager
     def stage(self, stage_id: str, **start_metadata: Any) -> Iterator[None]:
@@ -142,7 +170,9 @@ class ComponentStatusTracker:
         try:
             yield
         except Exception as exc:
-            self.record(stage_id, STATUS_FAILED, error=str(exc))
+            # Use exception-aware error formatting
+            error_msg = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+            self.record(stage_id, STATUS_FAILED, error=error_msg)
             raise
         else:
             self.record(stage_id, STATUS_COMPLETED)
@@ -166,10 +196,17 @@ def component_status_tracker(component_status: Any, component_id: str) -> Compon
 
 
 def load_component_status(artifact_path: str) -> dict[str, Any]:
-    """Load component status from an artifact directory."""
+    """Load component status from an artifact directory.
+
+    Returns an empty dict if the file doesn't exist or is corrupted.
+    """
     status_file = Path(artifact_path) / COMPONENT_STATUS_FILENAME
     if not status_file.exists():
         return {}
 
-    with status_file.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with status_file.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("Failed to load status from %s: %s", status_file, e)
+        return {}

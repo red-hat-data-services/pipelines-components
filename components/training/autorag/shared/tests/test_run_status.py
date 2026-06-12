@@ -33,7 +33,15 @@ def test_load_documents_rag_optimization_manifest():
 
 def test_pipeline_component_ids():
     """pipeline_component_ids returns component ids in manifest order."""
-    assert pipeline_component_ids(PIPELINE_DOCUMENTS_RAG_OPTIMIZATION)[0] == "test_data_loader"
+    ids = pipeline_component_ids(PIPELINE_DOCUMENTS_RAG_OPTIMIZATION)
+    assert ids == [
+        "test_data_loader",
+        "documents_discovery",
+        "text_extraction",
+        "search_space_preparation",
+        "rag_templates_optimization",
+        "leaderboard_evaluation",
+    ]
 
 
 def test_load_manifest_rejects_path_traversal():

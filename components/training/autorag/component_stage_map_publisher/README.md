@@ -14,14 +14,13 @@ Reads the static JSON template from the embedded artifact (``run_status_template
 | --------- | ---- | ------- | ----------- |
 | `pipeline_id` | `str` | `None` | Pipeline identifier matching the template filename (e.g. ``documents-rag-optimization-pipeline``). |
 | `run_id` | `str` | `None` | KFP run ID for tracking (from ``dsl.PIPELINE_JOB_ID_PLACEHOLDER``). |
-| `component_stage_map` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing the component-to-stage map. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` package with pipeline templates. |
 
 ## Outputs 📤
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| Output | `None` |  |
+| `component_stage_map` | `dsl.Output[dsl.Artifact]` | Output artifact containing the component-to-stage map. |
 
 ## Metadata 🗂️
 
