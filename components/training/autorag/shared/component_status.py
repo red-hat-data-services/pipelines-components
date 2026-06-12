@@ -48,6 +48,7 @@ class ComponentStatusEncoder(json.JSONEncoder):
         # Fallback: convert to string with type information
         return f"<{type(obj).__name__}: {str(obj)}>"
 
+
 COMPONENT_STATUS_FILENAME = "component_status.json"
 
 STATUS_STARTED = "started"
