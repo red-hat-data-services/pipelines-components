@@ -326,7 +326,28 @@ def search_space_preparation(
 
     import sys
 
-    sys.path.insert(0, str(Path(embedded_artifact.path)))
+    # Validate embedded artifact before use
+    if embedded_artifact is None:
+        raise ValueError(
+            "embedded_artifact is required for component status tracking. "
+            "This parameter is automatically injected by KFP when using embedded_artifact_path decorator."
+        )
+
+    if not hasattr(embedded_artifact, "path") or not embedded_artifact.path:
+        raise ValueError("embedded_artifact.path is missing or empty")
+
+    # Resolve import root (handle both file and directory paths)
+    embedded_path = Path(embedded_artifact.path)
+    if embedded_path.is_file():
+        # Path points to component_status.py, use parent directory
+        import_root = embedded_path.parent
+    elif embedded_path.is_dir():
+        # Path is already a directory
+        import_root = embedded_path
+    else:
+        raise ValueError(f"Invalid embedded_artifact.path: {embedded_path}")
+
+    sys.path.insert(0, str(import_root))
     try:
         from component_status import component_status_tracker
     finally:

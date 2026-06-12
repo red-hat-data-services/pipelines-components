@@ -528,8 +528,25 @@ def rag_templates_optimization(
 
     import sys
 
-    embedded_artifact_path = Path(embedded_artifact.path) if embedded_artifact is not None else _AUTORAG_SHARED
-    sys.path.insert(0, str(embedded_artifact_path))
+    # Resolve import root for component status tracker
+    if embedded_artifact is not None:
+        if not hasattr(embedded_artifact, "path") or not embedded_artifact.path:
+            raise ValueError("embedded_artifact.path is missing or empty")
+
+        embedded_path = Path(embedded_artifact.path)
+        if embedded_path.is_file():
+            # Path points to a file (e.g., component_status.py), use parent directory
+            import_root = embedded_path.parent
+        elif embedded_path.is_dir():
+            # Path is already a directory
+            import_root = embedded_path
+        else:
+            raise ValueError(f"Invalid embedded_artifact.path: {embedded_path}")
+    else:
+        # Fallback to shared directory
+        import_root = _AUTORAG_SHARED
+
+    sys.path.insert(0, str(import_root))
     try:
         from component_status import component_status_tracker
     finally:
@@ -873,7 +890,7 @@ def rag_templates_optimization(
                 template_context = {
                     "responses_template": pattern_data["settings"]["responses_template"],
                 }
-                with (embedded_artifact_path / "script_templates" / "create_model_response.py.templ").open(
+                with (import_root / "script_templates" / "create_model_response.py.templ").open(
                     "r", encoding="utf-8"
                 ) as f:
                     model_responses_templ = Template(f.read())

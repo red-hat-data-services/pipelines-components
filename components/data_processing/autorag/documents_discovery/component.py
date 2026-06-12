@@ -77,7 +77,28 @@ def documents_discovery(
 
     from botocore.exceptions import SSLError
 
-    sys.path.insert(0, str(Path(embedded_artifact.path)))
+    # Validate embedded artifact before use
+    if embedded_artifact is None:
+        raise ValueError(
+            "embedded_artifact is required for component status tracking. "
+            "This parameter is automatically injected by KFP when using embedded_artifact_path decorator."
+        )
+
+    if not hasattr(embedded_artifact, "path") or not embedded_artifact.path:
+        raise ValueError("embedded_artifact.path is missing or empty")
+
+    # Resolve import root (handle both file and directory paths)
+    embedded_path = Path(embedded_artifact.path)
+    if embedded_path.is_file():
+        # Path points to component_status.py, use parent directory
+        import_root = embedded_path.parent
+    elif embedded_path.is_dir():
+        # Path is already a directory
+        import_root = embedded_path
+    else:
+        raise ValueError(f"Invalid embedded_artifact.path: {embedded_path}")
+
+    sys.path.insert(0, str(import_root))
     try:
         from component_status import component_status_tracker
     finally:
@@ -105,12 +126,21 @@ def documents_discovery(
                 )
 
         with status.stage("list_and_sample"):
-            try:
-                s3_client = _make_s3_client()
-                contents = s3_client.list_objects_v2(
+            # Use paginator to handle buckets with >1,000 objects
+            def _list_all_objects(s3_client):
+                """List all objects under prefix using pagination."""
+                paginator = s3_client.get_paginator("list_objects_v2")
+                contents = []
+                for page in paginator.paginate(
                     Bucket=input_data_bucket_name,
                     Prefix=input_data_path,
-                ).get("Contents", [])
+                ):
+                    contents.extend(page.get("Contents", []))
+                return contents
+
+            try:
+                s3_client = _make_s3_client()
+                contents = _list_all_objects(s3_client)
             except SSLError:
                 logger.warning(
                     "SSL error when listing objects in s3://%s/%s, retrying with verify=False",
@@ -118,10 +148,14 @@ def documents_discovery(
                     input_data_path,
                 )
                 s3_client = _make_s3_client(verify=False)
-                contents = s3_client.list_objects_v2(
-                    Bucket=input_data_bucket_name,
-                    Prefix=input_data_path,
-                ).get("Contents", [])
+                contents = _list_all_objects(s3_client)
+
+            logger.info(
+                "S3_DISCOVERY bucket=%s prefix=%s total_objects=%d",
+                input_data_bucket_name,
+                input_data_path,
+                len(contents),
+            )
 
             supported_files = [c for c in contents if c["Key"].endswith(tuple(SUPPORTED_EXTENSIONS))]
             if not supported_files:
