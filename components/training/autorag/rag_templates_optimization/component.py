@@ -755,7 +755,7 @@ def rag_templates_optimization(
                     provider = client.providers.retrieve(vector_io_provider_id)
                 except Exception:
                     _ssl_logger.warning(
-                        "Could not retrieve provider_type attribute of vector store in use... Fallback to the default value.",
+                        "Could not retrieve provider_type for vector store; using default.",
                         exc_info=True,
                     )
 
@@ -802,8 +802,9 @@ def rag_templates_optimization(
                             "user_message_text": generation.get(
                                 "user_message_text",
                                 (
-                                    "\n\nContext:\n{reference_documents}:\n\nQuestion: {question}. \nAgain, please answer "
-                                    "the question based on the context provided only. If the context is not related to "
+                                    "\n\nContext:\n{reference_documents}:\n\nQuestion: {question}. \n"
+                                    "Again, please answer the question based on the context provided only. "
+                                    "If the context is not related to "
                                     "the question, just say you cannot answer. Respond exclusively in the language of "
                                     "the question."
                                 ),

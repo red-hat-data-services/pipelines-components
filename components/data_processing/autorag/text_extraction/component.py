@@ -346,8 +346,6 @@ def text_extraction(
             lines.append(f"\n  [{i}] {err['file']}\n    {snippet}")
         raise RuntimeError("\n".join(lines))
 
-    import sys
-
     # Validate embedded artifact before use
     if embedded_artifact is None:
         raise ValueError(
