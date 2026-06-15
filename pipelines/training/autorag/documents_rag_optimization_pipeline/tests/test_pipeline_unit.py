@@ -1,12 +1,18 @@
 """Unit tests for the documents_rag_optimization_pipeline pipeline."""
 
+import tempfile
+from pathlib import Path
+
+from kfp import compiler
 from kfp_components.utils.pipeline_dag_tasks import (
     assert_compiled_pipeline_root_dag_task_ids,
+    load_pipeline_spec_document,
 )
 
 from ..pipeline import documents_rag_optimization_pipeline
 
 _EXPECTED_ROOT_DAG_TASK_IDS = (
+    "publish-component-stage-map",
     "documents-discovery",
     "leaderboard-evaluation",
     "rag-templates-optimization",
@@ -42,3 +48,18 @@ class TestDocumentsRagOptimizationPipelineUnit:
             pipeline_func=documents_rag_optimization_pipeline,
             expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
+
+    def test_test_data_loader_runs_after_stage_map_publisher(self):
+        """Stage map publisher must complete before downstream components start."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=documents_rag_optimization_pipeline,
+                package_path=tmp_path,
+            )
+            spec = load_pipeline_spec_document(Path(tmp_path))
+            loader_task = spec["root"]["dag"]["tasks"]["test-data-loader"]
+            assert "publish-component-stage-map" in loader_task["dependentTasks"]
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)

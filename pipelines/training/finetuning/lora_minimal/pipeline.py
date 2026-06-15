@@ -18,7 +18,9 @@ from kfp import dsl
 
 # Import reusable components
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.kubeflow_model_registry import kubeflow_model_registry
+from components.deployment.kubeflow_model_registry import (
+    kubeflow_model_registry as model_registry,
+)
 from components.evaluation.lm_eval import universal_llm_evaluator
 from components.training.finetuning.lora import train_model
 
@@ -80,6 +82,7 @@ def lora_minimal_pipeline(
     phase_02_train_opt_lora_load_in_8bit: bool = False,
     phase_02_train_opt_runtime: str = "training-hub",
     phase_04_registry_opt_port: int = 8080,
+    phase_04_registry_opt_format_version: str = "2.9",
 ):
     """LoRA Minimal Training Pipeline - Parameter-efficient fine-tuning.
 
@@ -114,6 +117,7 @@ def lora_minimal_pipeline(
         phase_02_train_opt_lora_load_in_8bit: [QLoRA] Enable 8-bit quantization (cannot use with 4-bit)
         phase_02_train_opt_runtime: Name of the ClusterTrainingRuntime to use.
         phase_04_registry_opt_port: Model registry server port
+        phase_04_registry_opt_format_version: Model format version for registry (default "2.9")
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -231,7 +235,7 @@ def lora_minimal_pipeline(
     # =========================================================================
     # Stage 4: Model Registry
     # =========================================================================
-    model_registry_task = kubeflow_model_registry(
+    model_registry_task = model_registry(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         input_model=training_task.outputs["output_model"],
         input_metrics=training_task.outputs["output_metrics"],
@@ -242,7 +246,7 @@ def lora_minimal_pipeline(
         model_name=phase_04_registry_man_reg_name,
         model_version=phase_04_registry_man_reg_version,
         model_format_name="pytorch",
-        model_format_version="2.9",
+        model_format_version=phase_04_registry_opt_format_version,
         model_description="",
         author="pipeline",
         shared_log_file="pipeline_log.txt",

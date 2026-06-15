@@ -27,13 +27,14 @@ A 4-stage ML pipeline for fine-tuning language models:
 | `phase_04_registry_man_reg_name` | `str` | `sft-model` | Model name in registry |
 | `phase_04_registry_man_version` | `str` | `1.0.0` | Semantic version (major.minor.patch) |
 | `phase_01_dataset_opt_subset` | `int` | `0` | Limit to first N examples (0 = all) |
-| `phase_02_train_opt_env_vars` | `str` | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, NCCL_DEBUG=INFO, NCCL_P2P_DISABLE=1, INSTRUCTLAB_NCCL_TIMEOUT_MS=60000` | Env vars (KEY=VAL,...) with NCCL timeout and memory optimization |
+| `phase_02_train_opt_env_vars` | `str` | `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, NCCL_DEBUG=INFO, NCCL_P2P_DISABLE=1, INSTRUCTLAB_NCCL_TIMEOUT_MS=600000` | Env vars (KEY=VAL,...) with NCCL timeout and memory optimization |
 | `phase_02_train_opt_learning_rate` | `float` | `5e-06` | Learning rate (1e-6 to 1e-4). 5e-6 recommended |
 | `phase_02_train_opt_max_seq_len` | `int` | `8192` | Max sequence length in tokens |
 | `phase_02_train_opt_fsdp_sharding` | `str` | `FULL_SHARD` | FSDP strategy (FULL_SHARD, HYBRID_SHARD, NO_SHARD) |
 | `phase_02_train_opt_use_liger` | `bool` | `False` | Enable Liger kernel optimizations |
 | `phase_02_train_opt_runtime` | `str` | `training-hub` | Name of the ClusterTrainingRuntime to use. |
 | `phase_04_registry_opt_port` | `int` | `8080` | Model Registry server port. |
+| `phase_04_registry_opt_format_version` | `str` | `2.9` | Model format version for registry (default "2.9") |
 
 ## Metadata 🗂️
 
@@ -46,6 +47,7 @@ A 4-stage ML pipeline for fine-tuning language models:
   - External Services:
     - Name: HuggingFace Datasets, Version: >=2.14.0
     - Name: Kubernetes, Version: >=1.28.0
+    - Name: Model Registry, Version: >=0.3.4
 - **Tags**:
   - training
   - fine_tuning

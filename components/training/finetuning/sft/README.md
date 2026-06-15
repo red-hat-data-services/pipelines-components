@@ -4,7 +4,9 @@
 
 ## Overview 🧾
 
-Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metrics.
+Train using SFT (Supervised Fine-Tuning).
+
+Uses instructlab-training backend. Outputs model artifact and metrics.
 
 ## Inputs 📥
 

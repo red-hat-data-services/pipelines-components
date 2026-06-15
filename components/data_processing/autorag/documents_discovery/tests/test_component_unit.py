@@ -37,6 +37,17 @@ def _make_botocore_modules():
     return mock_botocore, mock_botocore_exceptions
 
 
+def _configure_s3_paginator(mock_s3, contents, *, paginate_side_effect=None):
+    """Wire a mock S3 client to return object listings via the list_objects_v2 paginator."""
+    mock_paginator = mock.MagicMock()
+    if paginate_side_effect is not None:
+        mock_paginator.paginate.side_effect = paginate_side_effect
+    else:
+        mock_paginator.paginate.return_value = [{"Contents": contents}]
+    mock_s3.get_paginator.return_value = mock_paginator
+    return mock_paginator
+
+
 class TestDocumentsDiscoveryUnitTests:
     """Unit tests for documents_discovery success and error handling."""
 
@@ -57,13 +68,14 @@ class TestDocumentsDiscoveryUnitTests:
         """Supported S3 objects produce a descriptor JSON with expected keys."""
         mock_boto3 = mock.MagicMock()
         mock_s3 = mock.MagicMock()
-        mock_s3.list_objects_v2.return_value = {
-            "Contents": [
+        _configure_s3_paginator(
+            mock_s3,
+            [
                 {"Key": "docs/a.pdf", "Size": 1000},
                 {"Key": "docs/b.txt", "Size": 2000},
                 {"Key": "docs/ignore.csv", "Size": 3000},
-            ]
-        }
+            ],
+        )
         mock_boto3.client.return_value = mock_s3
         mock_botocore, mock_botocore_exceptions = _make_botocore_modules()
 
@@ -97,7 +109,7 @@ class TestDocumentsDiscoveryUnitTests:
         """Component works when AWS_DEFAULT_REGION is not present."""
         mock_boto3 = mock.MagicMock()
         mock_s3 = mock.MagicMock()
-        mock_s3.list_objects_v2.return_value = {"Contents": [{"Key": "docs/a.pdf", "Size": 1000}]}
+        _configure_s3_paginator(mock_s3, [{"Key": "docs/a.pdf", "Size": 1000}])
         mock_boto3.client.return_value = mock_s3
         mock_botocore, mock_botocore_exceptions = _make_botocore_modules()
 
@@ -126,13 +138,17 @@ class TestDocumentsDiscoveryUnitTests:
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
     def test_ssl_error_retries_with_verify_false(self, tmp_path):
-        """SSLError on list_objects_v2 triggers a retry with verify=False."""
+        """SSLError during S3 pagination triggers a retry with verify=False."""
         mock_boto3 = mock.MagicMock()
         mock_s3_ok = mock.MagicMock()
         mock_s3_fail = mock.MagicMock()
 
-        mock_s3_fail.list_objects_v2.side_effect = _MockSSLError("SSL validation failed")
-        mock_s3_ok.list_objects_v2.return_value = {"Contents": [{"Key": "docs/file1.pdf", "Size": 1000}]}
+        _configure_s3_paginator(
+            mock_s3_fail,
+            [],
+            paginate_side_effect=_MockSSLError("SSL validation failed"),
+        )
+        _configure_s3_paginator(mock_s3_ok, [{"Key": "docs/file1.pdf", "Size": 1000}])
 
         call_count = 0
 
@@ -195,7 +211,7 @@ class TestDocumentsDiscoveryUnitTests:
         """No supported extension in S3 listing raises a component exception."""
         mock_boto3 = mock.MagicMock()
         mock_s3 = mock.MagicMock()
-        mock_s3.list_objects_v2.return_value = {"Contents": [{"Key": "docs/file.csv", "Size": 10}]}
+        _configure_s3_paginator(mock_s3, [{"Key": "docs/file.csv", "Size": 10}])
         mock_boto3.client.return_value = mock_s3
         mock_botocore, mock_botocore_exceptions = _make_botocore_modules()
         discovered = mock.MagicMock()
@@ -231,7 +247,7 @@ class TestDocumentsDiscoverySampling:
         """Run the component with mocked S3 and return the parsed descriptor dict."""
         mock_boto3 = mock.MagicMock()
         mock_s3 = mock.MagicMock()
-        mock_s3.list_objects_v2.return_value = {"Contents": contents}
+        _configure_s3_paginator(mock_s3, contents)
         mock_boto3.client.return_value = mock_s3
         mock_botocore, mock_botocore_exceptions = _make_botocore_modules()
 

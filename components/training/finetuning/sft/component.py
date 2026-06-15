@@ -66,7 +66,9 @@ def train_model(
     training_runtime: str = "training-hub",
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
-    """Train model using SFT (Supervised Fine-Tuning). Outputs model artifact and metrics.
+    """Train using SFT (Supervised Fine-Tuning).
+
+    Uses instructlab-training backend. Outputs model artifact and metrics.
 
     Args:
         pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).

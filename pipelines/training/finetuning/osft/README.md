@@ -70,6 +70,7 @@ A 4-stage ML pipeline for fine-tuning language models with OSFT:
   - External Services:
     - Name: HuggingFace Datasets, Version: >=2.14.0
     - Name: Kubernetes, Version: >=1.28.0
+    - Name: Model Registry, Version: >=0.3.4
 - **Tags**:
   - training
   - fine_tuning

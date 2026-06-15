@@ -146,10 +146,8 @@ class TestLoRAComponentUnitTests:
         """Test that the component docstring describes LoRA training."""
         docstring = train_model.python_func.__doc__
 
-        # Should mention LoRA
         assert "LoRA" in docstring or "Low-Rank Adaptation" in docstring
-        # Should NOT mention SFT or OSFT
-        assert "SFT" not in docstring or "Supervised Fine-Tuning" not in docstring
+        assert "SFT" not in docstring
         assert "OSFT" not in docstring
 
     @mock.patch.dict("sys.modules", {"kubeflow.trainer": mock.MagicMock()})
