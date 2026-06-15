@@ -297,13 +297,12 @@ def universal_llm_evaluator(
                             "prediction": prediction,
                         }
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to log prompt for doc: {e}")
 
             exact_match = 1.0 if prediction.lower() == target.lower() else 0.0
 
-            target_start = target.lower()[:50] if len(target) > 50 else target.lower()
-            contains_match = 1.0 if target_start in prediction.lower() else 0.0
+            contains_match = 1.0 if target and target.lower() in prediction.lower() else 0.0
 
             try:
                 bleu = sacrebleu.sentence_bleu(prediction, [target]).score / 100.0

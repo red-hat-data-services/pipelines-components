@@ -4,7 +4,9 @@
 
 ## Overview 🧾
 
-Train model using OSFT (Orthogonal Subspace Fine-Tuning). Outputs model artifact and metrics.
+Train using OSFT (Orthogonal Subspace Fine-Tuning).
+
+Uses mini-trainer backend. Outputs model artifact and metrics.
 
 ## Inputs 📥
 

@@ -33,6 +33,7 @@ A minimal 4-stage ML pipeline for fine-tuning language models with OSFT:
 | `phase_02_train_opt_use_liger` | `bool` | `True` | [OSFT] Enable Liger kernel optimizations. Recommended |
 | `phase_02_train_opt_runtime` | `str` | `training-hub` | Name of the ClusterTrainingRuntime to use. |
 | `phase_04_registry_opt_port` | `int` | `8080` | Model registry server port |
+| `phase_04_registry_opt_format_version` | `str` | `2.9` | Model format version for registry (default "2.9") |
 
 ## Metadata 🗂️
 

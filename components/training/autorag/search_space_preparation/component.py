@@ -1,17 +1,24 @@
+from pathlib import Path
 from typing import List, Optional
 
 from kfp import dsl
 from kfp.compiler import Compiler
 from kfp_components.utils.consts import AUTORAG_IMAGE  # pyright: ignore[reportMissingImports]
 
+_AUTORAG_SHARED = Path(__file__).parents[1] / "shared"
+
 
 @dsl.component(
     base_image=AUTORAG_IMAGE,  # noqa: E501
+    embedded_artifact_path=str(_AUTORAG_SHARED / "component_status.py"),
+    install_kfp_package=False,
 )
 def search_space_preparation(
     test_data: dsl.Input[dsl.Artifact],
     extracted_text: dsl.Input[dsl.Artifact],
     search_space_prep_report: dsl.Output[dsl.Artifact],
+    component_status: dsl.Output[dsl.Artifact] = None,
+    embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     embedding_models: Optional[List] = None,
     generation_models: Optional[List] = None,
     metric: str = None,
@@ -33,6 +40,8 @@ def search_space_preparation(
 
         search_space_prep_report: kfp-enforced argument specifying an output artifact.
             Provided by kfp backend automatically.
+        component_status: Output artifact containing stage-level progress tracking.
+        embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
 
         embedding_models: List of embedding model identifiers to try out in the experiment process.
             This list, if too long, will undergo models preselection (limiting).
@@ -82,8 +91,9 @@ def search_space_preparation(
         current: BaseException | None = exc
         while current is not None and id(current) not in seen:
             seen.add(id(current))
-            msg = str(current).upper()
-            if "CERTIFICATE_VERIFY_FAILED" in msg or "SSL" in msg:
+            if isinstance(current, ssl.SSLError):
+                return True
+            if "CERTIFICATE_VERIFY_FAILED" in str(current).upper():
                 return True
             current = current.__cause__ or current.__context__
         return False
@@ -315,57 +325,71 @@ def search_space_preparation(
     ogx_client_base_url = os.environ.get("OGX_CLIENT_BASE_URL", None)
     ogx_client_api_key = os.environ.get("OGX_CLIENT_API_KEY", None)
 
-    if not ogx_client_base_url or not ogx_client_api_key:
-        raise ValueError("OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY environment variables must be set.")
+    import importlib.util
 
-    client = _create_ogx_client(base_url=ogx_client_base_url, api_key=ogx_client_api_key)
+    _embedded_path = Path(embedded_artifact.path)
+    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+    if _spec is None or _spec.loader is None:
+        raise ValueError(f"Cannot load embedded module from {_module_path}")
+    _status_module = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_status_module)
+    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "search_space_preparation")
+    with status:
+        with status.stage("validate_inputs"):
+            if not ogx_client_base_url or not ogx_client_api_key:
+                raise ValueError("OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY environment variables must be set.")
 
-    search_space = prepare_ai4rag_search_space()
+            client = _create_ogx_client(base_url=ogx_client_base_url, api_key=ogx_client_api_key)
 
-    benchmark_df = pd.read_json(Path(test_data.path))
-    detected_language = _detect_benchmark_language(benchmark_df, llm_client=client)
-    benchmark_data = BenchmarkData(benchmark_df)
-    documents = load_as_langchain_doc(extracted_text.path)
+        with status.stage("prepare_search_space"):
+            search_space = prepare_ai4rag_search_space()
 
-    if (
-        len(search_space["foundation_model"].values) > TOP_N_GENERATION_MODELS
-        or len(search_space["embedding_model"].values) > TOP_K_EMBEDDING_MODELS
-    ):
-        mps = ModelsPreSelector(
-            benchmark_data=benchmark_data.get_random_sample(n_records=SAMPLE_SIZE, random_seed=SEED),
-            documents=documents,
-            foundation_models=search_space._search_space["foundation_model"].values,
-            embedding_models=search_space._search_space["embedding_model"].values,
-            metric=metric if metric else METRIC,
-        )
-        mps.evaluate_patterns()
-        selected_models = mps.select_models(
-            n_embedding_models=TOP_K_EMBEDDING_MODELS,
-            n_foundation_models=TOP_N_GENERATION_MODELS,
-        )
-        selected_models_names = {
-            "foundation_model": selected_models["foundation_models"],
-            "embedding_model": selected_models["embedding_models"],
-        }
+            benchmark_df = pd.read_json(Path(test_data.path))
+            detected_language = _detect_benchmark_language(benchmark_df, llm_client=client)
+            benchmark_data = BenchmarkData(benchmark_df)
+            documents = load_as_langchain_doc(extracted_text.path)
 
-    else:
-        selected_models_names = {
-            "foundation_model": search_space["foundation_model"].values,
-            "embedding_model": search_space["embedding_model"].values,
-        }
+            if (
+                len(search_space["foundation_model"].values) > TOP_N_GENERATION_MODELS
+                or len(search_space["embedding_model"].values) > TOP_K_EMBEDDING_MODELS
+            ):
+                mps = ModelsPreSelector(
+                    benchmark_data=benchmark_data.get_random_sample(n_records=SAMPLE_SIZE, random_seed=SEED),
+                    documents=documents,
+                    foundation_models=search_space._search_space["foundation_model"].values,
+                    embedding_models=search_space._search_space["embedding_model"].values,
+                    metric=metric if metric else METRIC,
+                )
+                mps.evaluate_patterns()
+                selected_models = mps.select_models(
+                    n_embedding_models=TOP_K_EMBEDDING_MODELS,
+                    n_foundation_models=TOP_N_GENERATION_MODELS,
+                )
+                selected_models_names = {
+                    "foundation_model": selected_models["foundation_models"],
+                    "embedding_model": selected_models["embedding_models"],
+                }
 
-    verbose_search_space_repr = {
-        k: v.all_values()
-        for k, v in search_space._search_space.items()
-        if k not in ("foundation_model", "embedding_model")
-    }
-    verbose_search_space_repr |= selected_models_names
+            else:
+                selected_models_names = {
+                    "foundation_model": search_space["foundation_model"].values,
+                    "embedding_model": search_space["embedding_model"].values,
+                }
 
-    if detected_language:
-        verbose_search_space_repr["detected_language"] = detected_language
+            verbose_search_space_repr = {
+                k: v.all_values()
+                for k, v in search_space._search_space.items()
+                if k not in ("foundation_model", "embedding_model")
+            }
+            verbose_search_space_repr |= selected_models_names
 
-    with open(search_space_prep_report.path, "w") as report_file:
-        yml.safe_dump(verbose_search_space_repr, report_file)
+            if detected_language:
+                verbose_search_space_repr["detected_language"] = detected_language
+
+        with status.stage("write_report"):
+            with open(search_space_prep_report.path, "w") as report_file:
+                yml.safe_dump(verbose_search_space_repr, report_file)
 
 
 if __name__ == "__main__":
