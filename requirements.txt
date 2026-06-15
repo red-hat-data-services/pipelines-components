@@ -20,8 +20,6 @@ cryptography==46.0.7 \
     --hash=sha256:a34baa60ae4f96b6710a4bcfd89bb2ebfe43a4219e47d4e42fc249c99df88435
 docstring-parser==0.18.0 \
     --hash=sha256:ad8ed234ea2dab23080526bd8eaa457a8b1cbabab7c3348723ec5a35a07a0040
-durationpy==0.10 \
-    --hash=sha256:ce86a86c56333ed4a1c71ad2f1a0138e6a91ad4144ee31223ac0a08eed8486f3
 google-api-core==2.31.0 \
     --hash=sha256:13f657cf23fe3623155cc8102545111d68fd7abbb2c5810c864647fa1b421b8c
 google-auth==2.53.0 \
@@ -46,8 +44,8 @@ kfp-pipeline-spec==2.16.1 \
     --hash=sha256:2806800f7ad42b301da4d869cf2ddfa85b1efe9d779786f7ff32853778dc121b
 kfp-server-api==2.16.1 \
     --hash=sha256:2dca26deff17b13893e5b65ccde8313e886cd4e92bb22f0d911d4f22a509346f
-kubernetes==36.0.2 \
-    --hash=sha256:8aa7020e9d21f10413c9af009a23620f08565db0faf459d844731b5660a1d250
+kubernetes==30.1.0 \
+    --hash=sha256:9262319c1973eec3eccb864afb41b41b535dd67fe675ace1911c054337baebc4
 oauthlib==3.3.1 \
     --hash=sha256:1bf73c8e0aead3761794f6e5b15228bee706cda020facd0df347c145843adf40
 proto-plus==1.28.0 \
