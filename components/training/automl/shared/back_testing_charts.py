@@ -1,0 +1,250 @@
+"""Matplotlib charts for ``metrics/back_testing.json`` (same library as tabular ROC/PR curves)."""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+from typing import Any
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+
+_ACCENT = "#EE0000"
+_NEUTRAL = "#161616"
+_CUTOFF = "gray"
+
+
+def _normalize_metric(metric: str) -> str:
+    return (metric or "").strip().lstrip("-").upper()
+
+
+def pick_window_metric(metrics: dict[str, Any], eval_metric: str) -> float | None:
+    """Return a finite window metric value, preferring ``eval_metric``."""
+    if not metrics:
+        return None
+    wanted = _normalize_metric(eval_metric)
+    for key, value in metrics.items():
+        if _normalize_metric(key) == wanted and isinstance(value, (int, float)):
+            number = float(value)
+            if math.isfinite(number):
+                return number
+    for value in metrics.values():
+        if isinstance(value, (int, float)) and math.isfinite(float(value)):
+            return float(value)
+    return None
+
+
+def forecast_data_to_frame(forecast_data: list[dict[str, Any]]) -> pd.DataFrame:
+    """Parse ``forecast_data`` rows from ``back_testing.json``."""
+    if not forecast_data:
+        return pd.DataFrame(columns=["timestamp", "actual", "predicted", "lower_bound", "upper_bound"])
+    frame = pd.DataFrame(forecast_data)
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"])
+    return frame.sort_values("timestamp")
+
+
+def per_window_metrics_table(
+    per_window_metrics: list[dict[str, Any]],
+    eval_metric: str,
+) -> pd.DataFrame:
+    """Build a per-cutoff metrics table aligned with AutoGluon backtest tutorials."""
+    rows: list[dict[str, Any]] = []
+    for index, window in enumerate(per_window_metrics):
+        metrics = window.get("metrics") or {}
+        metric_value = pick_window_metric(metrics, eval_metric)
+        rows.append(
+            {
+                "cutoff": window.get("cutoff"),
+                "window_id": window.get("window_id", index),
+                "test_start": window.get("test_start", ""),
+                "test_end": window.get("test_end", ""),
+                eval_metric: metric_value,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def mean_window_metric(per_window_metrics: list[dict[str, Any]], eval_metric: str) -> float | None:
+    """Return the mean ``eval_metric`` across validation windows (each window is all-series)."""
+    table = per_window_metrics_table(per_window_metrics, eval_metric)
+    if eval_metric not in table.columns:
+        return None
+    values = table[eval_metric].dropna()
+    if values.empty:
+        return None
+    mean = float(values.mean())
+    return mean if math.isfinite(mean) else None
+
+
+def _present_frame(frame: pd.DataFrame) -> None:
+    try:
+        from IPython.display import display
+
+        display(frame)
+    except ImportError:
+        print(frame.to_string(index=False))
+
+
+def _show_overall_backtest_summary(
+    per_window_metrics: list[dict[str, Any]],
+    eval_metric: str,
+    *,
+    num_series_evaluated: int | None = None,
+) -> None:
+    """Print mean ``eval_metric`` across windows (AutoGluon-style cross-series aggregate)."""
+    overall = mean_window_metric(per_window_metrics, eval_metric)
+    if overall is None:
+        return
+    window_count = len(per_window_metrics)
+    window_label = "window" if window_count == 1 else "windows"
+    summary = (
+        f"Overall {eval_metric} (mean across {window_count} validation {window_label}, all series): "
+        f"{overall:.6g}"
+    )
+    if num_series_evaluated is not None:
+        summary += f" | Series evaluated: {num_series_evaluated}"
+    print(summary)
+
+
+def _show_per_window_metrics(
+    per_window_metrics: list[dict[str, Any]],
+    eval_metric: str,
+    *,
+    num_series_evaluated: int | None = None,
+) -> None:
+    """Print cutoff scores and show a table (AutoGluon uses print + pivot, not bar charts)."""
+    table = per_window_metrics_table(per_window_metrics, eval_metric)
+    if eval_metric not in table.columns or table[eval_metric].notna().sum() == 0:
+        print(f"No finite {eval_metric} values per validation window.")
+        return
+
+    for _, row in table.iterrows():
+        value = row[eval_metric]
+        if pd.notna(value):
+            print(f"Cutoff {row['cutoff']}: {eval_metric} = {value}")
+
+    _present_frame(table)
+    _show_overall_backtest_summary(
+        per_window_metrics,
+        eval_metric,
+        num_series_evaluated=num_series_evaluated,
+    )
+
+
+def _style_date_axis(ax: plt.Axes) -> None:
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+    ax.tick_params(axis="x", labelsize=8, rotation=45)
+    plt.setp(ax.get_xticklabels(), ha="right")
+
+
+def _interval_label(frame: pd.DataFrame) -> str:
+    if {"lower_quantile", "upper_quantile"}.issubset(frame.columns):
+        lower = frame["lower_quantile"].dropna()
+        upper = frame["upper_quantile"].dropna()
+        if not lower.empty and not upper.empty:
+            lo = float(lower.iloc[0])
+            hi = float(upper.iloc[0])
+            return f"{lo * 100:.0f}%-{hi * 100:.0f}% interval"
+    return "10%-90% interval"
+
+
+def _draw_cutoff(ax: plt.Axes, cutoff_start: str | None) -> None:
+    if not cutoff_start:
+        return
+    ax.axvline(pd.to_datetime(cutoff_start), color=_CUTOFF, linestyle="--", alpha=0.7, label="Cutoff")
+
+
+def _draw_forecast(
+    ax: plt.Axes,
+    rows: list[dict[str, Any]],
+    *,
+    title: str,
+    target: str,
+    cutoff_start: str | None = None,
+) -> None:
+    frame = forecast_data_to_frame(rows)
+    if frame.empty:
+        raise ValueError("forecast_data is empty")
+
+    timestamps = frame["timestamp"]
+    if "actual" in frame.columns and frame["actual"].notna().any():
+        ax.plot(timestamps, frame["actual"], marker="o", color=_NEUTRAL, label=f"Actual ({target})")
+    ax.plot(timestamps, frame["predicted"], marker="s", linestyle="--", color=_ACCENT, label="Predicted")
+
+    if {"lower_bound", "upper_bound"}.issubset(frame.columns):
+        lower, upper = frame["lower_bound"], frame["upper_bound"]
+        if lower.notna().any() and upper.notna().any():
+            ax.fill_between(timestamps, lower, upper, alpha=0.1, color=_ACCENT, label=_interval_label(frame))
+
+    _draw_cutoff(ax, cutoff_start)
+
+    ax.set(title=title, xlabel="Date", ylabel=target)
+    ax.legend(loc="best", fontsize=8)
+    ax.grid(linestyle="--", alpha=0.3)
+    _style_date_axis(ax)
+
+
+def render_back_testing_charts(back_testing: dict[str, Any]) -> None:
+    """Render per-window metrics and best/worst holdout forecast panels."""
+    eval_metric = back_testing.get("eval_metric", "MASE")
+    target = back_testing.get("target", "target")
+
+    per_window = back_testing.get("per_window_metrics") or []
+    series_analysis = back_testing.get("series_analysis") or {}
+    num_series = series_analysis.get("num_series_evaluated")
+    _show_per_window_metrics(
+        per_window,
+        eval_metric,
+        num_series_evaluated=num_series if isinstance(num_series, int) else None,
+    )
+
+    plotted_ids: set[Any] = set()
+    for heading, role in (("Best", "best_performer"), ("Worst", "worst_performer")):
+        performer = series_analysis.get(role)
+        if not performer:
+            continue
+        item_id = performer.get("item_id")
+        if item_id in plotted_ids:
+            continue
+        plotted_ids.add(item_id)
+
+        item_windows = performer.get("windows") or []
+        if not item_windows:
+            continue
+
+        count = len(item_windows)
+        figure, axes = plt.subplots(1, count, figsize=(max(8.0, 4.0 * count), 4.2), squeeze=False)
+        window_starts = {
+            window.get("window_id"): window.get("test_start")
+            for window in per_window
+            if window.get("window_id") is not None
+        }
+        for index, window in enumerate(item_windows):
+            axis = axes[0, index]
+            window_id = window.get("window_id", index)
+            metric_value = pick_window_metric(window.get("metrics") or {}, eval_metric)
+            metric_text = f"{eval_metric}={metric_value:.3g}" if metric_value is not None else eval_metric
+            try:
+                _draw_forecast(
+                    axis,
+                    window.get("forecast_data") or [],
+                    title=f"Window {window_id} ({metric_text})",
+                    target=target,
+                    cutoff_start=window_starts.get(window_id),
+                )
+            except ValueError as exc:
+                print(exc)
+            if index:
+                axis.set_ylabel("")
+
+        figure.suptitle(f"{heading} performer: {item_id}", fontsize=12)
+        figure.tight_layout(rect=[0, 0.04, 1, 0.92])
+        plt.show()
+
+
+def notebook_backtest_charts_source() -> str:
+    """Return plotting module source copied into generated inference notebooks."""
+    source = Path(__file__).read_text(encoding="utf-8")
+    marker = "def notebook_backtest_charts_source"
+    return source.split(marker, maxsplit=1)[0]

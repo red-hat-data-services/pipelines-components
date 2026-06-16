@@ -136,6 +136,4 @@ Under each ``{model_name}_FULL/metrics/`` directory:
 - **`back_testing.json`**: Multi-window backtest with ``per_window_metrics`` and ``series_analysis``
   (best/worst forecast timelines). Window error metrics use **natural positive** signs via
   ``filter_finite_metrics``. Best-effort after refit; omitted if backtest APIs or history are
-  insufficient.
-
-The timeseries notebook template loads ``back_testing.json`` when present for model insights.
+  insufficient. Visualized in the generated inference notebook when present.

@@ -80,6 +80,9 @@ def autogluon_timeseries_models_training(
     logger = logging.getLogger(__name__)
 
     from kfp_components.components.training.automl.shared.back_testing import build_back_testing_json
+    from kfp_components.components.training.automl.shared.back_testing_charts import (
+        notebook_backtest_charts_source,
+    )
     from kfp_components.components.training.automl.shared.timeseries_notebook_utils import (
         build_predict_sample_artifact,
     )
@@ -392,6 +395,7 @@ def autogluon_timeseries_models_training(
                     "<REPLACE_PIPELINE_NAME>": pipeline_name_trimmed,
                     "<REPLACE_MODEL_NAME>": model_name_full,
                     "<REPLACE_PREDICT_SAMPLE>": str(predict_sample),
+                    "<REPLACE_BACKTEST_PLOT_HELPERS>": notebook_backtest_charts_source(),
                 }
                 notebook = replace_placeholder_in_notebook(notebook, replacements)
 

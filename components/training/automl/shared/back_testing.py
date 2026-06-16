@@ -140,35 +140,23 @@ def _mean_prediction_column(predictions: pd.DataFrame) -> str:
 
 
 def _quantile_bounds(predictions: pd.DataFrame) -> tuple[str | None, str | None]:
-    """Extract lower/upper quantile columns for uncertainty visualization.
+    """Extract lower/upper quantile columns aligned with ``TimeSeriesPredictor.plot`` defaults.
 
-    Selects the first quantile <= 0.2 for lower bound and >= 0.8 for upper bound.
-    These thresholds provide a ~60% coverage interval suitable for chart rendering
-    without overwhelming the visualization with too many bands.
-
-    AutoGluon typically generates quantiles at [0.1, 0.2, ..., 0.9]. If present,
-    this function will select 0.2 and 0.8. If AutoGluon uses different levels
-    (e.g., 0.1/0.9), the function adapts by picking the closest match.
-
-    Args:
-        predictions: Forecast DataFrame with quantile columns (numeric names like "0.1")
-
-    Returns:
-        Tuple of (lower_quantile_column, upper_quantile_column) as strings, or None if not found
+    Prefers quantile levels closest to 0.1 and 0.9 (AutoGluon's typical P10/P90 band).
     """
-    lower = None
-    upper = None
+    levels: list[tuple[float, str]] = []
     for col in predictions.columns:
-        col_text = str(col)
         try:
-            level = float(col)
+            levels.append((float(col), str(col)))
         except (TypeError, ValueError):
             continue
-        if level <= 0.2 and lower is None:
-            lower = col_text
-        if level >= 0.8 and upper is None:
-            upper = col_text
-    return lower, upper
+    if not levels:
+        return None, None
+
+    def _closest(target: float) -> str | None:
+        return min(levels, key=lambda item: abs(item[0] - target))[1]
+
+    return _closest(0.1), _closest(0.9)
 
 
 def _item_ids(tsdf: pd.DataFrame) -> list[Any]:
@@ -244,10 +232,12 @@ def _forecast_data_for_item(
             lower = to_finite_float(pred_item.loc[ts, lower_col])
             if lower is not None:
                 row["lower_bound"] = lower
+                row["lower_quantile"] = float(lower_col)
         if upper_col is not None:
             upper = to_finite_float(pred_item.loc[ts, upper_col])
             if upper is not None:
                 row["upper_bound"] = upper
+                row["upper_quantile"] = float(upper_col)
         rows.append(row)
     return rows
 
@@ -502,6 +492,7 @@ def build_back_testing_json(
         per_window_metrics.append(
             {
                 "window_id": window_id,
+                "cutoff": cutoff,
                 "test_start": test_start,
                 "test_end": test_end,
                 "metrics": window_scores,
