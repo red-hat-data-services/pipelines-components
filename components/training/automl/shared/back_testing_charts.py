@@ -41,6 +41,43 @@ def pick_window_metric(metrics: dict[str, Any], eval_metric: str) -> float | Non
     return None
 
 
+def _resolve_item_id(item_id: Any, available_item_ids: list[Any]) -> Any | None:
+    """Map a backtest ``item_id`` to the matching ID in ``available_item_ids``."""
+    if item_id is None:
+        return None
+    if item_id in available_item_ids:
+        return item_id
+    item_text = str(item_id)
+    for candidate in available_item_ids:
+        if str(candidate) == item_text:
+            return candidate
+    return None
+
+
+def backtest_highlight_item_ids(
+    back_testing: dict[str, Any],
+    available_item_ids: list[Any],
+    *,
+    max_items: int = 4,
+) -> list[Any]:
+    """Return best/worst performer IDs from backtest JSON that exist in the sample data."""
+    if not available_item_ids or max_items <= 0:
+        return []
+
+    series_analysis = back_testing.get("series_analysis") or {}
+    resolved: list[Any] = []
+    for role in ("best_performer", "worst_performer"):
+        performer = series_analysis.get(role)
+        if not performer:
+            continue
+        item_id = _resolve_item_id(performer.get("item_id"), available_item_ids)
+        if item_id is not None and item_id not in resolved:
+            resolved.append(item_id)
+        if len(resolved) >= max_items:
+            break
+    return resolved[:max_items]
+
+
 def forecast_data_to_frame(forecast_data: list[dict[str, Any]]) -> pd.DataFrame:
     """Parse ``forecast_data`` rows from ``back_testing.json``."""
     if not forecast_data:
@@ -138,8 +175,102 @@ def _show_per_window_metrics(
 def _style_date_axis(ax: Any) -> None:
     plt, mdates = _matplotlib()
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d"))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=8))
     ax.tick_params(axis="x", labelsize=8, rotation=45)
     plt.setp(ax.get_xticklabels(), ha="right")
+
+
+def _target_column_name(data: pd.DataFrame) -> str:
+    return str(data.columns[0])
+
+
+def _point_forecast_column(predictions: pd.DataFrame) -> str:
+    if "0.5" in predictions.columns:
+        return "0.5"
+    if "mean" in predictions.columns:
+        return "mean"
+    raise ValueError("predictions must include a 'mean' or '0.5' forecast column")
+
+
+def plot_timeseries_forecasts(
+    data: pd.DataFrame,
+    predictions: pd.DataFrame,
+    *,
+    item_ids: list[Any] | None = None,
+    quantile_levels: list[float] | None = None,
+    max_history_length: int | None = None,
+    target: str | None = None,
+) -> None:
+    """Plot history and forecast quantiles (AutoGluon ``predictor.plot``-compatible axes)."""
+    plt, _ = _matplotlib()
+    quantile_levels = quantile_levels or [0.1, 0.9]
+    q_low, q_high = (str(level) for level in quantile_levels[:2])
+    point_column = _point_forecast_column(predictions)
+
+    if item_ids is None:
+        if hasattr(data, "item_ids"):
+            plot_ids = list(data.item_ids)[:4]
+        elif isinstance(data.index, pd.MultiIndex):
+            plot_ids = list(data.index.get_level_values(0).unique()[:4])
+        else:
+            plot_ids = [None]
+    else:
+        plot_ids = list(item_ids)
+
+    target_name = target or _target_column_name(data)
+    count = max(len(plot_ids), 1)
+    figure, axes = plt.subplots(1, count, figsize=(max(8.0, 4.0 * count), 4.5), squeeze=False)
+
+    for index, item_id in enumerate(plot_ids):
+        axis = axes[0, index]
+        if item_id is None:
+            history = data
+            preds = predictions
+        else:
+            history = data.loc[item_id]
+            preds = predictions.loc[item_id]
+
+        if max_history_length:
+            history = history.iloc[-max_history_length:]
+
+        axis.plot(history.index, history.iloc[:, 0], label="Observed", color=_NEUTRAL)
+        point_forecast = preds[point_column]
+        axis.plot(
+            preds.index,
+            point_forecast,
+            marker="s",
+            linestyle="--",
+            color=_ACCENT,
+            label="Forecast",
+        )
+
+        if q_low in preds.columns and q_high in preds.columns:
+            axis.fill_between(
+                preds.index,
+                preds[q_low],
+                preds[q_high],
+                alpha=0.1,
+                color=_ACCENT,
+                label=f"P{float(q_low) * 100:.0f}-P{float(q_high) * 100:.0f} interval",
+            )
+
+        if not preds.index.empty:
+            axis.axvline(
+                preds.index[0],
+                color=_CUTOFF,
+                linestyle=":",
+                alpha=0.8,
+                label="Forecast start",
+            )
+
+        title = str(item_id) if item_id is not None else target_name
+        axis.set(title=title, xlabel="Date", ylabel=target_name if index == 0 else "")
+        axis.legend(loc="best", fontsize=8)
+        axis.grid(linestyle="--", alpha=0.3)
+        _style_date_axis(axis)
+
+    figure.tight_layout(rect=[0, 0.08, 1, 0.96])
+    plt.show()
 
 
 def _interval_label(frame: pd.DataFrame) -> str:
@@ -189,11 +320,9 @@ def _draw_forecast(
     _style_date_axis(ax)
 
 
-def render_back_testing_charts(back_testing: dict[str, Any]) -> None:
-    """Render per-window metrics and best/worst holdout forecast panels."""
+def render_back_testing_metrics(back_testing: dict[str, Any]) -> None:
+    """Print per-window backtest scores and summary table (no plots)."""
     eval_metric = back_testing.get("eval_metric", "MASE")
-    target = back_testing.get("target", "target")
-
     per_window = back_testing.get("per_window_metrics") or []
     series_analysis = back_testing.get("series_analysis") or {}
     num_series = series_analysis.get("num_series_evaluated")
@@ -202,6 +331,14 @@ def render_back_testing_charts(back_testing: dict[str, Any]) -> None:
         eval_metric,
         num_series_evaluated=num_series if isinstance(num_series, int) else None,
     )
+
+
+def render_back_testing_forecast_charts(back_testing: dict[str, Any]) -> None:
+    """Render best/worst holdout forecast matplotlib panels."""
+    eval_metric = back_testing.get("eval_metric", "MASE")
+    target = back_testing.get("target", "target")
+    per_window = back_testing.get("per_window_metrics") or []
+    series_analysis = back_testing.get("series_analysis") or {}
 
     plotted_ids: set[Any] = set()
     plt, _ = _matplotlib()
@@ -246,6 +383,12 @@ def render_back_testing_charts(back_testing: dict[str, Any]) -> None:
         figure.suptitle(f"{heading} performer: {item_id}", fontsize=12)
         figure.tight_layout(rect=[0, 0.04, 1, 0.92])
         plt.show()
+
+
+def render_back_testing_charts(back_testing: dict[str, Any]) -> None:
+    """Render per-window metrics and best/worst holdout forecast panels."""
+    render_back_testing_metrics(back_testing)
+    render_back_testing_forecast_charts(back_testing)
 
 
 def notebook_backtest_charts_source() -> str:

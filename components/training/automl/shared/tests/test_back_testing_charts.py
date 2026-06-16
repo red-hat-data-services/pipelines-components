@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import ast
+from typing import Any
 
+import pandas as pd
 import pytest
 
 from ..back_testing_charts import (
     _draw_forecast,
     _interval_label,
     _show_per_window_metrics,
+    backtest_highlight_item_ids,
     forecast_data_to_frame,
     mean_window_metric,
     notebook_backtest_charts_source,
     per_window_metrics_table,
     pick_window_metric,
+    plot_timeseries_forecasts,
     render_back_testing_charts,
+    render_back_testing_forecast_charts,
+    render_back_testing_metrics,
 )
 
 
@@ -141,6 +147,74 @@ class TestBackTestingCharts:
         """Notebook injection source is valid Python."""
         ast.parse(notebook_backtest_charts_source())
 
+    def test_backtest_highlight_item_ids_prefers_best_and_worst(self):
+        """Plot helper returns performers that exist in the sample history."""
+        payload = {
+            "series_analysis": {
+                "best_performer": {"item_id": "north"},
+                "worst_performer": {"item_id": "south"},
+            }
+        }
+        assert backtest_highlight_item_ids(payload, ["north", "south", "east"]) == ["north", "south"]
+
+    def test_backtest_highlight_item_ids_resolves_string_ids(self):
+        """Numeric JSON ids match string sample ids."""
+        payload = {"series_analysis": {"best_performer": {"item_id": 101}}}
+        assert backtest_highlight_item_ids(payload, ["101", "102"]) == ["101"]
+
+    def test_backtest_highlight_item_ids_deduplicates_same_performer(self):
+        """Single-series backtests do not duplicate plot panels."""
+        payload = {
+            "series_analysis": {
+                "best_performer": {"item_id": "A"},
+                "worst_performer": {"item_id": "A"},
+            }
+        }
+        assert backtest_highlight_item_ids(payload, ["A", "B"]) == ["A"]
+
+    def test_render_back_testing_metrics_prints_overall(self, capsys):
+        """Metrics entry point prints table output without plotting."""
+        payload = {
+            "eval_metric": "MASE",
+            "per_window_metrics": [
+                {"window_id": 0, "cutoff": -6, "metrics": {"MASE": 0.38}},
+                {"window_id": 1, "cutoff": -4, "metrics": {"MASE": 0.42}},
+            ],
+            "series_analysis": {"num_series_evaluated": 3},
+        }
+        render_back_testing_metrics(payload)
+        output = capsys.readouterr().out
+        assert "Cutoff -6: MASE = 0.38" in output
+        assert "Overall MASE (mean across 2 validation windows, all series): 0.4" in output
+
+    def test_render_back_testing_forecast_charts_runs(self):
+        """Forecast charts entry point renders matplotlib panels only."""
+        pytest.importorskip("matplotlib")
+        import matplotlib
+
+        matplotlib.use("Agg", force=True)
+        import matplotlib.pyplot as plt
+
+        payload = {
+            "eval_metric": "MASE",
+            "target": "sales",
+            "per_window_metrics": [{"window_id": 0, "test_start": "2025-01-03"}],
+            "series_analysis": {
+                "best_performer": {
+                    "item_id": "A",
+                    "windows": [
+                        {
+                            "window_id": 0,
+                            "metrics": {"MAPE": 5.0},
+                            "forecast_data": self._sample_forecast_rows(),
+                        },
+                    ],
+                },
+            },
+        }
+        render_back_testing_forecast_charts(payload)
+        plt.close("all")
+
     def test_render_back_testing_charts_runs(self):
         """Orchestrator renders charts for a minimal payload."""
         pytest.importorskip("matplotlib")
@@ -190,3 +264,52 @@ class TestBackTestingCharts:
         }
         render_back_testing_charts(payload)
         plt.close("all")
+
+    def test_plot_timeseries_forecasts_styles_date_axis(self):
+        """Forecast plot uses rotated short date ticks and marks forecast points."""
+        pytest.importorskip("matplotlib")
+        import matplotlib
+
+        matplotlib.use("Agg", force=True)
+        import matplotlib.pyplot as plt
+
+        history_rows = []
+        for offset in range(10):
+            day = f"2025-02-{15 + offset:02d}"
+            history_rows.append({"sales": 100.0 + offset, "timestamp": day})
+        history = pd.DataFrame(history_rows)
+        history["timestamp"] = pd.to_datetime(history["timestamp"])
+        ts_df = history.set_index("timestamp")
+
+        forecast_rows = []
+        for offset in range(2):
+            day = f"2025-02-{25 + offset:02d}"
+            forecast_rows.append({"mean": 110.0 + offset, "0.1": 105.0, "0.9": 115.0, "timestamp": day})
+        forecasts = pd.DataFrame(forecast_rows)
+        forecasts["timestamp"] = pd.to_datetime(forecasts["timestamp"])
+        forecasts = forecasts.set_index("timestamp")
+
+        captured: list[Any] = []
+
+        def capture_show() -> None:
+            captured.append(plt.gcf())
+            plt.close("all")
+
+        original_show = plt.show
+        plt.show = capture_show
+        try:
+            plot_timeseries_forecasts(ts_df, forecasts, quantile_levels=[0.1, 0.9])
+        finally:
+            plt.show = original_show
+
+        assert captured
+        axis = captured[0].axes[0]
+        from matplotlib.dates import DateFormatter
+
+        assert isinstance(axis.xaxis.get_major_formatter(), DateFormatter)
+        labels = [label.get_rotation() for label in axis.get_xticklabels()]
+        assert labels and labels[0] == 45
+
+        forecast_line = next(line for line in axis.lines if line.get_label() == "Forecast")
+        assert forecast_line.get_marker() == "s"
+        assert len(forecast_line.get_xdata()) == 2
