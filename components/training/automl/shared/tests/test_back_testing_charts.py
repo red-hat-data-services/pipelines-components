@@ -165,7 +165,9 @@ class TestBackTestingCharts:
             target="sales",
             cutoff_start="2025-01-03",
         )
-        cutoff_lines = [line for line in axis.lines if line.get_linestyle() == "--" and line.get_color() in {"gray", "0.5"}]
+        cutoff_lines = [
+            line for line in axis.lines if line.get_linestyle() == "--" and line.get_color() in {"gray", "0.5"}
+        ]
         assert cutoff_lines
         cutoff_ts = pd.Timestamp(cutoff_lines[0].get_xdata()[0], tz="UTC").tz_convert(None)
         assert cutoff_ts == pd.Timestamp("2025-01-03 14:00:00")
