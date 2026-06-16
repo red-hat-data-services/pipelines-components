@@ -23,11 +23,21 @@ def isolated_sys_modules():
         _ag.__path__ = []
         _ag.__spec__ = None
         mocked_modules["autogluon"] = _ag
-        for sub in ("autogluon.tabular", "autogluon.core", "autogluon.core.metrics"):
+        for sub in (
+            "autogluon.tabular",
+            "autogluon.tabular.configs",
+            "autogluon.tabular.configs.hyperparameter_configs",
+            "autogluon.core",
+            "autogluon.core.metrics",
+        ):
             _m = mock.MagicMock()
             _m.__spec__ = None
-            if sub == "autogluon.core":
+            if sub in ("autogluon.tabular", "autogluon.tabular.configs", "autogluon.core"):
                 _m.__path__ = []
+            if sub == "autogluon.tabular.configs.hyperparameter_configs":
+                _m.get_hyperparameter_config = mock.MagicMock(
+                    return_value={"RF": [{"max_depth": None}], "XT": [{"max_depth": None}]}
+                )
             if sub == "autogluon.core.metrics":
                 _m.METRICS = {
                     "binary": {
@@ -288,15 +298,14 @@ class TestAutogluonModelsTrainingUnitTests:
             path=Path(workspace_path) / "autogluon_predictor",
             verbosity=2,
         )
-        mock_predictor_class.return_value.fit.assert_called_once_with(
-            train_data=mock_train_df,
-            num_stack_levels=1,
-            num_bag_folds=4,
-            use_bag_holdout=True,
-            holdout_frac=0.2,
-            time_limit=1800,
-            presets="medium_quality",
-        )
+        fit_call = mock_predictor_class.return_value.fit.call_args
+        assert fit_call[1]["train_data"] is mock_train_df
+        assert fit_call[1]["presets"] == "good_quality"
+        assert fit_call[1]["time_limit"] == 45 * 60
+        assert fit_call[1]["refit_full"] is False
+        assert fit_call[1]["set_best_to_refit_full"] is False
+        assert fit_call[1]["save_bag_folds"] is True
+        assert "hyperparameters" not in fit_call[1]
 
         # read_csv: train, test, extra
         assert mock_read_csv.call_count == 3
@@ -380,6 +389,59 @@ class TestAutogluonModelsTrainingUnitTests:
             # label column stripped from sample row
             assert "feature1" in nb_text
             assert "'target'" not in nb_text
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_speed_preset_fit_args(self, mock_predictor_class, mock_read_csv, tmp_path):
+        """Speed preset uses 1-hour time limit and the original fit args."""
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor_class.return_value.fit.return_value = mock_predictor
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_predictor.eval_metric = "r2"
+        _mock_leaderboard_top_models(mock_predictor, ["LightGBM_BAG_L1"])
+        mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.9}
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+        mock_predictor_clone.predict.return_value = mock.MagicMock()
+
+        mock_train_df, mock_test_df = _mock_csv_frame(), _mock_csv_frame()
+        mock_read_csv.side_effect = [mock_train_df, mock_test_df]
+
+        workspace_path = str(tmp_path / "ws")
+        Path(workspace_path).mkdir()
+        models_output_dir = str(tmp_path / "out")
+        Path(models_output_dir).mkdir()
+        mock_models_artifact = mock.MagicMock()
+        mock_models_artifact.path = models_output_dir
+        mock_models_artifact.metadata = {}
+
+        autogluon_models_training.python_func(
+            label_column="target",
+            task_type="regression",
+            top_n=1,
+            train_data_path="/tmp/train.csv",
+            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            workspace_path=workspace_path,
+            pipeline_name=PIPELINE_NAME,
+            run_id=RUN_ID,
+            sample_row=SAMPLE_ROW,
+            models_artifact=mock_models_artifact,
+            preset="speed",
+        )
+
+        fit_call = mock_predictor_class.return_value.fit.call_args
+        assert fit_call[1]["presets"] == "good_quality"  # AG internal name
+        assert fit_call[1]["time_limit"] == 45 * 60
+        assert fit_call[1]["refit_full"] is False
+        assert fit_call[1]["set_best_to_refit_full"] is False
+        assert fit_call[1]["save_bag_folds"] is True
+        assert "hyperparameters" not in fit_call[1]
+
+        context = mock_models_artifact.metadata["context"]
+        assert context["model_config"]["preset"] == "speed"
+        assert context["model_config"]["time_limit"] == 45 * 60
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
@@ -1310,6 +1372,23 @@ class TestAutogluonModelsTrainingUnitTests:
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
                 split_config=[],
+            )
+
+    def test_rejects_invalid_preset(self):
+        """Reject unknown preset value."""
+        with pytest.raises(ValueError, match="preset must be one of"):
+            autogluon_models_training.python_func(
+                label_column="target",
+                task_type="regression",
+                top_n=1,
+                train_data_path="/tmp/train.csv",
+                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                workspace_path="/tmp/ws",
+                pipeline_name=PIPELINE_NAME,
+                run_id=RUN_ID,
+                sample_row=SAMPLE_ROW,
+                models_artifact=self._minimal_artifact(),
+                preset="best_quality",
             )
 
     def test_rejects_whitespace_eval_metric(self):

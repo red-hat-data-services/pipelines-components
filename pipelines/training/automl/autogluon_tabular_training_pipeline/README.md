@@ -58,8 +58,9 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 | `label_column` | `str` | `None` | Name of the target/label column in the dataset. |
 | `task_type` | `str` | `None` | "binary", "multiclass", or "regression"; drives metrics and model types. |
 | `top_n` | `int` | `3` | Number of top models to select and refit (default: 3); positive integer from range [1, 10]. |
-| `positive_class` | `Optional[str]` | `None` | Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values. |
+| `positive_class` | `str` | `""` | Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values. |
 | `eval_metric` | `str` | `""` | Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification. |
+| `preset` | `str` | `speed` | Training quality tier. "speed" (default, 8 vCPU / 32 GiB) or "balanced" (may run more than 2x longer, 16 vCPU / 64 GiB). |
 
 ## Metadata 🗂️
 
@@ -75,7 +76,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
   - pipeline
   - automl
   - autogluon-tabular-training-pipeline
-- **Last Verified**: 2026-06-09 12:00:00+00:00
+- **Last Verified**: 2026-06-10 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
