@@ -19,6 +19,7 @@ USER 1001
 
 RUN pip install --no-cache-dir --no-deps .
 
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 RUN python -m scripts.generate_managed_pipelines.generate_managed_pipelines
 
 CMD ["python", "-m", "scripts.init_managed_pipelines.init_managed_pipelines"]
