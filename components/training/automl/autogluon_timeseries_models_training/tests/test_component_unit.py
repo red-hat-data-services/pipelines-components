@@ -163,7 +163,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert result.eval_metric == "MASE"
         assert result.predictor_path == "/tmp/workspace/timeseries_predictor"
         assert result.model_config["prediction_length"] == 24
-        assert result.model_config["presets"] == "fast_training"
+        assert result.model_config["presets"] == "speed"
         assert result.model_config["time_limit"] == 600
         assert result.model_config["known_covariates_names"] == []
         assert result.model_config["num_models_trained"] == 3
@@ -328,6 +328,27 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
                 prediction_length=0,
+            )
+
+    def test_rejects_invalid_preset(self, mock_artifacts):
+        """Preset must be one of the valid AutoGluon quality tiers."""
+        models_artifact, extra_train_path = mock_artifacts
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+        with pytest.raises(ValueError, match="preset must be one of"):
+            autogluon_timeseries_models_training.python_func(
+                target="sales",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                train_data_path="/tmp/train.csv",
+                test_data=test_data,
+                top_n=1,
+                workspace_path="/tmp/workspace",
+                pipeline_name="ts-pipeline-123",
+                run_id="run-123",
+                models_artifact=models_artifact,
+                extra_train_data_path=extra_train_path,
+                preset="best_quality",
             )
 
     @mock.patch("pandas.read_csv")
