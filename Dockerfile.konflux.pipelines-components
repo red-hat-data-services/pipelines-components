@@ -1,3 +1,4 @@
+## Renovate enabled
 FROM registry.redhat.io/ubi9/python-312@sha256:3a4632ba423b5156713e0bb01ff0cf973ab0c9d234408bc297bb57dc59671a3d
 
 WORKDIR /app
