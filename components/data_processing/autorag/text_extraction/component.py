@@ -357,6 +357,7 @@ def text_extraction(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
     with status:
+        status.set_metadata(display_name="Text Extraction Status")
         component_status.metadata["display_name"] = "Text Extraction Status"
         descriptor_path = Path(documents_descriptor.path) / DOCUMENTS_DESCRIPTOR_FILENAME
 

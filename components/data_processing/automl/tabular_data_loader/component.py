@@ -132,6 +132,7 @@ def automl_data_loader(  # noqa: D417
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "automl_data_loader")
     with status:
+        status.set_metadata(display_name="Data Loader Status")
         component_status.metadata["display_name"] = "Data Loader Status"
         status.record("prepare_data", "started")
 

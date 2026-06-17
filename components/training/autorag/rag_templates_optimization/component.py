@@ -551,6 +551,7 @@ def rag_templates_optimization(
             pass
 
     with status:
+        status.set_metadata(display_name="RAG Templates Optimization Status")
         component_status.metadata["display_name"] = "RAG Templates Optimization Status"
         with status.stage("optimize_templates", steps=optimize_templates_steps):
             if not ogx_client_base_url or not ogx_client_api_key:

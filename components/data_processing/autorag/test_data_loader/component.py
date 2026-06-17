@@ -78,6 +78,7 @@ def test_data_loader(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "test_data_loader")
     with status:
+        status.set_metadata(display_name="Test Data Loader Status")
         component_status.metadata["display_name"] = "Test Data Loader Status"
         with status.stage("load_benchmark"):
             if not test_data_bucket_name:

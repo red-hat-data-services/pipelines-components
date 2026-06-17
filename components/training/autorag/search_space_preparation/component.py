@@ -336,6 +336,7 @@ def search_space_preparation(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "search_space_preparation")
     with status:
+        status.set_metadata(display_name="Search Space Preparation Status")
         component_status.metadata["display_name"] = "Search Space Preparation Status"
         with status.stage("prepare_search_space"):
             if not ogx_client_base_url or not ogx_client_api_key:

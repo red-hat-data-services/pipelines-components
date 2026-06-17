@@ -338,6 +338,7 @@ def leaderboard_evaluation(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "leaderboard_evaluation")
     with status:
+        status.set_metadata(display_name="Leaderboard Evaluation Status")
         component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
         with status.stage("build_leaderboard"):
             if not rag_patterns_dir.is_dir():

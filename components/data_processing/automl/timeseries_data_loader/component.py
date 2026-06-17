@@ -97,6 +97,7 @@ def timeseries_data_loader(
 
     status = ComponentStatusTracker(component_status.path, "timeseries_data_loader")
     with status:
+        status.set_metadata(display_name="Timeseries Data Loader Status")
         component_status.metadata["display_name"] = "Timeseries Data Loader Status"
         status.record("prepare_data", "started")
 

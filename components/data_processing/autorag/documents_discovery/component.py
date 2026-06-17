@@ -86,6 +86,7 @@ def documents_discovery(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
     with status:
+        status.set_metadata(display_name="Documents Discovery Status")
         component_status.metadata["display_name"] = "Documents Discovery Status"
         with status.stage("discover_documents"):
             s3_creds = {k: os.environ.get(k) for k in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT"]}

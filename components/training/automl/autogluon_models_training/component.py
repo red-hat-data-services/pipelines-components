@@ -162,6 +162,7 @@ def autogluon_models_training(
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "autogluon_models_training")
     with status:
+        status.set_metadata(display_name="Models Training Status")
         component_status.metadata["display_name"] = "Models Training Status"
         # Stage: load_data
         status.record("load_data", "started")

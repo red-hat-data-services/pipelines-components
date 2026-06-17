@@ -75,6 +75,7 @@ def leaderboard_evaluation(
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "leaderboard_evaluation")
     with status:
+        status.set_metadata(display_name="Leaderboard Evaluation Status")
         component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
         logger = logging.getLogger(__name__)
 

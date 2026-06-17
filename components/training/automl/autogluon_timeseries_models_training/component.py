@@ -93,6 +93,7 @@ def autogluon_timeseries_models_training(
 
     status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
     with status:
+        status.set_metadata(display_name="Timeseries Models Training Status")
         component_status.metadata["display_name"] = "Timeseries Models Training Status"
         TOP_N_MAX = 7
         VALID_PRESETS = {"speed", "balanced"}
