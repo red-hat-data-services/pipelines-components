@@ -65,7 +65,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.6.3
+    - Name: ai4rag, Version: ~=0.6.4
     - Name: pyYaml, Version: >=6.0.0
     - Name: pandas, Version: >=2.0.0
 - **Tags**:

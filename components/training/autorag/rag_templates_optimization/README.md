@@ -78,8 +78,8 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.6.3
-    - Name: OGX API, Version: >=1.0.0
+    - Name: ai4rag, Version: ~=0.6.4
+    - Name: OGX API, Version: ~=1.1.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
 - **Tags**:
