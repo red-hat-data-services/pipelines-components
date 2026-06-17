@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -11,25 +12,42 @@ def _coerce_sample_timestamps(score_df: pd.DataFrame, timestamp_column: str) -> 
     """Parse sample-row timestamps written as epoch milliseconds by ``DataFrame.to_json``."""
     series = score_df[timestamp_column]
     if not pd.api.types.is_numeric_dtype(series):
-        return score_df
+        out = score_df.copy()
+        out[timestamp_column] = pd.to_datetime(series, errors="coerce")
+        return out
 
     numeric = pd.to_numeric(series, errors="coerce")
     if numeric.isna().any():
-        return score_df
+        out = score_df.copy()
+        out[timestamp_column] = pd.to_datetime(series, errors="coerce")
+        return out
 
-    if numeric.max() > 1e11:
+    if numeric.abs().max() > 1e11:
         out = score_df.copy()
         out[timestamp_column] = pd.to_datetime(numeric, unit="ms")
         return out
 
-    return score_df
+    out = score_df.copy()
+    out[timestamp_column] = pd.to_datetime(series, errors="coerce")
+    return out
+
+
+def _is_datetime_series(series: pd.Series) -> bool:
+    """Return whether a series holds datetime values (works with test pandas mocks)."""
+    dtype = getattr(series, "dtype", None)
+    if dtype is not None and str(dtype).startswith("datetime64"):
+        return True
+    api = getattr(pd, "api", None)
+    if api is not None:
+        return api.types.is_datetime64_any_dtype(series)
+    return False
 
 
 def _json_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     """Convert a DataFrame to JSON-safe row dicts (ISO timestamps)."""
     out = df.copy()
     for col in out.columns:
-        if pd.api.types.is_datetime64_any_dtype(out[col]):
+        if _is_datetime_series(out[col]):
             out[col] = out[col].dt.strftime("%Y-%m-%dT%H:%M:%S.%f").str.rstrip("0").str.rstrip(".")
     return out.to_dict(orient="records")
 
@@ -141,3 +159,10 @@ def build_predict_sample_artifact(
         "history": _json_records(score_df),
         "known_covariates": known_covariates_records,
     }
+
+
+def notebook_timeseries_sample_helpers_source() -> str:
+    """Return sample/covariate helpers copied into generated inference notebooks."""
+    source = Path(__file__).read_text(encoding="utf-8")
+    end = source.index("\n\ndef build_predict_sample_artifact")
+    return source[:end]

@@ -7,8 +7,10 @@ import ast
 import pandas as pd
 
 from ..timeseries_notebook_utils import (
+    _coerce_sample_timestamps,
     build_predict_sample_artifact,
     fill_known_covariates_on_future_frame,
+    notebook_timeseries_sample_helpers_source,
 )
 
 
@@ -131,6 +133,48 @@ class TestFillKnownCovariatesOnFutureFrame:
             assert "missing from ts_df" in str(exc)
         else:
             raise AssertionError("Expected ValueError for missing covariate column")
+
+
+class TestCoerceSampleTimestamps:
+    """Tests for epoch-millisecond timestamp parsing in notebook samples."""
+
+    def test_parses_positive_epoch_milliseconds(self):
+        """Post-1970 epoch ms values are parsed as UTC timestamps."""
+        frame = pd.DataFrame({"timestamp": [1704067200000, 1704070800000]})
+        result = _coerce_sample_timestamps(frame, "timestamp")
+        assert result["timestamp"].tolist() == [
+            pd.Timestamp("2024-01-01 00:00:00"),
+            pd.Timestamp("2024-01-01 01:00:00"),
+        ]
+
+    def test_parses_negative_epoch_milliseconds(self):
+        """Pre-1970 epoch ms values (fractional-year hourly data) are parsed correctly."""
+        frame = pd.DataFrame({"timestamp": [-6939997200000, -6939982800000]})
+        result = _coerce_sample_timestamps(frame, "timestamp")
+        assert result["timestamp"].tolist() == [
+            pd.Timestamp("1750-01-29 23:00:00"),
+            pd.Timestamp("1750-01-30 03:00:00"),
+        ]
+
+    def test_leaves_iso_strings_unchanged(self):
+        """ISO timestamp strings are parsed without treating them as epoch integers."""
+        frame = pd.DataFrame({"timestamp": ["2024-01-01T00:00:00", "2024-01-01T01:00:00"]})
+        result = _coerce_sample_timestamps(frame, "timestamp")
+        assert result["timestamp"].tolist() == [
+            pd.Timestamp("2024-01-01 00:00:00"),
+            pd.Timestamp("2024-01-01 01:00:00"),
+        ]
+
+
+class TestNotebookTimeseriesSampleHelpersSource:
+    """Tests for helper source embedded in generated notebooks."""
+
+    def test_embedded_source_includes_runtime_helpers(self):
+        """Notebook helper bundle exposes coercion and covariate fill helpers."""
+        source = notebook_timeseries_sample_helpers_source()
+        assert "def _coerce_sample_timestamps" in source
+        assert "def fill_known_covariates_on_future_frame" in source
+        assert "def build_predict_sample_artifact" not in source
 
 
 class TestBuildPredictSampleArtifact:

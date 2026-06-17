@@ -160,6 +160,39 @@ class TestHoldoutHelpers:
         assert rows[0]["predicted"] == 105.0
         assert rows[0]["lower_bound"] == 95.0
         assert rows[0]["upper_bound"] == 115.0
+        assert rows[0]["lower_quantile"] == 0.1
+        assert rows[0]["upper_quantile"] == 0.9
+
+    def test_quantile_bounds_prefer_p10_p90(self):
+        """P10/P90 quantiles are preferred over other levels when all are present."""
+        from ..back_testing import _quantile_bounds
+
+        predictions = pd.DataFrame(
+            {"mean": [1.0], "0.1": [0.5], "0.2": [0.6], "0.8": [1.4], "0.9": [1.5]},
+            index=[0],
+        )
+        lower, upper = _quantile_bounds(predictions)
+        assert lower == "0.1"
+        assert upper == "0.9"
+
+    def test_quantile_bounds_single_quantile_omits_upper(self):
+        """A lone quantile column is used only as the lower bound (no collapsed band)."""
+        from ..back_testing import _quantile_bounds
+
+        predictions = pd.DataFrame({"mean": [1.0], "0.5": [1.0]}, index=[0])
+        lower, upper = _quantile_bounds(predictions)
+        assert lower == "0.5"
+        assert upper is None
+
+    def test_quantile_bounds_picks_distinct_lower_and_upper(self):
+        """Lower and upper bounds are never the same quantile column."""
+        from ..back_testing import _quantile_bounds
+
+        predictions = pd.DataFrame({"0.1": [0.9], "0.5": [1.0], "0.9": [1.1]}, index=[0])
+        lower, upper = _quantile_bounds(predictions)
+        assert lower == "0.1"
+        assert upper == "0.9"
+        assert lower != upper
 
     def test_forecast_data_limits_to_holdout_horizon(self):
         """Forecast rows cover holdout steps only, not the full prediction window history."""
@@ -418,6 +451,7 @@ class TestBuildBackTestingJson:
         assert payload["model_name"] == "DeepAR_FULL"
         assert payload["num_val_windows"] == 1
         assert payload["per_window_metrics"][0]["test_start"] == "2025-01-03"
+        assert payload["per_window_metrics"][0]["cutoff"] == -2
         assert payload["per_window_metrics"][0]["metrics"]["MASE"] == 0.42
         assert payload["series_analysis"]["num_series_evaluated"] == 2
         assert payload["series_analysis"]["best_performer"]["item_id"] == "good"

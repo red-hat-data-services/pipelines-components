@@ -93,7 +93,6 @@ multiprocess==0.70.16
 networkx==3.6.1
 numpy==2.4.6
 oauthlib==3.3.1
-ogx_client==1.0.2
 onnxruntime==1.24.4
 openpyxl==3.1.5
 opentelemetry-api==1.42.1
