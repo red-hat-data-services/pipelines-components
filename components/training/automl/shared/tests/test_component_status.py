@@ -95,13 +95,6 @@ class TestComponentStatusTracker:
         assert data["stages"][-1]["status"] == "failed"
         assert "bad split" in data["stages"][-1]["error"]
 
-    def test_disabled_tracker_skips_save(self, tmp_path: Path) -> None:
-        """When artifact_path is None, save() is a no-op."""
-        tracker = ComponentStatusTracker(None, "automl_data_loader")
-        tracker.record("prepare_data", "completed")
-        tracker.save()
-        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
-
     def test_stage_skips_auto_complete_when_completed_inside_block(self, tmp_path: Path) -> None:
         """stage() does not overwrite a completed record written inside the block."""
         tracker = ComponentStatusTracker(str(tmp_path), "autogluon_models_training")

@@ -15,7 +15,7 @@ _AUTORAG_SHARED = Path(__file__).parents[3] / "training" / "autorag" / "shared"
 def text_extraction(
     documents_descriptor: dsl.Input[dsl.Artifact],
     extracted_text: dsl.Output[dsl.Artifact],
-    component_status: dsl.Output[dsl.Artifact] = None,
+    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     error_tolerance: Optional[float] = None,
     max_extraction_workers: Optional[int] = None,
@@ -357,8 +357,7 @@ def text_extraction(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
     with status:
-        if component_status is not None:
-            component_status.metadata["display_name"] = "Text Extraction Status"
+        component_status.metadata["display_name"] = "Text Extraction Status"
         descriptor_path = Path(documents_descriptor.path) / DOCUMENTS_DESCRIPTOR_FILENAME
 
         with status.stage("extract_documents"):

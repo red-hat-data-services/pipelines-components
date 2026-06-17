@@ -65,16 +65,14 @@ STATUS_FAILED = "failed"
 class ComponentStatusTracker:
     """Track stage-level progress within a single AutoRAG component."""
 
-    def __init__(self, artifact_path: str | None, component_id: str) -> None:
+    def __init__(self, artifact_path: str, component_id: str) -> None:
         """Initialize the status tracker.
 
         Args:
-            artifact_path: Path to the KFP artifact directory where status.json will be written.
-                When ``None``, tracking is disabled (e.g. direct unit-test invocations without a mock artifact).
+            artifact_path: Path to the KFP artifact directory where component_status.json will be written.
             component_id: Unique component identifier (e.g., "test_data_loader").
         """
-        self._enabled = artifact_path is not None
-        self.artifact_path = Path(artifact_path) if self._enabled else Path(".")
+        self.artifact_path = Path(artifact_path)
         self.component_id = component_id
         self.stages: list[dict[str, Any]] = []
         self.started_at = utc_now_z()
@@ -110,9 +108,6 @@ class ComponentStatusTracker:
 
     def save(self) -> None:
         """Write the final status to the artifact."""
-        if not self._enabled:
-            return
-
         self.artifact_path.mkdir(parents=True, exist_ok=True)
 
         data = {
@@ -258,9 +253,16 @@ def bootstrap_status_tracker(
 
 
 def component_status_tracker(component_status: Any, component_id: str) -> ComponentStatusTracker:
-    """Build a tracker from an optional KFP ``component_status`` output artifact."""
-    artifact_path = component_status.path if component_status is not None else None
-    return ComponentStatusTracker(artifact_path, component_id)
+    """Build a tracker from a KFP component_status output artifact.
+
+    Args:
+        component_status: KFP output artifact for component status tracking.
+        component_id: Unique component identifier.
+
+    Returns:
+        Configured ComponentStatusTracker instance.
+    """
+    return ComponentStatusTracker(component_status.path, component_id)
 
 
 def load_component_status(artifact_path: str) -> dict[str, Any]:

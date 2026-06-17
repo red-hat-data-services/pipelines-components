@@ -33,19 +33,6 @@ class TestComponentStatusTracker:
         assert data["stages"][0]["status"] == "completed"
         assert data["stages"][0]["rows"] == 5
 
-    def test_disabled_tracker_skips_save(self, tmp_path: Path) -> None:
-        """When artifact_path is None, save() is a no-op."""
-        tracker = ComponentStatusTracker(None, "test_data_loader")
-        tracker.record("load_benchmark", "completed")
-        tracker.save()
-        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
-
-    def test_component_status_tracker_from_none(self, tmp_path: Path) -> None:
-        """component_status_tracker() accepts a missing artifact for unit tests."""
-        tracker = component_status_tracker(None, "documents_discovery")
-        tracker.record("discover_documents", "completed")
-        tracker.save()
-        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
 
     def test_context_manager_marks_failed_and_saves(self, tmp_path: Path) -> None:
         """Context manager marks active stage failed and persists status on exception."""

@@ -61,16 +61,14 @@ class ComponentStatusTracker:
     Each component independently tracks its stages and metadata.
     """
 
-    def __init__(self, artifact_path: str | None, component_id: str) -> None:
+    def __init__(self, artifact_path: str, component_id: str) -> None:
         """Initialize the status tracker.
 
         Args:
-            artifact_path: Path to the KFP artifact directory where status.json will be written.
-                When ``None``, tracking is disabled (e.g. unit tests without a mock artifact).
+            artifact_path: Path to the KFP artifact directory where component_status.json will be written.
             component_id: Unique component identifier (e.g., "autogluon_models_training").
         """
-        self._enabled = artifact_path is not None
-        self.artifact_path = Path(artifact_path) if self._enabled else Path(".")
+        self.artifact_path = Path(artifact_path)
         self.component_id = component_id
         self.stages: list[dict[str, Any]] = []
         self.started_at = utc_now_z()
@@ -131,9 +129,6 @@ class ComponentStatusTracker:
         Creates the artifact directory if needed and writes component_status.json
         with all recorded stages and metadata.
         """
-        if not self._enabled:
-            return
-
         self.artifact_path.mkdir(parents=True, exist_ok=True)
 
         data = {

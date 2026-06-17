@@ -17,7 +17,7 @@ def search_space_preparation(
     test_data: dsl.Input[dsl.Artifact],
     extracted_text: dsl.Input[dsl.Artifact],
     search_space_prep_report: dsl.Output[dsl.Artifact],
-    component_status: dsl.Output[dsl.Artifact] = None,
+    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     embedding_models: Optional[List] = None,
     generation_models: Optional[List] = None,
@@ -336,8 +336,7 @@ def search_space_preparation(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "search_space_preparation")
     with status:
-        if component_status is not None:
-            component_status.metadata["display_name"] = "Search Space Preparation Status"
+        component_status.metadata["display_name"] = "Search Space Preparation Status"
         with status.stage("prepare_search_space"):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError("OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY environment variables must be set.")

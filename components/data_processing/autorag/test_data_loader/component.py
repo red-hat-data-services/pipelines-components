@@ -15,9 +15,9 @@ _AUTORAG_SHARED = Path(__file__).parents[3] / "training" / "autorag" / "shared"
 def test_data_loader(
     test_data_bucket_name: str,
     test_data_path: str,
+    component_status: dsl.Output[dsl.Artifact],
     benchmark_sample_size: int = 25,
     test_data: dsl.Output[dsl.Artifact] = None,
-    component_status: dsl.Output[dsl.Artifact] = None,
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
 ):
     """Download test data JSON from S3 and sample it for benchmarking.
@@ -78,8 +78,7 @@ def test_data_loader(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "test_data_loader")
     with status:
-        if component_status is not None:
-            component_status.metadata["display_name"] = "Test Data Loader Status"
+        component_status.metadata["display_name"] = "Test Data Loader Status"
         with status.stage("load_benchmark"):
             if not test_data_bucket_name:
                 raise TypeError("test_data_bucket_name must be a non-empty string")

@@ -19,8 +19,8 @@ def rag_templates_optimization(
     rag_patterns: dsl.Output[dsl.Artifact],
     test_data_key: Optional[str],
     vector_io_provider_id: str,
+    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
-    component_status: dsl.Output[dsl.Artifact] = None,
     optimization_settings: Optional[dict] = None,
     input_data_key: Optional[str] = "",
 ):
@@ -551,8 +551,7 @@ def rag_templates_optimization(
             pass
 
     with status:
-        if component_status is not None:
-            component_status.metadata["display_name"] = "RAG Templates Optimization Status"
+        component_status.metadata["display_name"] = "RAG Templates Optimization Status"
         with status.stage("optimize_templates", steps=optimize_templates_steps):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError(
