@@ -692,7 +692,7 @@ def autogluon_models_training(
         with open(html_artifact.path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        html_artifact.metadata["data"] = leaderboard_df.to_dict()
+        html_artifact.metadata["data"] = leaderboard_df.to_json(orient="records")
         html_artifact.metadata["display_name"] = "automl_leaderboard"
         status.record(
             "build_leaderboard",

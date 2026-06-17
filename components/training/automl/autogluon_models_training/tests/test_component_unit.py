@@ -1774,6 +1774,13 @@ class TestAutogluonModelsTrainingUnitTests:
         # context["best_model_name"] matches the return value
         assert mock_models_artifact.metadata["context"]["best_model_name"] == result.best_model_name
 
+        # metadata["data"] must be a JSON string with string keys (MLMD Struct requirement)
+        data_raw = html_artifact.metadata["data"]
+        assert isinstance(data_raw, str), "html_artifact.metadata['data'] must be a JSON string"
+        data_parsed = json.loads(data_raw)
+        assert isinstance(data_parsed, list), "parsed data must be a list of records"
+        assert all(isinstance(k, str) for record in data_parsed for k in record), "all record keys must be strings"
+
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_leaderboard_best_model_name_in_context(self, mock_predictor_class, mock_read_csv, tmp_path):

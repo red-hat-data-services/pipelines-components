@@ -1,8 +1,8 @@
-"""Shared leaderboard HTML-building utilities for AutoML evaluation components.
+"""Shared leaderboard HTML-building utilities for AutoML training components.
 
-These helpers are embedded into leaderboard component containers via
-``embedded_artifact_path`` and imported with bare module imports inside each
-component body (KFP adds the embedded directory to ``sys.path`` at runtime).
+Imported as a package module inside both autogluon_models_training and
+autogluon_timeseries_models_training to generate the ranked HTML leaderboard
+at the end of their Phase C.
 """
 
 import html as _html_module

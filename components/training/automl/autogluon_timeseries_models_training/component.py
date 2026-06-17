@@ -487,6 +487,7 @@ def autogluon_timeseries_models_training(
                 }
             )
 
+        # AutoGluon negates error metrics (e.g. MASE -> -MASE) so descending = best model first.
         leaderboard_df = pd.DataFrame(leaderboard_rows).sort_values(by=eval_metric, ascending=False)
         n = len(leaderboard_df)
         leaderboard_df.index = pd.RangeIndex(start=1, stop=n + 1, name="rank")
@@ -508,7 +509,7 @@ def autogluon_timeseries_models_training(
         with open(html_artifact.path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        html_artifact.metadata["data"] = leaderboard_df.to_dict()
+        html_artifact.metadata["data"] = leaderboard_df.to_json(orient="records")
         html_artifact.metadata["display_name"] = "automl_leaderboard"
         status.record(
             "build_leaderboard",
