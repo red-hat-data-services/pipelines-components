@@ -1,3 +1,0 @@
-pypdfium2==5.6.0
-ai4rag==0.6.3
-ogx_client==1.0.0

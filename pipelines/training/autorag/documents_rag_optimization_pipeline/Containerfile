@@ -8,10 +8,7 @@ FROM ${DOCLING_LAYOUT_MODELCAR} AS docling-layout-modelcar
 FROM ${DOCLING_MODELS_MODELCAR} AS docling-models-modelcar
 FROM ${BASE_IMAGE}
 
-COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi-whl.txt \
-     /tmp/
+COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt /tmp/
 
 COPY pipelines/training/autorag/documents_rag_optimization_pipeline/artifacts.lock.yaml \
      pipelines/training/autorag/documents_rag_optimization_pipeline/install_sqlite_from_source.sh \
@@ -28,8 +25,6 @@ USER default
 
 ## TODO: Ensure build isolation
 RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple --no-cache-dir -r /tmp/requirements.txt
-RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
-RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi-whl.txt
 
 # Docling models for offline text extraction (RHAI modelcar images; /models/ -> docling-project--* layout).
 # Must match DOCLING_ARTIFACTS_PATH. Do not use /opt/docling-artifacts on aipcc: non-root RUN cannot mkdir there.
