@@ -11,7 +11,6 @@ from kfp_components.components.training.autorag.shared.component_status import (
     ComponentStatusEncoder,
     ComponentStatusTracker,
     bootstrap_status_tracker,
-    component_status_tracker,
     load_component_status,
     load_embedded_component_status_module,
 )
@@ -32,7 +31,6 @@ class TestComponentStatusTracker:
         assert len(data["stages"]) == 1
         assert data["stages"][0]["status"] == "completed"
         assert data["stages"][0]["rows"] == 5
-
 
     def test_context_manager_marks_failed_and_saves(self, tmp_path: Path) -> None:
         """Context manager marks active stage failed and persists status on exception."""
