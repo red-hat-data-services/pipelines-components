@@ -388,13 +388,6 @@ def timeseries_data_loader(
                 "each series has enough train rows for the selection segment."
             )
 
-        status.record(
-            "split_and_export",
-            "completed",
-            test_size=test_size,
-            selection_train_size=selection_train_size,
-        )
-
         # Save test dataset to artifact
         test_df.to_csv(sampled_test_dataset.path, index=False)
 
@@ -403,6 +396,13 @@ def timeseries_data_loader(
 
         selection_train_df.to_csv(selection_path, index=False)
         extra_train_df.to_csv(extra_path, index=False)
+
+        status.record(
+            "split_and_export",
+            "completed",
+            test_size=test_size,
+            selection_train_size=selection_train_size,
+        )
 
         logger.info(
             "Timeseries loader: %s rows from s3://%s/%s; split selection=%s extra=%s test=%s",
@@ -421,9 +421,6 @@ def timeseries_data_loader(
             "test_size": test_size,
             "selection_train_size": selection_train_size,
         }
-
-        status.record("write_outputs", "started")
-        status.record("write_outputs", "completed")
 
         # Sample rows for downstream use (ISO timestamps when supported; JSON string to avoid NaN issues)
         sample_tail = test_df.tail(min(5, len(test_df)))
