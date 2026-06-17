@@ -163,6 +163,9 @@ def test_data_loader(
                 record_count = len(benchmark_data)
                 logger.info("No sampling applied; record count: %s.", record_count)
 
+    if component_status is not None:
+        component_status.metadata["display_name"] = "Test Data Loader Status"
+
 
 if __name__ == "__main__":
     from kfp.compiler import Compiler

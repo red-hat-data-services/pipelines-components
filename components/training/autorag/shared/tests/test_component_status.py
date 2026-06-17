@@ -81,6 +81,12 @@ class TestComponentStatusTracker:
         assert run_stage["status"] == "completed"
         assert run_stage["max_rag_patterns"] == 8
 
+    def test_utc_now_z_ends_with_z(self) -> None:
+        """Timestamps use UTC ISO-8601 with Z suffix."""
+        from kfp_components.components.training.autorag.shared.component_status import utc_now_z
+
+        assert utc_now_z().endswith("Z")
+
 
 class TestComponentStatusEncoder:
     """Tests for JSON encoding of status metadata values."""

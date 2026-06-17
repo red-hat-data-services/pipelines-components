@@ -87,12 +87,16 @@ def test_timeseries_model_selection_steps_match_tabular():
     )
     tabular_steps = next(s for s in tabular["stages"] if s["id"] == "model_selection")["steps"]
     timeseries_steps = next(s for s in timeseries["stages"] if s["id"] == "model_selection")["steps"]
-    assert timeseries_steps == tabular_steps == [
-        "feature_engineering",
-        "model_training",
-        "stacking",
-        "model_evaluation",
-    ]
+    assert (
+        timeseries_steps
+        == tabular_steps
+        == [
+            "feature_engineering",
+            "model_training",
+            "stacking",
+            "evaluation",
+        ]
+    )
 
 
 def test_init_seeds_full_pipeline_as_pending(tmp_path):
@@ -143,7 +147,7 @@ def test_init_copies_catalog_metadata_from_manifest(tmp_path):
         "feature_engineering",
         "model_training",
         "stacking",
-        "model_evaluation",
+        "evaluation",
     ]
 
 
@@ -186,15 +190,13 @@ def test_record_stage_autofills_steps_from_manifest_on_completed(tmp_path):
         "feature_engineering",
         "model_training",
         "stacking",
-        "model_evaluation",
+        "evaluation",
     ]
     assert model_selection["top_n"] == 2
     assert "description" in model_selection
     record_stage(ws, COMPONENT_DATA_LOADER, "prepare_data", STATUS_COMPLETED)
     loader_stage = next(
-        s
-        for s in _component_by_id(load_run_status(ws), COMPONENT_DATA_LOADER)["stages"]
-        if s["id"] == "prepare_data"
+        s for s in _component_by_id(load_run_status(ws), COMPONENT_DATA_LOADER)["stages"] if s["id"] == "prepare_data"
     )
     assert "steps" not in loader_stage
 

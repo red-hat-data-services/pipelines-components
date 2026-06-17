@@ -192,6 +192,9 @@ def documents_discovery(
 
             logger.info("Documents descriptor written to %s", descriptor_path)
 
+    if component_status is not None:
+        component_status.metadata["display_name"] = "Documents Discovery Status"
+
 
 if __name__ == "__main__":
     from kfp.compiler import Compiler

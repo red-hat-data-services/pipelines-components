@@ -31,7 +31,7 @@
             "feature_engineering",
             "model_training",
             "stacking",
-            "model_evaluation"
+            "evaluation"
           ]
         },
         {

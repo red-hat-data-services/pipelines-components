@@ -343,7 +343,6 @@ def automl_data_loader(  # noqa: D417
                 f"Available columns: {list(sampled_dataframe.columns)}"
             )
 
-
         sampled_dataframe.replace([math.inf, -math.inf], float("nan"), inplace=True)
 
         n_before_dedup = len(sampled_dataframe)

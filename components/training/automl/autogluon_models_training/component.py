@@ -254,7 +254,7 @@ def autogluon_models_training(
             "completed",
             top_n=top_n,
             selected_models=top_models,
-            steps=["feature_engineering", "model_training", "stacking", "model_evaluation"],
+            steps=["feature_engineering", "model_training", "stacking", "evaluation"],
         )
 
         model_config = {

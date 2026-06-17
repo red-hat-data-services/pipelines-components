@@ -389,6 +389,9 @@ def search_space_preparation(
             with open(search_space_prep_report.path, "w") as report_file:
                 yml.safe_dump(verbose_search_space_repr, report_file)
 
+    if component_status is not None:
+        component_status.metadata["display_name"] = "Search Space Preparation Status"
+
 
 if __name__ == "__main__":
     Compiler().compile(

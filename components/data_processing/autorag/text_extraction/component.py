@@ -464,6 +464,9 @@ def text_extraction(
             )
             raise_if_threshold_exceeded(all_error_details, total_docs, error_tolerance)
 
+    if component_status is not None:
+        component_status.metadata["display_name"] = "Text Extraction Status"
+
 
 if __name__ == "__main__":
     from kfp.compiler import Compiler

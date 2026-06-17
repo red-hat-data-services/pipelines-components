@@ -518,6 +518,9 @@ def leaderboard_evaluation(
             with open(html_artifact.path, "w", encoding="utf-8") as f:
                 f.write(html_content)
 
+    if component_status is not None:
+        component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
+
 
 if __name__ == "__main__":
     from kfp.compiler import Compiler

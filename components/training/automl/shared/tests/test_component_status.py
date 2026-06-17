@@ -8,8 +8,10 @@ from pathlib import Path
 import pytest
 from kfp_components.components.training.automl.shared.component_status import (
     COMPONENT_STATUS_FILENAME,
+    ComponentStatusEncoder,
     ComponentStatusTracker,
     load_component_status,
+    utc_now_z,
 )
 
 
@@ -92,3 +94,59 @@ class TestComponentStatusTracker:
         data = json.loads((tmp_path / COMPONENT_STATUS_FILENAME).read_text(encoding="utf-8"))
         assert data["stages"][-1]["status"] == "failed"
         assert "bad split" in data["stages"][-1]["error"]
+
+    def test_disabled_tracker_skips_save(self, tmp_path: Path) -> None:
+        """When artifact_path is None, save() is a no-op."""
+        tracker = ComponentStatusTracker(None, "automl_data_loader")
+        tracker.record("prepare_data", "completed")
+        tracker.save()
+        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
+
+    def test_stage_skips_auto_complete_when_completed_inside_block(self, tmp_path: Path) -> None:
+        """stage() does not overwrite a completed record written inside the block."""
+        tracker = ComponentStatusTracker(str(tmp_path), "autogluon_models_training")
+        with tracker.stage("model_selection", steps=["feature_engineering"]):
+            tracker.record("model_selection", "completed", top_n=3)
+        tracker.save()
+
+        data = load_component_status(str(tmp_path))
+        model_stage = next(stage for stage in data["stages"] if stage["id"] == "model_selection")
+        assert model_stage["status"] == "completed"
+        assert model_stage["top_n"] == 3
+
+    def test_utc_now_z_ends_with_z(self) -> None:
+        """Timestamps use UTC ISO-8601 with Z suffix."""
+        assert utc_now_z().endswith("Z")
+
+
+class TestComponentStatusEncoder:
+    """Tests for JSON encoding of status metadata values."""
+
+    def test_encodes_datetime_path_bytes_and_set(self) -> None:
+        """Known non-JSON types are converted for serialization."""
+        from datetime import UTC, datetime
+
+        encoder = ComponentStatusEncoder()
+        assert encoder.default(Path("/tmp/out")) == "/tmp/out"
+        assert encoder.default(b"abc") == "YWJj"
+        assert encoder.default({1, 2}) == [1, 2]
+        encoded = encoder.default(datetime(2026, 6, 10, 12, 0, 0, tzinfo=UTC))
+        assert encoded.endswith("Z")
+
+    def test_unknown_type_raises_type_error(self) -> None:
+        """Unsupported metadata types fail fast instead of being stringified."""
+        encoder = ComponentStatusEncoder()
+        with pytest.raises(TypeError):
+            encoder.default(object())
+
+
+class TestLoadComponentStatus:
+    """Tests for load_component_status edge cases."""
+
+    def test_corrupt_json_returns_empty_dict(self, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+        """Corrupt status files return {} and log a warning."""
+        status_file = tmp_path / COMPONENT_STATUS_FILENAME
+        status_file.write_text("{not json", encoding="utf-8")
+        with caplog.at_level("WARNING"):
+            assert load_component_status(str(tmp_path)) == {}
+        assert "Failed to load status" in caplog.text

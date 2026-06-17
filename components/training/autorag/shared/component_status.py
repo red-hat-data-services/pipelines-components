@@ -29,6 +29,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def utc_now_z() -> str:
+    """Return current UTC time as an ISO-8601 string with ``Z`` suffix."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
 class ComponentStatusEncoder(json.JSONEncoder):
     """Custom JSON encoder for component status data.
 
@@ -39,7 +44,7 @@ class ComponentStatusEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         """Convert non-serializable objects to JSON-compatible types."""
         if isinstance(obj, datetime):
-            return obj.isoformat()
+            return obj.isoformat().replace("+00:00", "Z") if obj.tzinfo is not None else obj.isoformat()
         if isinstance(obj, Path):
             return str(obj)
         if isinstance(obj, bytes):
@@ -72,13 +77,8 @@ class ComponentStatusTracker:
         self.artifact_path = Path(artifact_path) if self._enabled else Path(".")
         self.component_id = component_id
         self.stages: list[dict[str, Any]] = []
-        self.started_at = self._utc_now_iso()
+        self.started_at = utc_now_z()
         self.metadata: dict[str, Any] = {}
-
-    @staticmethod
-    def _utc_now_iso() -> str:
-        """Return current UTC timestamp in ISO format."""
-        return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def record(self, stage_id: str, status: str, **metadata: Any) -> None:
         """Record or update a stage's status."""
@@ -87,7 +87,7 @@ class ComponentStatusTracker:
         stage_data = {
             "id": stage_id,
             "status": status,
-            "timestamp": self._utc_now_iso(),
+            "timestamp": utc_now_z(),
             **metadata,
         }
 
@@ -118,7 +118,7 @@ class ComponentStatusTracker:
         data = {
             "component_id": self.component_id,
             "started_at": self.started_at,
-            "completed_at": self._utc_now_iso(),
+            "completed_at": utc_now_z(),
             "stages": self.stages,
             "metadata": self.metadata,
         }
