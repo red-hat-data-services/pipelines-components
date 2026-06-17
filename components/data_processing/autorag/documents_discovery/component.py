@@ -86,6 +86,8 @@ def documents_discovery(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
     with status:
+        if component_status is not None:
+            component_status.metadata["display_name"] = "Documents Discovery Status"
         with status.stage("discover_documents"):
             s3_creds = {k: os.environ.get(k) for k in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT"]}
             for k, v in s3_creds.items():
@@ -191,9 +193,6 @@ def documents_discovery(
                 json.dump(descriptor, f, indent=2)
 
             logger.info("Documents descriptor written to %s", descriptor_path)
-
-    if component_status is not None:
-        component_status.metadata["display_name"] = "Documents Discovery Status"
 
 
 if __name__ == "__main__":

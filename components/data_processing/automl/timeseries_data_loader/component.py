@@ -96,6 +96,7 @@ def timeseries_data_loader(
 
     status = ComponentStatusTracker(component_status.path, "timeseries_data_loader")
     with status:
+        component_status.metadata["display_name"] = "Timeseries Data Loader Status"
         status.record("prepare_data", "started")
 
         def get_s3_client(verify=True):
@@ -419,8 +420,6 @@ def timeseries_data_loader(
             "test_size": test_size,
             "selection_train_size": selection_train_size,
         }
-
-        component_status.metadata["display_name"] = "Timeseries Data Loader Status"
 
         # Sample row for downstream use (JSON string to avoid NaN issues)
         sample_rows = test_df.tail(min(5, len(test_df))).to_json(orient="records")

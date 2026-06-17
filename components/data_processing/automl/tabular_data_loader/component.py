@@ -132,6 +132,7 @@ def automl_data_loader(  # noqa: D417
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "automl_data_loader")
     with status:
+        component_status.metadata["display_name"] = "Data Loader Status"
         status.record("prepare_data", "started")
 
         if sampling_method is None:
@@ -461,8 +462,6 @@ def automl_data_loader(  # noqa: D417
             selection_train_size=selection_train_size,
             stratify=stratify_effective,
         )
-
-        component_status.metadata["display_name"] = "Data Loader Status"
 
         # Sample row for downstream use (JSON string to avoid NaN issues)
         sample_row = X_y_test.head(1).to_json(orient="records")

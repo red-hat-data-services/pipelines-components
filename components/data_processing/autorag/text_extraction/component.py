@@ -357,6 +357,8 @@ def text_extraction(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
     with status:
+        if component_status is not None:
+            component_status.metadata["display_name"] = "Text Extraction Status"
         descriptor_path = Path(documents_descriptor.path) / DOCUMENTS_DESCRIPTOR_FILENAME
 
         with status.stage("extract_documents"):
@@ -463,9 +465,6 @@ def text_extraction(
                 total_errors,
             )
             raise_if_threshold_exceeded(all_error_details, total_docs, error_tolerance)
-
-    if component_status is not None:
-        component_status.metadata["display_name"] = "Text Extraction Status"
 
 
 if __name__ == "__main__":

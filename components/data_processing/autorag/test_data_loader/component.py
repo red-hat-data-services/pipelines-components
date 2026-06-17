@@ -78,6 +78,8 @@ def test_data_loader(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "test_data_loader")
     with status:
+        if component_status is not None:
+            component_status.metadata["display_name"] = "Test Data Loader Status"
         with status.stage("load_benchmark"):
             if not test_data_bucket_name:
                 raise TypeError("test_data_bucket_name must be a non-empty string")
@@ -162,9 +164,6 @@ def test_data_loader(
                     json.dump(benchmark_data, f, ensure_ascii=False, indent=2)
                 record_count = len(benchmark_data)
                 logger.info("No sampling applied; record count: %s.", record_count)
-
-    if component_status is not None:
-        component_status.metadata["display_name"] = "Test Data Loader Status"
 
 
 if __name__ == "__main__":

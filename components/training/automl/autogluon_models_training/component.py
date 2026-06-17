@@ -162,6 +162,7 @@ def autogluon_models_training(
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "autogluon_models_training")
     with status:
+        component_status.metadata["display_name"] = "Models Training Status"
         # Stage: load_data
         status.record("load_data", "started")
 
@@ -662,7 +663,6 @@ def autogluon_models_training(
             model_count=len(model_names_full),
             eval_metric=str(predictor.eval_metric),
         )
-        component_status.metadata["display_name"] = "Models Training Status"
 
     return NamedTuple("outputs", eval_metric=str)(eval_metric=eval_metric)
 

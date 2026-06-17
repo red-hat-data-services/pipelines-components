@@ -538,8 +538,6 @@ def rag_templates_optimization(
     _status_module = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "rag_templates_optimization")
-    if component_status is not None:
-        component_status.metadata["display_name"] = "RAG Templates Optimization Status"
     optimize_templates_steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
 
     class OptimizationEventHandler(BaseEventHandler):
@@ -553,6 +551,8 @@ def rag_templates_optimization(
             pass
 
     with status:
+        if component_status is not None:
+            component_status.metadata["display_name"] = "RAG Templates Optimization Status"
         with status.stage("optimize_templates", steps=optimize_templates_steps):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError(

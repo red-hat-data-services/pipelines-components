@@ -75,6 +75,7 @@ def leaderboard_evaluation(
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "leaderboard_evaluation")
     with status:
+        component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
         logger = logging.getLogger(__name__)
 
         # Stage: build_leaderboard
@@ -152,7 +153,6 @@ def leaderboard_evaluation(
             best_model=best_model_name,
             model_count=len(leaderboard_df),
         )
-        component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
     return NamedTuple("outputs", best_model=str)(best_model=best_model_name)
 
 
