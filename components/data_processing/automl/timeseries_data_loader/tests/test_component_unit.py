@@ -279,6 +279,7 @@ class TestTimeseriesDataLoaderUnitTests:
         assert isinstance(parsed, list)
         assert len(parsed) == 5
         assert parsed[-1]["target"] == "99"
+        assert isinstance(parsed[0]["timestamp"], str)
 
     @mock.patch.dict(os.environ, mocked_env_variables, clear=True)
     def test_sampling_truncates_below_minimum_raises(self, tmp_path):

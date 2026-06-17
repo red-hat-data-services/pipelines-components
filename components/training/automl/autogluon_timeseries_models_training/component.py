@@ -85,6 +85,7 @@ def autogluon_timeseries_models_training(
     )
     from kfp_components.components.training.automl.shared.timeseries_notebook_utils import (
         build_predict_sample_artifact,
+        notebook_timeseries_sample_helpers_source,
     )
 
     status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
@@ -396,6 +397,7 @@ def autogluon_timeseries_models_training(
                     "<REPLACE_MODEL_NAME>": model_name_full,
                     "<REPLACE_PREDICT_SAMPLE>": str(predict_sample),
                     "<REPLACE_BACKTEST_PLOT_HELPERS>": notebook_backtest_charts_source(),
+                    "<REPLACE_TIMESERIES_SAMPLE_HELPERS>": notebook_timeseries_sample_helpers_source(),
                 }
                 notebook = replace_placeholder_in_notebook(notebook, replacements)
 
