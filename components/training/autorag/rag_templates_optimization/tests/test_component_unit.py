@@ -645,7 +645,7 @@ class TestMultilingualPromptOverrides:
 
 
 def _make_evaluation(pattern_name: str):
-    """Minimal ai4rag evaluation result for run_optimization status tests."""
+    """Minimal ai4rag evaluation result for optimize_templates status tests."""
     evaluation = mock.MagicMock()
     evaluation.pattern_name = pattern_name
     evaluation.indexing_params = {}
@@ -657,8 +657,8 @@ def _make_evaluation(pattern_name: str):
     return evaluation
 
 
-class TestRunOptimizationStatus:
-    """Tests for run_optimization stage progress in component_status."""
+class TestOptimizeTemplatesStatus:
+    """Tests for optimize_templates stage progress in component_status."""
 
     @mock.patch.dict(
         "os.environ",
@@ -667,8 +667,8 @@ class TestRunOptimizationStatus:
             "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_run_optimization_records_max_rag_patterns_and_selected_patterns(self, tmp_path):
-        """run_optimization completed stage records max_rag_patterns and selected_patterns."""
+    def test_optimize_templates_records_max_rag_patterns_and_selected_patterns(self, tmp_path):
+        """optimize_templates completed stage records max_rag_patterns and selected_patterns."""
         mocks = _make_all_mocks()
         ogx_mod = _make_ogx_client_module()
         mock_ogx = mock.MagicMock()
@@ -720,7 +720,7 @@ class TestRunOptimizationStatus:
 
         status_file = tmp_path / "component_status_out" / "component_status.json"
         status_data = json.loads(status_file.read_text())
-        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "run_optimization")
+        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "optimize_templates")
         assert run_stage["status"] == "completed"
         assert run_stage["max_rag_patterns"] == 8
         assert run_stage["selected_patterns"] == ["pattern_alpha", "pattern_beta"]
@@ -740,8 +740,8 @@ class TestRunOptimizationStatus:
             "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_run_optimization_search_failure_marks_stage_failed(self, tmp_path):
-        """run_optimization stage is marked failed when rag_exp.search() raises."""
+    def test_optimize_templates_search_failure_marks_stage_failed(self, tmp_path):
+        """optimize_templates stage is marked failed when rag_exp.search() raises."""
         mocks = _make_all_mocks()
         ogx_mod = _make_ogx_client_module()
         mock_ogx = mock.MagicMock()
@@ -783,6 +783,6 @@ class TestRunOptimizationStatus:
                 )
 
         status_data = json.loads((tmp_path / "component_status_out" / "component_status.json").read_text())
-        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "run_optimization")
+        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "optimize_templates")
         assert run_stage["status"] == "failed"
         assert "search failed" in run_stage["error"]

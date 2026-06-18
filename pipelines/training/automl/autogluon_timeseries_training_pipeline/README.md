@@ -28,35 +28,21 @@ to a single combined ``models_artifact``.
 
 3. **Leaderboard** (``leaderboard_evaluation``): Builds an HTML leaderboard from the combined refitted-model artifact using the training stage's evaluation metric.
 
-Args: train_data_secret_name: Kubernetes secret name containing S3 credentials (e.g. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION). train_data_bucket_name: S3-compatible bucket name containing the time series data file. train_data_file_key: S3 object key of the data
-file (CSV or Parquet). File must include columns for item_id, timestamp, and target; optional columns for known covariates. target: Name of the column containing the numeric values to forecast. Corresponds to :attr:`~autogluon.timeseries.TimeSeriesDataFrame` target column. id_column: Name of the
-column that identifies each time series (e.g. product_id, store_id). Passed as ``id_column`` when constructing TimeSeriesDataFrame; result uses ``item_id``. timestamp_column: Name of the column containing the timestamp/datetime for each observation. Passed as ``timestamp_column`` when constructing
-TimeSeriesDataFrame; result uses ``timestamp`` as the second index level. known_covariates_names: Optional list of column names known in advance for the forecast horizon (e.g. holidays, promotions). See :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`. prediction_length:
-Number of time steps to forecast (horizon length). Positive integer (default: 1). top_n: Number of top models to select for the leaderboard and output (default: 3). eval_metric: Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or snake_case form. Defaults to ``"MASE"``. preset:
-Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB).
-
-Returns: This pipeline wires task outputs between components; compiled runs expose the combined models artifact (per-model predictor, metrics, notebook paths) and leaderboard evaluation artifact (HTML + aggregated metrics), subject to Kubeflow Pipelines UI and artifact configuration.
-
-Raises: Component and runtime failures propagate from the underlying steps (for example: S3 access or empty data from the loader, invalid inputs, AutoGluon training or evaluation errors, or resource limits in the cluster).
-
-Example: pipeline = autogluon_timeseries_training_pipeline( train_data_secret_name="my-s3-secret", train_data_bucket_name="my-bucket", train_data_file_key="ts/sales.csv", target="sales", id_column="product_id", timestamp_column="date", known_covariates_names=["is_holiday", "promo"],
-prediction_length=14, top_n=3, )
-
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `train_data_secret_name` | `str` | `None` |  |
-| `train_data_bucket_name` | `str` | `None` |  |
-| `train_data_file_key` | `str` | `None` |  |
-| `target` | `str` | `None` |  |
-| `id_column` | `str` | `None` |  |
-| `timestamp_column` | `str` | `None` |  |
-| `known_covariates_names` | `Optional[List[str]]` | `None` |  |
-| `prediction_length` | `int` | `1` |  |
-| `top_n` | `int` | `3` |  |
-| `eval_metric` | `str` | `MASE` |  |
-| `preset` | `str` | `speed` |  |
+| `train_data_secret_name` | `str` | `None` | Kubernetes secret name containing S3 credentials (e.g. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION). |
+| `train_data_bucket_name` | `str` | `None` | S3-compatible bucket name containing the time series data file. |
+| `train_data_file_key` | `str` | `None` | S3 object key of the data file (CSV or Parquet). File must include columns for item_id, timestamp, and target; optional columns for known covariates. |
+| `target` | `str` | `None` | Name of the column containing the numeric values to forecast. Corresponds to :attr:`~autogluon.timeseries.TimeSeriesDataFrame` target column. |
+| `id_column` | `str` | `None` | Name of the column that identifies each time series (e.g. product_id, store_id). Passed as ``id_column`` when constructing TimeSeriesDataFrame; result uses ``item_id``. |
+| `timestamp_column` | `str` | `None` | Name of the column containing the timestamp/datetime for each observation. Passed as ``timestamp_column`` when constructing TimeSeriesDataFrame; result uses ``timestamp`` as the second index level. |
+| `known_covariates_names` | `Optional[List[str]]` | `None` | Optional list of column names known in advance for the forecast horizon (e.g. holidays, promotions). See :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`. |
+| `prediction_length` | `int` | `1` | Number of time steps to forecast (horizon length). Positive integer (default: 1). |
+| `top_n` | `int` | `3` | Number of top models to select for the leaderboard and output (default: 3). |
+| `eval_metric` | `str` | `MASE` | Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or snake_case form. Defaults to ``"MASE"``. |
+| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB). |
 
 ## Metadata 🗂️
 

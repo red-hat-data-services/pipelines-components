@@ -78,6 +78,27 @@ def test_timeseries_pipeline_manifest_covers_all_components():
     ]
 
 
+def test_timeseries_model_selection_steps_match_tabular():
+    """Timeseries and tabular training share the same model_selection sub-steps."""
+    tabular = load_component_stage_catalog(COMPONENT_MODELS_TRAINING, pipeline_id=PIPELINE_TABULAR_TRAINING)
+    timeseries = load_component_stage_catalog(
+        COMPONENT_TIMESERIES_MODELS_TRAINING,
+        pipeline_id=PIPELINE_TIMESERIES_TRAINING,
+    )
+    tabular_steps = next(s for s in tabular["stages"] if s["id"] == "model_selection")["steps"]
+    timeseries_steps = next(s for s in timeseries["stages"] if s["id"] == "model_selection")["steps"]
+    assert (
+        timeseries_steps
+        == tabular_steps
+        == [
+            "feature_engineering",
+            "model_training",
+            "stacking",
+            "evaluation",
+        ]
+    )
+
+
 def test_init_seeds_full_pipeline_as_pending(tmp_path):
     """Test that init seeds full pipeline as pending."""
     ws = str(tmp_path)
@@ -97,11 +118,8 @@ def test_init_seeds_full_pipeline_as_pending(tmp_path):
     assert _component_by_id(doc, COMPONENT_MODELS_TRAINING)["state"] == STATUS_PENDING
     loader_stages = {s["id"]: s["status"] for s in _component_by_id(doc, COMPONENT_DATA_LOADER)["stages"]}
     assert loader_stages == {
-        "validate_inputs": STATUS_PENDING,
-        "read_and_sample": STATUS_PENDING,
-        "cleanse": STATUS_PENDING,
-        "split": STATUS_PENDING,
-        "write_outputs": STATUS_PENDING,
+        "prepare_data": STATUS_PENDING,
+        "split_and_export": STATUS_PENDING,
     }
 
 
@@ -118,10 +136,10 @@ def test_init_copies_catalog_metadata_from_manifest(tmp_path):
     loader = _component_by_id(doc, COMPONENT_DATA_LOADER)
     assert "order" not in loader
     assert "description" in loader
-    validate_inputs = next(s for s in loader["stages"] if s["id"] == "validate_inputs")
-    assert validate_inputs["status"] == STATUS_PENDING
-    assert "description" in validate_inputs
-    assert "steps" not in validate_inputs
+    prepare_data = next(s for s in loader["stages"] if s["id"] == "prepare_data")
+    assert prepare_data["status"] == STATUS_PENDING
+    assert "description" in prepare_data
+    assert "steps" not in prepare_data
 
     training = _component_by_id(doc, COMPONENT_MODELS_TRAINING)
     model_selection = next(s for s in training["stages"] if s["id"] == "model_selection")
@@ -129,7 +147,7 @@ def test_init_copies_catalog_metadata_from_manifest(tmp_path):
         "feature_engineering",
         "model_training",
         "stacking",
-        "model_evaluation",
+        "evaluation",
     ]
 
 
@@ -142,7 +160,7 @@ def test_ensure_pipeline_plan_preserves_progress(tmp_path):
         pipeline_name="p1",
         run_status_pipeline_id=PIPELINE_TABULAR_TRAINING,
     )
-    record_stage(ws, COMPONENT_DATA_LOADER, "validate_inputs", STATUS_COMPLETED)
+    record_stage(ws, COMPONENT_DATA_LOADER, "prepare_data", STATUS_COMPLETED)
     ensure_pipeline_plan(ws)
     doc = load_run_status(ws)
     assert _component_by_id(doc, COMPONENT_MODELS_TRAINING)["state"] == STATUS_PENDING
@@ -172,15 +190,13 @@ def test_record_stage_autofills_steps_from_manifest_on_completed(tmp_path):
         "feature_engineering",
         "model_training",
         "stacking",
-        "model_evaluation",
+        "evaluation",
     ]
     assert model_selection["top_n"] == 2
     assert "description" in model_selection
-    record_stage(ws, COMPONENT_DATA_LOADER, "validate_inputs", STATUS_COMPLETED)
+    record_stage(ws, COMPONENT_DATA_LOADER, "prepare_data", STATUS_COMPLETED)
     loader_stage = next(
-        s
-        for s in _component_by_id(load_run_status(ws), COMPONENT_DATA_LOADER)["stages"]
-        if s["id"] == "validate_inputs"
+        s for s in _component_by_id(load_run_status(ws), COMPONENT_DATA_LOADER)["stages"] if s["id"] == "prepare_data"
     )
     assert "steps" not in loader_stage
 
@@ -195,7 +211,7 @@ def test_init_and_stages(tmp_path):
         run_status_pipeline_id=PIPELINE_TABULAR_TRAINING,
     )
     begin_component(ws, COMPONENT_DATA_LOADER)
-    record_stage(ws, COMPONENT_DATA_LOADER, "read_and_sample", "completed", rows=100)
+    record_stage(ws, COMPONENT_DATA_LOADER, "prepare_data", "completed", rows=100)
     complete_component(ws, COMPONENT_DATA_LOADER)
 
     doc = json.loads(run_status_file_path(ws).read_text())
@@ -203,8 +219,8 @@ def test_init_and_stages(tmp_path):
     assert doc[DOCUMENT_PIPELINE_ID_FIELD] == PIPELINE_TABULAR_TRAINING
     assert _component_by_id(doc, COMPONENT_DATA_LOADER)["state"] == STATUS_COMPLETED
     assert _component_by_id(doc, COMPONENT_MODELS_TRAINING)["state"] == STATUS_PENDING
-    read_stage = next(s for s in _component_by_id(doc, COMPONENT_DATA_LOADER)["stages"] if s["id"] == "read_and_sample")
-    assert read_stage["rows"] == 100
+    prepare_stage = next(s for s in _component_by_id(doc, COMPONENT_DATA_LOADER)["stages"] if s["id"] == "prepare_data")
+    assert prepare_stage["rows"] == 100
 
 
 def test_run_status_recorder(tmp_path):
@@ -218,7 +234,7 @@ def test_run_status_recorder(tmp_path):
     )
     recorder = RunStatusRecorder(ws, COMPONENT_DATA_LOADER)
     recorder.begin()
-    recorder.record("validate_inputs", "completed")
+    recorder.record("prepare_data", "completed")
     recorder.complete()
     doc = recorder.publish_artifact(str(tmp_path / "artifact"))
     assert _component_by_id(doc, COMPONENT_DATA_LOADER)["state"] == STATUS_COMPLETED
@@ -255,7 +271,7 @@ def test_validate_component_stages_warns_on_missing(caplog):
         "components": [
             {
                 "id": COMPONENT_DATA_LOADER,
-                "stages": [{"id": "validate_inputs", "status": "completed"}],
+                "stages": [{"id": "prepare_data", "status": "completed"}],
             }
         ],
     }
