@@ -93,6 +93,8 @@ def autogluon_timeseries_models_training(
 
     status = ComponentStatusTracker(component_status.path, "autogluon_timeseries_models_training")
     with status:
+        status.set_metadata(display_name="Timeseries Models Training Status")
+        component_status.metadata["display_name"] = "Timeseries Models Training Status"
         TOP_N_MAX = 7
         VALID_PRESETS = {"speed", "balanced"}
         PRESET_AG_NAMES = {"speed": "fast_training", "balanced": "medium_quality"}
@@ -227,7 +229,7 @@ def autogluon_timeseries_models_training(
             "completed",
             top_n=top_n,
             selected_models=top_models,
-            steps=["model_training", "holdout_evaluation"],
+            steps=["feature_engineering", "model_training", "stacking", "evaluation"],
         )
         logger.info(
             "Timeseries selection done: top_%s=%s best_score_test=%s",
@@ -255,7 +257,6 @@ def autogluon_timeseries_models_training(
                 "Skipping combined full-refit stage; missing models_artifact or extra_train_data_path. "
                 "Returning selection-only outputs for backward compatibility."
             )
-            component_status.metadata["display_name"] = "Timeseries Models Training Status"
             outputs = NamedTuple(
                 "outputs",
                 top_models=List[str],
@@ -299,7 +300,7 @@ def autogluon_timeseries_models_training(
         models_metadata = []
         failed_models = []
 
-        status.record("refit_full", "started")
+        status.record("refit_and_evaluate", "started")
 
         def replace_placeholder_in_notebook(notebook, replacements):
             for cell in notebook.get("cells", []):
@@ -449,9 +450,12 @@ def autogluon_timeseries_models_training(
         if not model_names_full:
             raise RuntimeError("All models failed refit. No artifacts written.")
 
-        status.record("refit_full", "completed", model_count=len(model_names_full))
-        status.record("evaluate_models", "completed", eval_metric=eval_metric)
-        component_status.metadata["display_name"] = "Timeseries Models Training Status"
+        status.record(
+            "refit_and_evaluate",
+            "completed",
+            model_count=len(model_names_full),
+            eval_metric=eval_metric,
+        )
 
         models_artifact.metadata["model_names"] = json.dumps(model_names_full)
         models_artifact.metadata["context"] = {

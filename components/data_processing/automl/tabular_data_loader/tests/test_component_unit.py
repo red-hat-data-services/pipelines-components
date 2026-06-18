@@ -212,8 +212,8 @@ class TestComponentStatusArtifact:
         payload = json.loads(status_path.read_text())
         assert payload["component_id"] == "automl_data_loader"
         stage_ids = [stage["id"] for stage in payload["stages"]]
-        assert "read_and_sample" in stage_ids
-        assert "split" in stage_ids
+        assert "prepare_data" in stage_ids
+        assert "split_and_export" in stage_ids
 
     @mock.patch.dict("os.environ", mocked_env_variables)
     def test_sets_component_status_display_name(self, tmp_path):

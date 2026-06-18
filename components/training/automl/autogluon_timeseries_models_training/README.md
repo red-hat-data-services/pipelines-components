@@ -125,7 +125,10 @@ def example_pipeline(
 
 ### Component status artifact
 
-Writes ``component_status.json`` under ``component_status`` with ``component_id`` ``autogluon_timeseries_models_training`` and training stages (``load_data``, ``model_selection``, ``refit_full``, ``evaluate_models``). Artifact metadata display name: **Timeseries Models Training Status**.
+Writes ``component_status.json`` under ``component_status`` with ``component_id``
+``autogluon_timeseries_models_training`` and training stages (``load_data``, ``model_selection`` with
+steps ``feature_engineering``, ``model_training``, ``stacking``, ``evaluation``, ``refit_and_evaluate``).
+Artifact metadata display name: **Timeseries Models Training Status**.
 
 Inference notebooks are loaded from ``shared/notebook_templates/timeseries_notebook.ipynb`` at runtime (same shared package data as tabular training).
 

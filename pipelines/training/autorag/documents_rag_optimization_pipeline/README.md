@@ -63,6 +63,53 @@ The system integrates with OGX API for inference and vector database operations,
 
 <!-- custom-content -->
 
+### Progress and dashboard artifacts
+
+Besides RAG pattern and data artifacts below, each run publishes:
+
+| KFP task | Output | File | Purpose |
+| -------- | ------ | ---- | ------- |
+| `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the RAG pipeline (published once at run start). |
+| `test-data-loader` | `component_status` | `component_status.json` | Stage progress for benchmark test data download and sampling. |
+| `documents-discovery` | `component_status` | `component_status.json` | Stage progress for listing and sampling source documents. |
+| `text-extraction` | `component_status` | `component_status.json` | Stage progress for docling text extraction. |
+| `search-space-preparation` | `component_status` | `component_status.json` | Stage progress for search-space preparation and model pre-selection. |
+| `rag-templates-optimization` | `component_status` | `component_status.json` | Stage progress for RAG template optimization (including sub-steps). |
+| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+
+Example artifact-store layout (task folder names are kebab-case):
+
+```text
+<pipeline_name>/<run_id>/
+├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
+├── test-data-loader/<task_id>/component_status/component_status.json
+├── documents-discovery/<task_id>/component_status/component_status.json
+├── text-extraction/<task_id>/component_status/component_status.json
+├── search-space-preparation/<task_id>/component_status/component_status.json
+├── rag-templates-optimization/<task_id>/component_status/component_status.json
+└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+```
+
+See [AutoRAG training components README](../../../components/training/autorag/README.md) for JSON field details.
+
+#### Dashboard join keys
+
+Dashboards join the static map (`component_stage_map.json`) to live progress (`component_status.json`) using **snake_case component ids**, not KFP task names:
+
+| Layer | Naming | Test data loader example |
+| ----- | ------ | ------------------------ |
+| Template `components[].id` | snake_case | `test_data_loader` |
+| Runtime `component_status.json` → `component_id` | snake_case | `test_data_loader` |
+| KFP root DAG task id (compiled YAML) | kebab-case | `test-data-loader` |
+| KFP output parameter | snake_case | `component_status` |
+| Artifact file | snake_case | `component_status.json` |
+
+Use `component_id` (and stage `id` fields inside each file) to correlate artifacts. KFP task names are only for locating artifact paths in the store.
+
+Canonical component ids are defined in the pipeline JSON templates under
+[`run_status_templates/pipelines/`](../../../components/training/autorag/shared/run_status_templates/pipelines/)
+(e.g. `documents-rag-optimization-pipeline.json`).
+
 ## Optimization Engine: ai4rag 🚀
 
 The pipeline uses [ai4rag](https://github.com/IBM/ai4rag), a RAG Templates Optimization Engine that
