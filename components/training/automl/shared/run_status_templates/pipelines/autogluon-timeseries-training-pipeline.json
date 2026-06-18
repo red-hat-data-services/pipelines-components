@@ -7,24 +7,12 @@
       "description": "Load time series data from S3, cleanse, and write per-series train/test splits.",
       "stages": [
         {
-          "id": "validate_inputs",
-          "description": "Validate pipeline inputs and split parameters."
+          "id": "prepare_data",
+          "description": "Validate inputs, read panel data from S3, parse timestamps, and deduplicate series keys."
         },
         {
-          "id": "read_and_sample",
-          "description": "Read source data from S3 (truncated to size limit)."
-        },
-        {
-          "id": "cleanse",
-          "description": "Parse timestamps, validate ids, and deduplicate panel keys."
-        },
-        {
-          "id": "split",
-          "description": "Apply per-series temporal train/test and selection/extra splits."
-        },
-        {
-          "id": "write_outputs",
-          "description": "Write train/validation CSVs and test artifact."
+          "id": "split_and_export",
+          "description": "Apply per-series temporal splits and write train/validation/test CSVs."
         }
       ]
     },
@@ -39,15 +27,16 @@
         {
           "id": "model_selection",
           "description": "Run TimeSeriesPredictor fit on selection train and rank on test.",
-          "steps": ["model_training", "holdout_evaluation"]
+          "steps": [
+            "feature_engineering",
+            "model_training",
+            "stacking",
+            "evaluation"
+          ]
         },
         {
-          "id": "refit_full",
-          "description": "Refit each top model on selection plus extra train data."
-        },
-        {
-          "id": "evaluate_models",
-          "description": "Evaluate refit models; write metrics, back_testing.json, and notebooks."
+          "id": "refit_and_evaluate",
+          "description": "Refit top models, evaluate on holdout, and write metrics, back_testing.json, and notebooks."
         }
       ]
     },

@@ -19,8 +19,8 @@ def rag_templates_optimization(
     rag_patterns: dsl.Output[dsl.Artifact],
     test_data_key: Optional[str],
     vector_io_provider_id: str,
+    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
-    component_status: dsl.Output[dsl.Artifact] = None,
     optimization_settings: Optional[dict] = None,
     input_data_key: Optional[str] = "",
 ):
@@ -538,22 +538,22 @@ def rag_templates_optimization(
     _status_module = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "rag_templates_optimization")
-    if component_status is not None:
-        component_status.metadata["display_name"] = "RAG Templates Optimization Status"
-    run_optimization_steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
+    optimize_templates_steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
 
     class OptimizationEventHandler(BaseEventHandler):
         """Updates component status with ai4rag optimization sub-step progress."""
 
         def on_status_change(self, level: LogLevel, message: str, step: str | None = None) -> None:
             if step:
-                status.record("run_optimization", "running", current_step=step)
+                status.record("optimize_templates", "running", current_step=step)
 
         def on_pattern_creation(self, payload: dict, evaluation_results: list, **kwargs) -> None:
             pass
 
     with status:
-        with status.stage("validate_inputs"):
+        status.set_metadata(display_name="RAG Templates Optimization Status")
+        component_status.metadata["display_name"] = "RAG Templates Optimization Status"
+        with status.stage("optimize_templates", steps=optimize_templates_steps):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError(
                     "OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY environment variables must be set to non-empty values."
@@ -645,7 +645,6 @@ def rag_templates_optimization(
                         explicit_instruction,
                     )
 
-        with status.stage("run_optimization", steps=run_optimization_steps):
             event_handler = OptimizationEventHandler()
             rag_exp = AI4RAGExperiment(
                 client=client,
@@ -661,14 +660,12 @@ def rag_templates_optimization(
             rag_exp.search()
             selected_patterns = [getattr(ev, "pattern_name", "") for ev in rag_exp.results.evaluations]
             status.record(
-                "run_optimization",
+                "optimize_templates",
                 "completed",
                 max_rag_patterns=max_rag_patterns,
                 selected_patterns=selected_patterns,
-                steps=run_optimization_steps,
+                steps=optimize_templates_steps,
             )
-
-        with status.stage("write_patterns"):
 
             def _evaluation_result_fallback(eval_data_list, evaluation_result):
                 """Build evaluation_results.json-style list when question_scores missing or incomplete."""

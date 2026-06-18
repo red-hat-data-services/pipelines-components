@@ -115,9 +115,9 @@ def autogluon_timeseries_training_pipeline(
         metrics), subject to Kubeflow Pipelines UI and artifact configuration.
 
     Raises:
-        Component and runtime failures propagate from the underlying steps (for example: S3 access or
-        empty data from the loader, invalid inputs, AutoGluon training or evaluation errors, or
-        resource limits in the cluster).
+        FileNotFoundError: If the S3 file cannot be found or accessed.
+        ValueError: If required columns are missing, temporal splits fail, or inputs are invalid.
+        RuntimeError: If AutoGluon training or evaluation fails, or cluster resource limits are exceeded.
 
     Example:
         pipeline = autogluon_timeseries_training_pipeline(

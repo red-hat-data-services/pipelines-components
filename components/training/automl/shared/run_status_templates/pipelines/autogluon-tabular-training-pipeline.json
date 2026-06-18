@@ -7,24 +7,12 @@
       "description": "Load tabular data, sample, cleanse, split, and write train/validation outputs.",
       "stages": [
         {
-          "id": "validate_inputs",
-          "description": "Validate pipeline inputs, split config, and sampling parameters."
+          "id": "prepare_data",
+          "description": "Validate inputs, read source data, apply sampling, and cleanse the dataset."
         },
         {
-          "id": "read_and_sample",
-          "description": "Read source data and apply sampling strategy."
-        },
-        {
-          "id": "cleanse",
-          "description": "Apply cleansing rules to the sampled dataset."
-        },
-        {
-          "id": "split",
-          "description": "Split data into selection train/validation sets."
-        },
-        {
-          "id": "write_outputs",
-          "description": "Write train/validation CSVs and metadata to the workspace."
+          "id": "split_and_export",
+          "description": "Split into selection train/validation sets and write output CSVs."
         }
       ]
     },
@@ -43,16 +31,12 @@
             "feature_engineering",
             "model_training",
             "stacking",
-            "model_evaluation"
+            "evaluation"
           ]
         },
         {
-          "id": "refit_full",
-          "description": "Refit the best models on combined train+validation data."
-        },
-        {
-          "id": "evaluate_models",
-          "description": "Evaluate refit models and write metrics artifacts."
+          "id": "refit_and_evaluate",
+          "description": "Refit best models on combined data and write evaluation metrics."
         }
       ]
     },

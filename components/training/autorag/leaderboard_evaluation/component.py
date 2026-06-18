@@ -14,7 +14,7 @@ _AUTORAG_SHARED = Path(__file__).parents[1] / "shared"
 def leaderboard_evaluation(
     rag_patterns: dsl.InputPath(dsl.Artifact),
     html_artifact: dsl.Output[dsl.HTML],
-    component_status: dsl.Output[dsl.Artifact] = None,
+    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_metric: str = "faithfulness",
 ):
@@ -338,6 +338,8 @@ def leaderboard_evaluation(
     _spec.loader.exec_module(_status_module)
     status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "leaderboard_evaluation")
     with status:
+        status.set_metadata(display_name="Leaderboard Evaluation Status")
+        component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
         with status.stage("build_leaderboard"):
             if not rag_patterns_dir.is_dir():
                 raise FileNotFoundError("rag_patterns path is not a directory: %s" % rag_patterns_dir)

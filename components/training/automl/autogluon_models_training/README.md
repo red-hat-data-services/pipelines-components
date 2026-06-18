@@ -66,7 +66,7 @@ mutates predictor state. All artifacts are written under a single output artifac
 
 Writes ``component_status.json`` under the ``component_status`` output artifact with ``component_id``
 ``autogluon_models_training`` and stages such as ``load_data``, ``model_selection`` (optional ``steps``
-when completed), ``refit_full``, and ``evaluate_models``. Artifact metadata display name:
+when completed), ``refit_and_evaluate``. Artifact metadata display name:
 **Models Training Status**.
 
 ## Usage Examples 💡

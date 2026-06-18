@@ -10,7 +10,7 @@ Usage:
 
     status = component_status_tracker(component_status, "test_data_loader")
     with status:
-        with status.stage("download_and_sample"):
+        with status.stage("load_benchmark"):
             ...
 """
 
@@ -29,6 +29,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def utc_now_z() -> str:
+    """Return current UTC time as an ISO-8601 string with ``Z`` suffix."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
 class ComponentStatusEncoder(json.JSONEncoder):
     """Custom JSON encoder for component status data.
 
@@ -39,7 +44,7 @@ class ComponentStatusEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         """Convert non-serializable objects to JSON-compatible types."""
         if isinstance(obj, datetime):
-            return obj.isoformat()
+            return obj.isoformat().replace("+00:00", "Z") if obj.tzinfo is not None else obj.isoformat()
         if isinstance(obj, Path):
             return str(obj)
         if isinstance(obj, bytes):
@@ -60,25 +65,18 @@ STATUS_FAILED = "failed"
 class ComponentStatusTracker:
     """Track stage-level progress within a single AutoRAG component."""
 
-    def __init__(self, artifact_path: str | None, component_id: str) -> None:
+    def __init__(self, artifact_path: str, component_id: str) -> None:
         """Initialize the status tracker.
 
         Args:
-            artifact_path: Path to the KFP artifact directory where status.json will be written.
-                When ``None``, tracking is disabled (e.g. direct unit-test invocations without a mock artifact).
+            artifact_path: Path to the KFP artifact directory where component_status.json will be written.
             component_id: Unique component identifier (e.g., "test_data_loader").
         """
-        self._enabled = artifact_path is not None
-        self.artifact_path = Path(artifact_path) if self._enabled else Path(".")
+        self.artifact_path = Path(artifact_path)
         self.component_id = component_id
         self.stages: list[dict[str, Any]] = []
-        self.started_at = self._utc_now_iso()
+        self.started_at = utc_now_z()
         self.metadata: dict[str, Any] = {}
-
-    @staticmethod
-    def _utc_now_iso() -> str:
-        """Return current UTC timestamp in ISO format."""
-        return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def record(self, stage_id: str, status: str, **metadata: Any) -> None:
         """Record or update a stage's status."""
@@ -87,7 +85,7 @@ class ComponentStatusTracker:
         stage_data = {
             "id": stage_id,
             "status": status,
-            "timestamp": self._utc_now_iso(),
+            "timestamp": utc_now_z(),
             **metadata,
         }
 
@@ -110,15 +108,12 @@ class ComponentStatusTracker:
 
     def save(self) -> None:
         """Write the final status to the artifact."""
-        if not self._enabled:
-            return
-
         self.artifact_path.mkdir(parents=True, exist_ok=True)
 
         data = {
             "component_id": self.component_id,
             "started_at": self.started_at,
-            "completed_at": self._utc_now_iso(),
+            "completed_at": utc_now_z(),
             "stages": self.stages,
             "metadata": self.metadata,
         }
@@ -258,9 +253,16 @@ def bootstrap_status_tracker(
 
 
 def component_status_tracker(component_status: Any, component_id: str) -> ComponentStatusTracker:
-    """Build a tracker from an optional KFP ``component_status`` output artifact."""
-    artifact_path = component_status.path if component_status is not None else None
-    return ComponentStatusTracker(artifact_path, component_id)
+    """Build a tracker from a KFP component_status output artifact.
+
+    Args:
+        component_status: KFP output artifact for component status tracking.
+        component_id: Unique component identifier.
+
+    Returns:
+        Configured ComponentStatusTracker instance.
+    """
+    return ComponentStatusTracker(component_status.path, component_id)
 
 
 def load_component_status(artifact_path: str) -> dict[str, Any]:

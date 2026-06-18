@@ -13,19 +13,6 @@ COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements
      pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi-whl.txt \
      /tmp/
 
-COPY pipelines/training/autorag/documents_rag_optimization_pipeline/artifacts.lock.yaml \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/install_sqlite_from_source.sh \
-     /tmp/
-
-# Build SQLite from sqlite-autoconf (Hermeto generic prefetch or download); replace system libsqlite3.
-# https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
-ARG HERMETO_GENERIC_DEPS=/cachi2/output/deps/generic
-
-# Build SQLite from sqlite-autoconf (Hermeto generic prefetch or download); replace system libsqlite3.
-USER root
-RUN HERMETO_GENERIC_DEPS="${HERMETO_GENERIC_DEPS}" bash /tmp/install_sqlite_from_source.sh
-USER default
-
 ## TODO: Ensure build isolation
 RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
