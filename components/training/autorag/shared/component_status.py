@@ -62,6 +62,34 @@ STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
 
 
+class NullComponentStatusTracker:
+    """No-op status tracker for notebook or direct ``python_func`` invocations."""
+
+    def set_metadata(self, **_metadata: Any) -> None:
+        """Ignore metadata updates."""
+
+    def record(self, *_args: Any, **_kwargs: Any) -> None:
+        """Ignore status records."""
+
+    def __enter__(self) -> NullComponentStatusTracker:
+        """Enter the no-op context."""
+        return self
+
+    def __exit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: Any) -> bool:
+        """Exit the no-op context."""
+        return False
+
+    @contextmanager
+    def stage(self, _stage_id: str, **_start_metadata: Any) -> Iterator[None]:
+        """Yield without recording stage transitions."""
+        yield
+
+
+def null_component_status_tracker() -> NullComponentStatusTracker:
+    """Return a tracker that skips all status persistence."""
+    return NullComponentStatusTracker()
+
+
 class ComponentStatusTracker:
     """Track stage-level progress within a single AutoRAG component."""
 
@@ -246,13 +274,17 @@ def bootstrap_status_tracker(
     embedded_artifact: Any,
     component_status: Any,
     component_id: str,
-) -> ComponentStatusTracker:
+) -> ComponentStatusTracker | NullComponentStatusTracker:
     """Load this module from ``embedded_artifact`` and return a configured tracker."""
+    if component_status is None:
+        return null_component_status_tracker()
     status_module = load_embedded_component_status_module(embedded_artifact)
     return status_module.tracker_from_embedded(embedded_artifact, component_status, component_id)
 
 
-def component_status_tracker(component_status: Any, component_id: str) -> ComponentStatusTracker:
+def component_status_tracker(
+    component_status: Any, component_id: str
+) -> ComponentStatusTracker | NullComponentStatusTracker:
     """Build a tracker from a KFP component_status output artifact.
 
     Args:
@@ -260,8 +292,10 @@ def component_status_tracker(component_status: Any, component_id: str) -> Compon
         component_id: Unique component identifier.
 
     Returns:
-        Configured ComponentStatusTracker instance.
+        Configured ComponentStatusTracker instance, or a no-op tracker when ``component_status`` is None.
     """
+    if component_status is None:
+        return null_component_status_tracker()
     return ComponentStatusTracker(component_status.path, component_id)
 
 

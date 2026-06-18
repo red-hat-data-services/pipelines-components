@@ -104,6 +104,36 @@ class TestDocumentsDiscoveryUnitTests:
         assert payload["count"] == 2
         assert payload["total_size_bytes"] == 3000
 
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_notebook_style_call_without_component_status(self, tmp_path):
+        """Direct python_func calls without component_status work (indexing notebook path)."""
+        mock_boto3 = mock.MagicMock()
+        mock_s3 = mock.MagicMock()
+        _configure_s3_paginator(mock_s3, [{"Key": "docs/a.pdf", "Size": 1000}])
+        mock_boto3.client.return_value = mock_s3
+        mock_botocore, mock_botocore_exceptions = _make_botocore_modules()
+
+        discovered = mock.MagicMock()
+        discovered.path = str(tmp_path / "descriptor")
+
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "boto3": mock_boto3,
+                "botocore": mock_botocore,
+                "botocore.exceptions": mock_botocore_exceptions,
+            },
+        ):
+            documents_discovery.python_func(
+                input_data_bucket_name="my-bucket",
+                input_data_path="docs/",
+                discovered_documents=discovered,
+                component_status=None,
+                sampling_enabled=False,
+            )
+
+        assert (tmp_path / "descriptor" / "documents_descriptor.json").is_file()
+
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES_NO_REGION, clear=True)
     def test_missing_region_is_allowed(self, tmp_path):
         """Component works when AWS_DEFAULT_REGION is not present."""

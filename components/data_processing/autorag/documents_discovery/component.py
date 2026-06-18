@@ -13,12 +13,12 @@ _AUTORAG_SHARED = Path(__file__).parents[3] / "training" / "autorag" / "shared"
 )
 def documents_discovery(
     input_data_bucket_name: str,
-    component_status: dsl.Output[dsl.Artifact],
     input_data_path: str = "",
     test_data: dsl.Input[dsl.Artifact] = None,
     sampling_enabled: bool = True,
     sampling_max_size: float = 1,
     discovered_documents: dsl.Output[dsl.Artifact] = None,
+    component_status: dsl.Output[dsl.Artifact] = None,
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
 ):
     """Documents discovery component.
@@ -77,17 +77,25 @@ def documents_discovery(
 
     from botocore.exceptions import SSLError
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
     with status:
-        status.set_metadata(display_name="Documents Discovery Status")
-        component_status.metadata["display_name"] = "Documents Discovery Status"
+        if component_status is not None:
+            status.set_metadata(display_name="Documents Discovery Status")
+            component_status.metadata["display_name"] = "Documents Discovery Status"
         with status.stage("discover_documents"):
             s3_creds = {k: os.environ.get(k) for k in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT"]}
             for k, v in s3_creds.items():

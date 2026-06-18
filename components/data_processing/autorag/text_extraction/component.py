@@ -15,7 +15,7 @@ _AUTORAG_SHARED = Path(__file__).parents[3] / "training" / "autorag" / "shared"
 def text_extraction(
     documents_descriptor: dsl.Input[dsl.Artifact],
     extracted_text: dsl.Output[dsl.Artifact],
-    component_status: dsl.Output[dsl.Artifact],
+    component_status: dsl.Output[dsl.Artifact] = None,
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     error_tolerance: Optional[float] = None,
     max_extraction_workers: Optional[int] = None,
@@ -348,17 +348,25 @@ def text_extraction(
 
     import importlib.util
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
     with status:
-        status.set_metadata(display_name="Text Extraction Status")
-        component_status.metadata["display_name"] = "Text Extraction Status"
+        if component_status is not None:
+            status.set_metadata(display_name="Text Extraction Status")
+            component_status.metadata["display_name"] = "Text Extraction Status"
         descriptor_path = Path(documents_descriptor.path) / DOCUMENTS_DESCRIPTOR_FILENAME
 
         with status.stage("extract_documents"):

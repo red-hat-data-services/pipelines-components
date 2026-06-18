@@ -17,11 +17,11 @@ def search_space_preparation(
     test_data: dsl.Input[dsl.Artifact],
     extracted_text: dsl.Input[dsl.Artifact],
     search_space_prep_report: dsl.Output[dsl.Artifact],
-    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     embedding_models: Optional[List] = None,
     generation_models: Optional[List] = None,
     metric: str = None,
+    component_status: dsl.Output[dsl.Artifact] = None,
 ):
     """Runs an AutoRAG experiment's first phase which includes:
 
@@ -327,17 +327,27 @@ def search_space_preparation(
 
     import importlib.util
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "search_space_preparation")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(
+            embedded_artifact, component_status, "search_space_preparation"
+        )
     with status:
-        status.set_metadata(display_name="Search Space Preparation Status")
-        component_status.metadata["display_name"] = "Search Space Preparation Status"
+        if component_status is not None:
+            status.set_metadata(display_name="Search Space Preparation Status")
+            component_status.metadata["display_name"] = "Search Space Preparation Status"
         with status.stage("prepare_search_space"):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError("OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY environment variables must be set.")

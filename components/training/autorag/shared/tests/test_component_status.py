@@ -10,6 +10,7 @@ from kfp_components.components.training.autorag.shared.component_status import (
     COMPONENT_STATUS_FILENAME,
     ComponentStatusEncoder,
     ComponentStatusTracker,
+    NullComponentStatusTracker,
     bootstrap_status_tracker,
     load_component_status,
     load_embedded_component_status_module,
@@ -108,6 +109,15 @@ class TestEmbeddedStatusBootstrap:
         embedded = type("Embedded", (), {"path": str(module_path)})()
         module = load_embedded_component_status_module(embedded)
         assert hasattr(module, "bootstrap_status_tracker")
+
+    def test_bootstrap_status_tracker_returns_noop_when_component_status_is_none(self) -> None:
+        """Notebook-style invocations without component_status use a no-op tracker."""
+        embedded = type("Embedded", (), {"path": str(Path(__file__).resolve().parents[1])})()
+        status = bootstrap_status_tracker(embedded, None, "documents_discovery")
+        assert isinstance(status, NullComponentStatusTracker)
+        with status:
+            with status.stage("discover_documents"):
+                pass
 
 
 class TestComponentStatusTrackerStage:

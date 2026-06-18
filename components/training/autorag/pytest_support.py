@@ -27,11 +27,12 @@ def wrap_component_python_func(
     embed_root = embedded_path or str(shared_dir)
 
     def wrapper(*args, **kwargs):
-        if "embedded_artifact" in signature.parameters and kwargs.get("embedded_artifact") is None:
+        bound = signature.bind_partial(*args, **kwargs)
+        if "embedded_artifact" in signature.parameters and "embedded_artifact" not in bound.arguments:
             embedded = mock.MagicMock()
             embedded.path = embed_root
             kwargs["embedded_artifact"] = embedded
-        if "component_status" in signature.parameters and kwargs.get("component_status") is None:
+        if "component_status" in signature.parameters and "component_status" not in bound.arguments:
             status = mock.MagicMock()
             status.path = str(tmp_path / "component_status_out")
             status.metadata = {}
