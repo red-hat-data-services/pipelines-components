@@ -60,7 +60,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 | `top_n` | `int` | `3` | Number of top models to select and refit (default: 3); positive integer from range [1, 10]. |
 | `positive_class` | `str` | `""` | Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values. |
 | `eval_metric` | `str` | `""` | Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification. |
-| `preset` | `str` | `speed` | Training quality tier. "speed" (default, 8 vCPU / 32 GiB) or "balanced" (may run more than 2x longer, 16 vCPU / 64 GiB). |
+| `preset` | `str` | `speed` | Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB). |
 
 ## Metadata 🗂️
 

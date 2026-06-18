@@ -125,7 +125,7 @@ def autogluon_tabular_training_pipeline(
         top_n: Number of top models to select and refit (default: 3); positive integer from range [1, 10].
         positive_class: Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values.
         eval_metric: Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification.
-        preset: Training quality tier. "speed" (default, 8 vCPU / 32 GiB) or "balanced" (may run more than 2x longer, 16 vCPU / 64 GiB).
+        preset: Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB).
 
     Returns:
         HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
@@ -209,7 +209,7 @@ def autogluon_tabular_training_pipeline(
     with dsl.If(preset == "balanced"):
         training_task_bl = autogluon_models_training(**_training_kwargs)
         training_task_bl.set_caching_options(False)
-        training_task_bl.set_cpu_request("16").set_memory_request("64Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        training_task_bl.set_cpu_request("8").set_memory_request("32Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
             MAX_MEMORY
         )
 
@@ -225,7 +225,7 @@ def autogluon_tabular_training_pipeline(
     with dsl.Else():
         training_task_sp = autogluon_models_training(**_training_kwargs)
         training_task_sp.set_caching_options(False)
-        training_task_sp.set_cpu_request("8").set_memory_request("32Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        training_task_sp.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
             MAX_MEMORY
         )
 
