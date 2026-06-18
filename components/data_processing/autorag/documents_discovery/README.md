@@ -13,12 +13,12 @@ Lists available documents from S3, performs sampling if applied and writes a JSO
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket containing input data. |
-| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `input_data_path` | `str` | `""` | Path to folder with input documents within the bucket. |
 | `test_data` | `dsl.Input[dsl.Artifact]` | `None` | Optional input artifact containing test data for sampling. |
 | `sampling_enabled` | `bool` | `True` | Whether to enable sampling or not. |
 | `sampling_max_size` | `float` | `1` | Maximum size of sampled documents (in gigabytes). |
 | `discovered_documents` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing the documents descriptor JSON file. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 
 ## Usage Examples 🧪

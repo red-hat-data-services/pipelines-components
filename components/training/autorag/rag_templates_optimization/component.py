@@ -19,10 +19,10 @@ def rag_templates_optimization(
     rag_patterns: dsl.Output[dsl.Artifact],
     test_data_key: Optional[str],
     vector_io_provider_id: str,
-    component_status: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_settings: Optional[dict] = None,
     input_data_key: Optional[str] = "",
+    component_status: dsl.Output[dsl.Artifact] = None,
 ):
     """RAG Templates Optimization component.
 
@@ -431,9 +431,9 @@ def rag_templates_optimization(
         mapping["EMBEDDING_PARAMS"] = em.get("embedding_params", {"embedding_dimension": 768})
         mapping["DISTANCE_METRIC"] = em.get("distance_metric", "")
 
-        vs = settings.get("vector_store", {})
-        mapping["PROVIDER_ID"] = vs.get("datasource_type", "")
-        mapping["COLLECTION_NAME"] = vs.get("collection_name", "")
+        vs_binding = settings.get("vector_store_binding") or {}
+        mapping["PROVIDER_ID"] = vs_binding.get("provider_id", "")
+        mapping["COLLECTION_NAME"] = vs_binding.get("vector_store_id", "")
 
         ret = settings.get("retrieval", {})
         mapping["RETRIEVAL_METHOD"] = ret.get("method", "")
@@ -531,13 +531,23 @@ def rag_templates_optimization(
 
     _embedded_path = Path(embedded_artifact.path)
     import_root = _embedded_path.parent if _embedded_path.is_file() else _embedded_path
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "rag_templates_optimization")
+
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(
+            embedded_artifact, component_status, "rag_templates_optimization"
+        )
     optimize_templates_steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
 
     class OptimizationEventHandler(BaseEventHandler):
@@ -551,8 +561,9 @@ def rag_templates_optimization(
             pass
 
     with status:
-        status.set_metadata(display_name="RAG Templates Optimization Status")
-        component_status.metadata["display_name"] = "RAG Templates Optimization Status"
+        if component_status is not None:
+            status.set_metadata(display_name="RAG Templates Optimization Status")
+            component_status.metadata["display_name"] = "RAG Templates Optimization Status"
         with status.stage("optimize_templates", steps=optimize_templates_steps):
             if not ogx_client_base_url or not ogx_client_api_key:
                 raise ValueError(
