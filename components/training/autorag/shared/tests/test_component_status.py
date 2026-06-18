@@ -10,8 +10,8 @@ from kfp_components.components.training.autorag.shared.component_status import (
     COMPONENT_STATUS_FILENAME,
     ComponentStatusEncoder,
     ComponentStatusTracker,
+    NullComponentStatusTracker,
     bootstrap_status_tracker,
-    component_status_tracker,
     load_component_status,
     load_embedded_component_status_module,
 )
@@ -23,8 +23,8 @@ class TestComponentStatusTracker:
     def test_record_and_save(self, tmp_path: Path) -> None:
         """save() writes stages and component_id to component_status.json."""
         tracker = ComponentStatusTracker(str(tmp_path), "test_data_loader")
-        tracker.record("validate_inputs", "started", rows=5)
-        tracker.record("validate_inputs", "completed")
+        tracker.record("load_benchmark", "started", rows=5)
+        tracker.record("load_benchmark", "completed")
         tracker.save()
 
         data = json.loads((tmp_path / COMPONENT_STATUS_FILENAME).read_text(encoding="utf-8"))
@@ -32,20 +32,6 @@ class TestComponentStatusTracker:
         assert len(data["stages"]) == 1
         assert data["stages"][0]["status"] == "completed"
         assert data["stages"][0]["rows"] == 5
-
-    def test_disabled_tracker_skips_save(self, tmp_path: Path) -> None:
-        """When artifact_path is None, save() is a no-op."""
-        tracker = ComponentStatusTracker(None, "test_data_loader")
-        tracker.record("validate_inputs", "completed")
-        tracker.save()
-        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
-
-    def test_component_status_tracker_from_none(self, tmp_path: Path) -> None:
-        """component_status_tracker() accepts a missing artifact for unit tests."""
-        tracker = component_status_tracker(None, "documents_discovery")
-        tracker.record("validate_inputs", "completed")
-        tracker.save()
-        assert not (tmp_path / COMPONENT_STATUS_FILENAME).exists()
 
     def test_context_manager_marks_failed_and_saves(self, tmp_path: Path) -> None:
         """Context manager marks active stage failed and persists status on exception."""
@@ -62,8 +48,8 @@ class TestComponentStatusTracker:
         """Completed stages can include manifest step ids for dashboard display."""
         tracker = ComponentStatusTracker(str(tmp_path), "rag_templates_optimization")
         steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
-        tracker.record("run_optimization", "started")
-        tracker.record("run_optimization", "completed", steps=steps)
+        tracker.record("optimize_templates", "started")
+        tracker.record("optimize_templates", "completed", steps=steps)
         tracker.save()
 
         data = load_component_status(str(tmp_path))
@@ -72,14 +58,20 @@ class TestComponentStatusTracker:
     def test_stage_skips_auto_complete_when_completed_inside_block(self, tmp_path: Path) -> None:
         """stage() does not overwrite a completed record written inside the block."""
         tracker = ComponentStatusTracker(str(tmp_path), "rag_templates_optimization")
-        with tracker.stage("run_optimization", steps=["chunking"]):
-            tracker.record("run_optimization", "completed", max_rag_patterns=8)
+        with tracker.stage("optimize_templates", steps=["chunking"]):
+            tracker.record("optimize_templates", "completed", max_rag_patterns=8)
         tracker.save()
 
         data = load_component_status(str(tmp_path))
-        run_stage = next(stage for stage in data["stages"] if stage["id"] == "run_optimization")
+        run_stage = next(stage for stage in data["stages"] if stage["id"] == "optimize_templates")
         assert run_stage["status"] == "completed"
         assert run_stage["max_rag_patterns"] == 8
+
+    def test_utc_now_z_ends_with_z(self) -> None:
+        """Timestamps use UTC ISO-8601 with Z suffix."""
+        from kfp_components.components.training.autorag.shared.component_status import utc_now_z
+
+        assert utc_now_z().endswith("Z")
 
 
 class TestComponentStatusEncoder:
@@ -107,7 +99,7 @@ class TestEmbeddedStatusBootstrap:
         shared_dir = Path(__file__).resolve().parents[1]
         embedded = type("Embedded", (), {"path": str(shared_dir)})()
         status = bootstrap_status_tracker(embedded, type("Status", (), {"path": str(tmp_path)})(), "test_data_loader")
-        status.record("validate_inputs", "completed")
+        status.record("load_benchmark", "completed")
         status.save()
         assert (tmp_path / COMPONENT_STATUS_FILENAME).is_file()
 
@@ -117,6 +109,15 @@ class TestEmbeddedStatusBootstrap:
         embedded = type("Embedded", (), {"path": str(module_path)})()
         module = load_embedded_component_status_module(embedded)
         assert hasattr(module, "bootstrap_status_tracker")
+
+    def test_bootstrap_status_tracker_returns_noop_when_component_status_is_none(self) -> None:
+        """Notebook-style invocations without component_status use a no-op tracker."""
+        embedded = type("Embedded", (), {"path": str(Path(__file__).resolve().parents[1])})()
+        status = bootstrap_status_tracker(embedded, None, "documents_discovery")
+        assert isinstance(status, NullComponentStatusTracker)
+        with status:
+            with status.stage("discover_documents"):
+                pass
 
 
 class TestComponentStatusTrackerStage:

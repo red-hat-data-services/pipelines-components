@@ -77,16 +77,26 @@ def documents_discovery(
 
     from botocore.exceptions import SSLError
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "documents_discovery")
     with status:
-        with status.stage("validate_inputs"):
+        if component_status is not None:
+            status.set_metadata(display_name="Documents Discovery Status")
+            component_status.metadata["display_name"] = "Documents Discovery Status"
+        with status.stage("discover_documents"):
             s3_creds = {k: os.environ.get(k) for k in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT"]}
             for k, v in s3_creds.items():
                 if v is None:
@@ -105,7 +115,6 @@ def documents_discovery(
                     verify=verify,
                 )
 
-        with status.stage("list_and_sample"):
             # Use paginator to handle buckets with >1,000 objects
             def _list_all_objects(s3_client):
                 """List all objects under prefix using pagination."""
@@ -186,7 +195,6 @@ def documents_discovery(
                 f"enabled_max={sampling_max_size}GB" if sampling_enabled else "disabled",
             )
 
-        with status.stage("write_descriptor"):
             os.makedirs(discovered_documents.path, exist_ok=True)
             descriptor_path = os.path.join(discovered_documents.path, DOCUMENTS_DESCRIPTOR_FILENAME)
             with open(descriptor_path, "w") as f:

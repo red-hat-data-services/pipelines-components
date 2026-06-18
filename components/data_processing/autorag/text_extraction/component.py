@@ -348,18 +348,28 @@ def text_extraction(
 
     import importlib.util
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "text_extraction")
     with status:
+        if component_status is not None:
+            status.set_metadata(display_name="Text Extraction Status")
+            component_status.metadata["display_name"] = "Text Extraction Status"
         descriptor_path = Path(documents_descriptor.path) / DOCUMENTS_DESCRIPTOR_FILENAME
 
-        with status.stage("load_descriptor"):
+        with status.stage("extract_documents"):
             if not descriptor_path.exists():
                 raise FileNotFoundError(f"documents_descriptor.json not found at {descriptor_path}")
 
@@ -390,7 +400,6 @@ def text_extraction(
                 logger.info("No documents to process.")
                 return
 
-        with status.stage("extract_documents"):
             documents = sorted(documents, key=lambda d: d.get("size_bytes", 0), reverse=True)
 
             if max_extraction_workers is not None:

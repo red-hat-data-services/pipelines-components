@@ -14,9 +14,9 @@ _AUTORAG_SHARED = Path(__file__).parents[1] / "shared"
 def leaderboard_evaluation(
     rag_patterns: dsl.InputPath(dsl.Artifact),
     html_artifact: dsl.Output[dsl.HTML],
-    component_status: dsl.Output[dsl.Artifact] = None,
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_metric: str = "faithfulness",
+    component_status: dsl.Output[dsl.Artifact] = None,
 ):
     """Build an HTML leaderboard artifact from RAG pattern evaluation results.
 
@@ -329,15 +329,25 @@ def leaderboard_evaluation(
 
     import importlib.util
 
-    _embedded_path = Path(embedded_artifact.path)
-    _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-    _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-    if _spec is None or _spec.loader is None:
-        raise ValueError(f"Cannot load embedded module from {_module_path}")
-    _status_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_status_module)
-    status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "leaderboard_evaluation")
+    if component_status is None:
+        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+    else:
+        _embedded_path = Path(embedded_artifact.path)
+        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
+        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
+        if _spec is None or _spec.loader is None:
+            raise ValueError(f"Cannot load embedded module from {_module_path}")
+        _status_module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_status_module)
+        status = _status_module.bootstrap_status_tracker(embedded_artifact, component_status, "leaderboard_evaluation")
     with status:
+        if component_status is not None:
+            status.set_metadata(display_name="Leaderboard Evaluation Status")
+            component_status.metadata["display_name"] = "Leaderboard Evaluation Status"
         with status.stage("build_leaderboard"):
             if not rag_patterns_dir.is_dir():
                 raise FileNotFoundError("rag_patterns path is not a directory: %s" % rag_patterns_dir)

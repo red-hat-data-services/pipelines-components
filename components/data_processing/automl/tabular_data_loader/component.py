@@ -132,10 +132,9 @@ def automl_data_loader(  # noqa: D417
     # Initialize status tracker
     status = ComponentStatusTracker(component_status.path, "automl_data_loader")
     with status:
-        # Stage: validate_inputs
-        status.record("validate_inputs", "started")
-        # Validation happens inline below
-        status.record("validate_inputs", "completed")
+        status.set_metadata(display_name="Data Loader Status")
+        component_status.metadata["display_name"] = "Data Loader Status"
+        status.record("prepare_data", "started")
 
         if sampling_method is None:
             if task_type in ("binary", "multiclass"):
@@ -324,10 +323,9 @@ def automl_data_loader(  # noqa: D417
                 return _sample_random(text_stream, PANDAS_CHUNK_SIZE, max_size_bytes)
             return _sample_first_n_rows(text_stream, PANDAS_CHUNK_SIZE, max_size_bytes)
 
-        # Stage: read_and_sample
         status.record(
-            "read_and_sample",
-            "started",
+            "prepare_data",
+            "running",
             sampling_method=sampling_method,
             source=f"s3://{bucket_name}/{file_key}",
         )
@@ -346,11 +344,6 @@ def automl_data_loader(  # noqa: D417
                 f"Label column {label_column!r} not found in the dataset. "
                 f"Available columns: {list(sampled_dataframe.columns)}"
             )
-
-        status.record("read_and_sample", "completed", rows=len(sampled_dataframe))
-
-        # Stage: cleanse
-        status.record("cleanse", "started")
 
         sampled_dataframe.replace([math.inf, -math.inf], float("nan"), inplace=True)
 
@@ -400,15 +393,14 @@ def automl_data_loader(  # noqa: D417
             sampling_method,
         )
         status.record(
-            "cleanse",
+            "prepare_data",
             "completed",
             rows=n_samples,
             duplicates_dropped=n_dup_dropped,
             labels_dropped=n_dropped,
         )
 
-        # Stage: split
-        status.record("split", "started")
+        status.record("split_and_export", "started")
 
         # --- Train/test split ---
         from pathlib import Path
@@ -465,18 +457,12 @@ def automl_data_loader(  # noqa: D417
         X_y_test.to_csv(sampled_test_dataset.path, index=False)
 
         status.record(
-            "split",
+            "split_and_export",
             "completed",
             test_size=test_size,
             selection_train_size=selection_train_size,
             stratify=stratify_effective,
         )
-
-        # Stage: write_outputs
-        status.record("write_outputs", "started")
-        status.record("write_outputs", "completed")
-
-        component_status.metadata["display_name"] = "Data Loader Status"
 
         # Sample row for downstream use (JSON string to avoid NaN issues)
         sample_row = X_y_test.head(1).to_json(orient="records")

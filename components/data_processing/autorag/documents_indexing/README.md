@@ -79,7 +79,7 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: RHOAI Connections API, Version: >=1.0.0
-    - Name: ai4rag, Version: ~=0.6.3
+    - Name: ai4rag, Version: ~=0.6.4
 - **Tags**:
   - data-indexing
   - autorag

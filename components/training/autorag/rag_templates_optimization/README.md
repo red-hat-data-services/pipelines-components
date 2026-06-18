@@ -19,9 +19,9 @@ Carries out the iterative RAG optimization process.
 | `test_data_key` | `Optional[str]` | `None` | Path to the benchmark JSON file in object storage used by generated notebooks. |
 | `vector_io_provider_id` | `str` | `None` | Vector I/O provider identifier as registered in OGX. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
-| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `optimization_settings` | `Optional[dict]` | `None` | Additional settings customising the experiment. |
 | `input_data_key` | `Optional[str]` | `""` | A path to documents dir within a bucket used as an input to AI4RAG experiment. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 
 ## Usage Examples 🧪
 
@@ -78,8 +78,8 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.6.3
-    - Name: OGX API, Version: >=1.0.0
+    - Name: ai4rag, Version: ~=0.6.4
+    - Name: OGX API, Version: ~=1.1.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
 - **Tags**:

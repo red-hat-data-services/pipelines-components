@@ -61,6 +61,7 @@ def timeseries_data_loader(
         NamedTuple: sample_config, split_config, sample_rows, models_selection_train_data_path, extra_train_data_path.
     """
     import io
+    import json
     import logging
     import os
     from pathlib import Path
@@ -96,8 +97,9 @@ def timeseries_data_loader(
 
     status = ComponentStatusTracker(component_status.path, "timeseries_data_loader")
     with status:
-        status.record("validate_inputs", "started")
-        status.record("validate_inputs", "completed")
+        status.set_metadata(display_name="Timeseries Data Loader Status")
+        component_status.metadata["display_name"] = "Timeseries Data Loader Status"
+        status.record("prepare_data", "started")
 
         def get_s3_client(verify=True):
             """Create and return an S3 client using credentials from environment variables."""
@@ -289,8 +291,8 @@ def timeseries_data_loader(
             return out.reset_index(drop=True)
 
         status.record(
-            "read_and_sample",
-            "started",
+            "prepare_data",
+            "running",
             source=f"s3://{bucket_name}/{file_key}",
         )
         df = load_timeseries_data_truncate(bucket_name, file_key, MAX_SIZE_BYTES, PANDAS_CHUNK_SIZE)
@@ -308,9 +310,6 @@ def timeseries_data_loader(
                 f"with columns {sorted(required_columns)}."
             )
 
-        status.record("read_and_sample", "completed", rows=len(df))
-        status.record("cleanse", "started")
-
         df = _clean_timeseries_dataframe(df, id_column, timestamp_column, logger)
 
         n_valid = len(df)
@@ -321,8 +320,8 @@ def timeseries_data_loader(
                 "Provide a larger dataset or fix invalid timestamps, null ids, and duplicate keys."
             )
 
-        status.record("cleanse", "completed", rows=n_valid)
-        status.record("split", "started")
+        status.record("prepare_data", "completed", rows=n_valid)
+        status.record("split_and_export", "started")
 
         # Create workspace datasets directory
         datasets_dir = Path(workspace_path) / "datasets"
@@ -390,13 +389,6 @@ def timeseries_data_loader(
                 "each series has enough train rows for the selection segment."
             )
 
-        status.record(
-            "split",
-            "completed",
-            test_size=test_size,
-            selection_train_size=selection_train_size,
-        )
-
         # Save test dataset to artifact
         test_df.to_csv(sampled_test_dataset.path, index=False)
 
@@ -405,6 +397,13 @@ def timeseries_data_loader(
 
         selection_train_df.to_csv(selection_path, index=False)
         extra_train_df.to_csv(extra_path, index=False)
+
+        status.record(
+            "split_and_export",
+            "completed",
+            test_size=test_size,
+            selection_train_size=selection_train_size,
+        )
 
         logger.info(
             "Timeseries loader: %s rows from s3://%s/%s; split selection=%s extra=%s test=%s",
@@ -424,12 +423,16 @@ def timeseries_data_loader(
             "selection_train_size": selection_train_size,
         }
 
-        status.record("write_outputs", "started")
-        status.record("write_outputs", "completed")
-        component_status.metadata["display_name"] = "Timeseries Data Loader Status"
+        # Sample rows for downstream use (ISO timestamps when supported; JSON string to avoid NaN issues)
+        sample_tail = test_df.tail(min(5, len(test_df)))
+        if hasattr(sample_tail, "to_dict"):
+            from kfp_components.components.training.automl.shared.timeseries_notebook_utils import (
+                _json_records,
+            )
 
-        # Sample row for downstream use (JSON string to avoid NaN issues)
-        sample_rows = test_df.tail(min(5, len(test_df))).to_json(orient="records")
+            sample_rows = json.dumps(_json_records(sample_tail))
+        else:
+            sample_rows = sample_tail.to_json(orient="records")
 
         return NamedTuple(
             "outputs",

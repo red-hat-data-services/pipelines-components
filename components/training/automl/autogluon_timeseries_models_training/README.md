@@ -125,7 +125,10 @@ def example_pipeline(
 
 ### Component status artifact
 
-Writes ``component_status.json`` under ``component_status`` with ``component_id`` ``autogluon_timeseries_models_training`` and training stages (``load_data``, ``model_selection``, ``refit_full``, ``evaluate_models``). Artifact metadata display name: **Timeseries Models Training Status**.
+Writes ``component_status.json`` under ``component_status`` with ``component_id``
+``autogluon_timeseries_models_training`` and training stages (``load_data``, ``model_selection`` with
+steps ``feature_engineering``, ``model_training``, ``stacking``, ``evaluation``, ``refit_and_evaluate``).
+Artifact metadata display name: **Timeseries Models Training Status**.
 
 Inference notebooks are loaded from ``shared/notebook_templates/timeseries_notebook.ipynb`` at runtime (same shared package data as tabular training).
 
@@ -137,6 +140,4 @@ Under each ``{model_name}_FULL/metrics/`` directory:
 - **`back_testing.json`**: Multi-window backtest with ``per_window_metrics`` and ``series_analysis``
   (best/worst forecast timelines). Window error metrics use **natural positive** signs via
   ``filter_finite_metrics``. Best-effort after refit; omitted if backtest APIs or history are
-  insufficient.
-
-The timeseries notebook template loads ``back_testing.json`` when present for model insights.
+  insufficient. Visualized in the generated inference notebook when present.
