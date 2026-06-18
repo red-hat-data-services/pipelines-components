@@ -331,7 +331,7 @@ class TestTextExtractionMultiFormatUnitTests:
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES)
     def test_pdf_processing_with_optimized_settings(self, tmp_path):
-        """Test that PDF format uses optimized pipeline settings (no OCR, no table structure)."""
+        """Test that PDF format uses optimized pipeline settings (no OCR, table structure enabled)."""
         descriptor_dir = tmp_path / "descriptor"
         descriptor_dir.mkdir()
         descriptor = {
@@ -400,7 +400,7 @@ class TestTextExtractionMultiFormatUnitTests:
         mock_pdf_pipeline_options.assert_called_once()
         call_kwargs = mock_pdf_pipeline_options.call_args[1]
         assert call_kwargs["do_ocr"] is False
-        assert call_kwargs["do_table_structure"] is False
+        assert call_kwargs["do_table_structure"] is True
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES)
     def test_txt_file_handling(self, tmp_path):
