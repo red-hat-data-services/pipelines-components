@@ -18,7 +18,7 @@ _SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
+    base_image="quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4",
     packages_to_install=[
         "kubernetes",
         "olot",
@@ -71,7 +71,9 @@ def train_model(
     training_runtime: str = "training-hub",
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
-    """Train model using OSFT (Orthogonal Subspace Fine-Tuning). Outputs model artifact and metrics.
+    """Train using OSFT (Orthogonal Subspace Fine-Tuning).
+
+    Uses mini-trainer backend. Outputs model artifact and metrics.
 
     Args:
         pvc_path: Workspace PVC root path (use dsl.WORKSPACE_PATH_PLACEHOLDER).
@@ -236,8 +238,8 @@ def train_model(
 
         params = _params()
 
-        def _train_func(p):
-            a = dict(p or {})
+        def _train_func(**p):
+            a = dict(p)
             fsdp = a.pop("fsdp_sharding_strategy", None)
             from training_hub import osft as tr
 

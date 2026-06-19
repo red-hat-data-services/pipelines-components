@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from ..training import _log_job_details, wait_for_training_job
+from ..training import _log_job_details, compute_nproc, safe_int, select_runtime, wait_for_training_job
 
 
 @dataclass
@@ -44,6 +44,13 @@ def mock_client():
 
 
 def _make_train_job(status="Running", steps=None, name="test-job"):
+    """Create a FakeTrainJob with sensible defaults.
+
+    Args:
+        status: Job status string.
+        steps: List of FakeStep instances.
+        name: Job name.
+    """
     if steps is None:
         steps = [FakeStep(name="node-0", pod_name="test-job-node-0-abc")]
     return FakeTrainJob(
@@ -133,7 +140,6 @@ class TestSharedTrainingUnitTests:
             wait_for_training_job(mock_client, "test-job", log)
 
         assert mock_client.get_job_logs.call_count == 2
-        # Should always wait for final status
         assert mock_client.wait_for_job_status.call_count == 2
 
     def test_wait_streaming_fails_all_retries_falls_back_to_polling(self, mock_client, log):
@@ -147,7 +153,6 @@ class TestSharedTrainingUnitTests:
             wait_for_training_job(mock_client, "test-job", log)
 
         assert mock_client.get_job_logs.call_count == 3
-        # Should have fallen back to polling for Complete/Failed
         assert mock_client.wait_for_job_status.call_count == 2
         mock_client.wait_for_job_status.assert_any_call(name="test-job", status={"Complete", "Failed"}, timeout=1800)
 
@@ -163,7 +168,6 @@ class TestSharedTrainingUnitTests:
         wait_for_training_job(mock_client, "test-job", log)
 
         mock_client.get_job_logs.assert_not_called()
-        # Should fall back to polling
         assert mock_client.wait_for_job_status.call_count == 2
 
     def test_wait_get_job_fails_skips_logging_and_streaming(self, mock_client, log):
@@ -177,12 +181,10 @@ class TestSharedTrainingUnitTests:
         with mock.patch.object(log, "warning") as mock_warning:
             wait_for_training_job(mock_client, "test-job", log)
             warnings = [str(c) for c in mock_warning.call_args_list]
-            # Should warn about the API error, not about missing node-0
             assert any("Could not retrieve TrainJob details" in w for w in warnings)
             assert not any("node-0 step not found" in w for w in warnings)
 
         mock_client.get_job_logs.assert_not_called()
-        # Should fall back to polling
         assert mock_client.wait_for_job_status.call_count == 2
 
     @pytest.mark.parametrize(
@@ -201,3 +203,118 @@ class TestSharedTrainingUnitTests:
 
         with pytest.raises(RuntimeError, match=match):
             wait_for_training_job(mock_client, "test-job", log)
+
+
+class TestSafeInt:
+    """Tests for safe_int."""
+
+    def test_none_returns_default(self):
+        """None input returns the default value."""
+        assert safe_int(None, 42) == 42
+
+    def test_int_passthrough(self):
+        """Integer input passes through unchanged."""
+        assert safe_int(7, 0) == 7
+
+    def test_string_int(self):
+        """String integer is parsed correctly."""
+        assert safe_int("10", 0) == 10
+
+    def test_string_with_whitespace(self):
+        """Whitespace-padded string integer is parsed."""
+        assert safe_int("  5  ", 0) == 5
+
+    def test_empty_string_returns_default(self):
+        """Empty string returns the default value."""
+        assert safe_int("", 99) == 99
+
+    def test_zero(self):
+        """Zero is returned, not confused with falsy default."""
+        assert safe_int(0, 42) == 0
+
+    def test_float_string_raises(self):
+        """Float string raises ValueError."""
+        with pytest.raises(ValueError):
+            safe_int("3.14", 0)
+
+
+class TestSelectRuntime:
+    """Tests for select_runtime."""
+
+    def test_finds_matching_runtime(self, log):
+        """Default 'training-hub' runtime is found."""
+        rt = mock.MagicMock()
+        rt.name = "training-hub"
+        client = mock.MagicMock()
+        client.list_runtimes.return_value = [rt]
+
+        result = select_runtime(client, log)
+        assert result is rt
+
+    def test_finds_custom_named_runtime(self, log):
+        """Custom-named runtime is found when specified."""
+        rt1 = mock.MagicMock()
+        rt1.name = "other"
+        rt2 = mock.MagicMock()
+        rt2.name = "my-runtime"
+        client = mock.MagicMock()
+        client.list_runtimes.return_value = [rt1, rt2]
+
+        result = select_runtime(client, log, runtime_name="my-runtime")
+        assert result is rt2
+
+    def test_raises_when_not_found(self, log):
+        """RuntimeError raised when no runtimes exist."""
+        client = mock.MagicMock()
+        client.list_runtimes.return_value = []
+
+        with pytest.raises(RuntimeError, match="not found"):
+            select_runtime(client, log)
+
+    def test_raises_when_no_match(self, log):
+        """RuntimeError raised when target runtime name has no match."""
+        rt = mock.MagicMock()
+        rt.name = "wrong-name"
+        client = mock.MagicMock()
+        client.list_runtimes.return_value = [rt]
+
+        with pytest.raises(RuntimeError, match="training-hub.*not found"):
+            select_runtime(client, log)
+
+
+class TestComputeNproc:
+    """Tests for compute_nproc."""
+
+    def test_auto_uses_gpu_count(self):
+        """'auto' nproc_per_node uses GPU count."""
+        np, nn = compute_nproc(4, "auto", num_workers=2)
+        assert np == 4
+        assert nn == 2
+
+    def test_auto_case_insensitive(self):
+        """'AUTO' is treated the same as 'auto'."""
+        np, _ = compute_nproc(8, "AUTO")
+        assert np == 8
+
+    def test_explicit_nproc(self):
+        """Explicit nproc_per_node string is parsed."""
+        np, nn = compute_nproc(4, "2", num_workers=3)
+        assert np == 2
+        assert nn == 3
+
+    def test_single_node_forces_nnodes_1(self):
+        """Single-node mode forces nnodes to 1."""
+        np, nn = compute_nproc(4, "auto", num_workers=8, single_node=True)
+        assert np == 4
+        assert nn == 1
+
+    def test_min_values_clamped_to_1(self):
+        """Zero values are clamped to minimum of 1."""
+        np, nn = compute_nproc(0, "0", num_workers=0)
+        assert np == 1
+        assert nn == 1
+
+    def test_default_workers(self):
+        """Default num_workers produces nnodes of 1."""
+        _, nn = compute_nproc(1, "auto")
+        assert nn == 1

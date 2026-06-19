@@ -1,4 +1,7 @@
+no_parent_owners: true
 approvers:
   - LukaszCmielowski
+  - DorotaDR
 reviewers:
   - LukaszCmielowski
+  - DorotaDR

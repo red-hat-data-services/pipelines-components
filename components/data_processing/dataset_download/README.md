@@ -38,8 +38,10 @@ Validates that datasets follow chat template format (messages/conversations with
   - s3
 - **Last Verified**: 2026-01-14 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - briangallagher
+    - efazal
     - Fiona-Waters
     - kramaranya
     - MStokluska

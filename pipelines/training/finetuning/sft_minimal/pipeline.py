@@ -11,14 +11,9 @@ SFT is the standard approach for adapting pre-trained language models
 to new tasks or domains using labeled training data.
 """
 
-import os
-import sys
-
 import kfp
 import kfp.kubernetes
 from kfp import dsl
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from components.data_processing.dataset_download import dataset_download
 from components.deployment.kubeflow_model_registry import (
@@ -75,7 +70,7 @@ def sft_minimal_pipeline(
     phase_02_train_opt_env_vars: str = (
         "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, "
         "NCCL_DEBUG=INFO, NCCL_P2P_DISABLE=1, "
-        "INSTRUCTLAB_NCCL_TIMEOUT_MS=60000"
+        "INSTRUCTLAB_NCCL_TIMEOUT_MS=600000"
     ),
     phase_02_train_opt_learning_rate: float = 5e-6,
     phase_02_train_opt_max_seq_len: int = 8192,
@@ -83,6 +78,7 @@ def sft_minimal_pipeline(
     phase_02_train_opt_use_liger: bool = False,
     phase_02_train_opt_runtime: str = "training-hub",
     phase_04_registry_opt_port: int = 8080,
+    phase_04_registry_opt_format_version: str = "2.9",
 ):
     """SFT Training Pipeline - Standard supervised fine-tuning with instructlab-training.
 
@@ -113,6 +109,7 @@ def sft_minimal_pipeline(
         phase_02_train_opt_use_liger: Enable Liger kernel optimizations
         phase_02_train_opt_runtime: Name of the ClusterTrainingRuntime to use.
         phase_04_registry_opt_port: Model Registry server port.
+        phase_04_registry_opt_format_version: Model format version for registry (default "2.9")
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -183,6 +180,12 @@ def sft_minimal_pipeline(
         },
         optional=False,
     )
+    kfp.kubernetes.use_secret_as_env(
+        task=training_task,
+        secret_name="oci-pull-secret-model-download",
+        secret_key_to_env={"OCI_PULL_SECRET_MODEL_DOWNLOAD": "OCI_PULL_SECRET_MODEL_DOWNLOAD"},
+        optional=True,
+    )
 
     # =========================================================================
     # Stage 3: Evaluation
@@ -228,7 +231,7 @@ def sft_minimal_pipeline(
         model_name=phase_04_registry_man_reg_name,
         model_version=phase_04_registry_man_version,
         model_format_name="pytorch",
-        model_format_version="2.9",
+        model_format_version=phase_04_registry_opt_format_version,
         model_description="",
         author="pipeline",
         shared_log_file="pipeline_log.txt",

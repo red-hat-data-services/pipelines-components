@@ -1,10 +1,27 @@
-import sys
-from pathlib import Path
+"""Test fixtures for leaderboard_evaluation."""
 
-# Add the shared automl directory to sys.path so that the component body's bare import
-# `from leaderboard_utils import ...` resolves during testing, replicating the KFP
-# runtime behaviour where embedded_artifact_path is added to sys.path inside the container.
-# parents[0]=tests, [1]=component dir, [2]=automl — shared lives at automl/shared
-_shared_dir = str(Path(__file__).resolve().parents[2] / "shared")
-if _shared_dir not in sys.path:
-    sys.path.insert(0, _shared_dir)
+from unittest import mock
+
+import pytest
+
+
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
+@pytest.fixture(autouse=True)
+def inject_component_status(monkeypatch, tmp_path):
+    """Inject component_status when tests omit it."""
+    from ..component import leaderboard_evaluation
+
+    original = leaderboard_evaluation.python_func
+
+    def wrapper(*args, **kwargs):
+        if "component_status" not in kwargs:
+            kwargs["component_status"] = _make_component_status_artifact(tmp_path)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(leaderboard_evaluation, "python_func", wrapper)

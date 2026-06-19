@@ -2,25 +2,26 @@ from typing import List, Optional
 
 from kfp import dsl
 from kfp_components.components.data_processing.automl.timeseries_data_loader import timeseries_data_loader
-from kfp_components.components.training.automl.autogluon_timeseries_leaderboard_evaluation import (
-    timeseries_leaderboard_evaluation,
+from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
+from kfp_components.components.training.automl.autogluon_timeseries_models_training import (
+    autogluon_timeseries_models_training,
 )
-from kfp_components.components.training.automl.autogluon_timeseries_models_full_refit import (
-    autogluon_timeseries_models_full_refit,
-)
-from kfp_components.components.training.automl.autogluon_timeseries_models_selection import (
-    autogluon_timeseries_models_selection,
-)
+from kfp_components.components.training.automl.component_stage_map_publisher import publish_component_stage_map
+
+MAX_CPUS = "32"
+MAX_MEMORY = "64Gi"
+
+# Must match run_status_templates/pipelines/<name>.json
+PIPELINE_NAME = "autogluon-timeseries-training-pipeline"
 
 
 @dsl.pipeline(
-    name="autogluon-timeseries-training-pipeline",
+    name=PIPELINE_NAME,
     description=(
-        "End-to-end AutoGluon time series forecasting pipeline. Loads time series data from S3 in "
-        "TimeSeriesDataFrame format (item_id, timestamp, target), trains multiple AutoGluon TimeSeries models "
-        "(local statistical and global deep learning), ranks them by the chosen eval metric, and produces a "
-        "leaderboard and the top N trained predictors for deployment. Supports optional known covariates and "
-        "configurable prediction_length."
+        "AutoML time series forecasting pipeline for building accurate, deployment-ready forecasters with "
+        "minimal tuning. Powered by AutoGluon TimeSeries, it compares statistical and deep learning "
+        "approaches, refits the best models, and delivers top predictors, back-testing insights, and a "
+        "ranked leaderboard for model selection."
     ),
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
@@ -43,12 +44,18 @@ def autogluon_timeseries_training_pipeline(
     known_covariates_names: Optional[List[str]] = None,
     prediction_length: int = 1,
     top_n: int = 3,
+    eval_metric: str = "MASE",
+    preset: str = "speed",
 ):
     """AutoGluon time series training pipeline.
 
     Trains AutoGluon TimeSeries models on data loaded from S3, scores candidates on a per-series
     temporal holdout, refits the top models on the full train portion (selection + extra splits),
     and aggregates metrics into a leaderboard.
+
+    **Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or
+    string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns,
+    which reject multi-byte characters.
 
     Storage strategy:
 
@@ -59,25 +66,24 @@ def autogluon_timeseries_training_pipeline(
 
     Pipeline stages:
 
-    1. **Data loading & splitting** (``timeseries_data_loader``): Loads CSV from S3 (up to 1GB), then
-       applies a two-stage **per-series temporal** split on ``id_column`` / ``timestamp_column``:
+    0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP
+       artifact for dashboards before data loading.
+
+    1. **Data loading & splitting** (``timeseries_data_loader``): Loads CSV from S3 (up to 100 MB),
+       replaces ``+/-inf`` with NaN (missing targets stay for AutoGluon), requires parseable timestamps
+       and non-null ids, deduplicates ``(id_column, timestamp_column)``, then applies a two-stage
+       **per-series temporal** split on ``id_column`` / ``timestamp_column``:
        default **80/20** train vs test per series, then **30/70** of each series' train rows into
        ``models_selection_train_dataset.csv`` and ``extra_train_dataset.csv`` under
        ``{workspace_path}/datasets/``. The test split is written to the ``sampled_test_dataset`` artifact.
 
-    2. **Model selection** (``autogluon_timeseries_models_selection``): Trains multiple AutoGluon TimeSeries
-       models on the selection split, scores them on the test split, and emits the top ``top_n`` models
-       plus predictor path and configuration.
+    2. **Model generation + full refit** (``autogluon_timeseries_models_training``): Trains multiple
+       AutoGluon TimeSeries models on the selection split, picks top ``top_n``, and refits each selected model
+       on the full train portion (**selection + extra** splits). The component writes all refitted models to a
+       single combined ``models_artifact``.
 
-    3. **Full refit** (``autogluon_timeseries_models_full_refit``, ``ParallelFor`` with parallelism 1): For
-       each top model, fits a new predictor on **selection + extra** train data (full train portion per
-       series), evaluates on the test split, and writes a ``_FULL`` model artifact (predictor, metrics,
-       notebook). Parallelism is **one** concurrent refit pod because the workspace PVC is
-       **ReadWriteOnce**; higher parallelism would mount the same RWO volume from multiple pods and cause
-       **Multi-Attach** errors on typical block storage.
-
-    4. **Leaderboard** (``leaderboard_evaluation``): Builds an HTML leaderboard from the refitted model
-       metrics using the selection stage's evaluation metric.
+    3. **Leaderboard** (``leaderboard_evaluation``): Builds an HTML leaderboard from the combined refitted-model
+       artifact using the training stage's evaluation metric.
 
     Args:
         train_data_secret_name: Kubernetes secret name containing S3 credentials
@@ -98,17 +104,20 @@ def autogluon_timeseries_training_pipeline(
         prediction_length: Number of time steps to forecast (horizon length). Positive integer
             (default: 1).
         top_n: Number of top models to select for the leaderboard and output (default: 3).
+        eval_metric: Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or
+            snake_case form. Defaults to ``"MASE"``.
+        preset: Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or
+            ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB).
 
     Returns:
-        This pipeline wires task outputs between components; compiled runs expose artifacts from the
-        refit tasks (Model artifacts with predictor, metrics, notebook paths) and the leaderboard
-        evaluation task (HTML leaderboard and aggregated metrics), subject to Kubeflow Pipelines UI
-        and artifact configuration.
+        This pipeline wires task outputs between components; compiled runs expose the combined models artifact
+        (per-model predictor, metrics, notebook paths) and leaderboard evaluation artifact (HTML + aggregated
+        metrics), subject to Kubeflow Pipelines UI and artifact configuration.
 
     Raises:
-        Component and runtime failures propagate from the underlying steps (for example: S3 access or
-        empty data from the loader, invalid inputs, AutoGluon training or evaluation errors, or
-        resource limits in the cluster).
+        FileNotFoundError: If the S3 file cannot be found or accessed.
+        ValueError: If required columns are missing, temporal splits fail, or inputs are invalid.
+        RuntimeError: If AutoGluon training or evaluation fails, or cluster resource limits are exceeded.
 
     Example:
         pipeline = autogluon_timeseries_training_pipeline(
@@ -123,6 +132,16 @@ def autogluon_timeseries_training_pipeline(
             top_n=3,
         )
     """
+    # Publish component-to-stage-to-step map first so dashboards know expected structure
+    component_stage_map_task = publish_component_stage_map(
+        pipeline_id=PIPELINE_NAME,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+    )
+    component_stage_map_task.set_caching_options(False)
+    component_stage_map_task.set_cpu_request("0.5").set_memory_request("512Mi").set_cpu_limit("1").set_memory_limit(
+        "1Gi"
+    )
+
     # Stage 1: Data Loading & Splitting
     data_loader_task = timeseries_data_loader(
         bucket_name=train_data_bucket_name,
@@ -132,8 +151,9 @@ def autogluon_timeseries_training_pipeline(
         id_column=id_column,
         timestamp_column=timestamp_column,
     )
+    data_loader_task.after(component_stage_map_task)
     data_loader_task.set_caching_options(False)
-    data_loader_task.set_cpu_request("2").set_memory_request("8Gi")
+    data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
     # Configure S3 secret for data loader
     from kfp.kubernetes import use_secret_as_env
@@ -150,9 +170,10 @@ def autogluon_timeseries_training_pipeline(
         optional=True,
     )
 
-    # Stage 2: Model Selection
-    # Train multiple models on selection data and select top N performers
-    selection_task = autogluon_timeseries_models_selection(
+    # Stage 2: Combined model generation + full refit.
+    # Resource limits differ by preset: medium_quality needs more CPU/memory.
+    # TODO: when possible, the leaderboard evaluation task should be outside the if/else block.
+    _training_kwargs = dict(
         target=target,
         id_column=id_column,
         timestamp_column=timestamp_column,
@@ -162,36 +183,46 @@ def autogluon_timeseries_training_pipeline(
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         prediction_length=prediction_length,
         known_covariates_names=known_covariates_names,
+        pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        sample_rows=data_loader_task.outputs["sample_rows"],
+        sampling_config=data_loader_task.outputs["sample_config"],
+        split_config=data_loader_task.outputs["split_config"],
+        extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
+        preset=preset,
+        eval_metric=eval_metric,
     )
-    selection_task.set_caching_options(False)
-    selection_task.set_cpu_request("4").set_memory_request("16Gi")
-
-    # Stage 3: Model Refitting (parallelism=1: RWO workspace allows only one pod on the volume at a time).
-    with dsl.ParallelFor(items=selection_task.outputs["top_models"], parallelism=1) as model_name:
-        refit_task = autogluon_timeseries_models_full_refit(
-            model_name=model_name,
-            test_dataset=data_loader_task.outputs["sampled_test_dataset"],
-            predictor_path=selection_task.outputs["predictor_path"],
-            sampling_config=data_loader_task.outputs["sample_config"],
-            split_config=data_loader_task.outputs["split_config"],
-            model_config=selection_task.outputs["model_config"],
-            pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
-            run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
-            models_selection_train_data_path=data_loader_task.outputs["models_selection_train_data_path"],
-            extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
-            sample_rows=data_loader_task.outputs["sample_rows"],
+    with dsl.If(preset == "balanced"):
+        training_task_bl = autogluon_timeseries_models_training(**_training_kwargs)
+        training_task_bl.set_caching_options(False)
+        training_task_bl.set_cpu_request("8").set_memory_request("32Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
         )
-        refit_task.set_caching_options(False)
-        refit_task.set_cpu_request("2").set_memory_request("8Gi")
 
-    # Stage 4: Leaderboard Evaluation
-    # Generate leaderboard from all refitted models
-    leaderboard_task = timeseries_leaderboard_evaluation(
-        models=dsl.Collected(refit_task.outputs["model_artifact"]),
-        eval_metric=selection_task.outputs["eval_metric_name"],
-    )
-    leaderboard_task.set_caching_options(False)
-    leaderboard_task.set_cpu_request("1").set_memory_request("4Gi")
+        leaderboard_task_bl = leaderboard_evaluation(
+            models_artifact=training_task_bl.outputs["models_artifact"],
+            eval_metric=training_task_bl.outputs["eval_metric"],
+        )
+        leaderboard_task_bl.set_caching_options(False)
+        leaderboard_task_bl.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
+        )
+
+    with dsl.Else():
+        training_task_sp = autogluon_timeseries_models_training(**_training_kwargs)
+        training_task_sp.set_caching_options(False)
+        training_task_sp.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
+        )
+
+        leaderboard_task_sp = leaderboard_evaluation(
+            models_artifact=training_task_sp.outputs["models_artifact"],
+            eval_metric=training_task_sp.outputs["eval_metric"],
+        )
+        leaderboard_task_sp.set_caching_options(False)
+        leaderboard_task_sp.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
+        )
 
 
 if __name__ == "__main__":

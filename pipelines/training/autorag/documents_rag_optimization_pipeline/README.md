@@ -9,37 +9,37 @@ Automated system for building and optimizing Retrieval-Augmented Generation (RAG
 The Documents RAG Optimization Pipeline is an automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications within Red Hat OpenShift AI. It leverages Kubeflow Pipelines to orchestrate the optimization workflow, using the ai4rag optimization engine to systematically
 explore RAG configurations and identify the best performing parameter settings based on an upfront-specified quality metric.
 
-The system integrates with llama-stack API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. After optimization, request JSON bodies for Llama Stack ``/v1/responses`` are emitted per pattern
+The system integrates with OGX API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. After optimization, request JSON bodies for OGX ``/v1/responses`` are emitted per pattern
 (``prepare_responses_api_requests``).
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `test_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for test data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `test_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for test data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT. AWS_DEFAULT_REGION is optional. |
 | `test_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the test data file. |
 | `test_data_key` | `str` | `None` | Object key (path) of the test data JSON file in the test data bucket. |
-| `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for input document data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION. |
+| `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for input document data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT. AWS_DEFAULT_REGION is optional. |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the input documents. |
-| `llama_stack_secret_name` | `str` | `None` | Name of the Kubernetes secret for llama-stack API connection. The secret must define: LLAMA_STACK_CLIENT_API_KEY, LLAMA_STACK_CLIENT_BASE_URL. |
-| `llama_stack_vector_io_provider_id` | `str` | `None` | Vector I/O provider id (e.g., registered in llama-stack Milvus). |
+| `ogx_secret_name` | `str` | `None` | Name of the Kubernetes secret for OGX API connection. The secret must define: OGX_CLIENT_API_KEY, OGX_CLIENT_BASE_URL. |
+| `vector_io_provider_id` | `str` | `None` | Vector I/O provider id (e.g., registered in OGX Milvus). |
 | `input_data_key` | `str` | `""` | Object key (path) of the input documents in the input data bucket. |
-| `embeddings_models` | `Optional[List]` | `None` | Optional list of embedding model identifiers to use in the search space. |
+| `embedding_models` | `Optional[List]` | `None` | Optional list of embedding model identifiers to use in the search space. |
 | `generation_models` | `Optional[List]` | `None` | Optional list of foundation/generation model identifiers to use in the search space. |
 | `optimization_metric` | `str` | `faithfulness` | Quality metric used to optimize RAG patterns. Supported values: "faithfulness", "answer_correctness", "context_correctness". |
 | `optimization_max_rag_patterns` | `int` | `8` | Maximum number of RAG patterns to generate. Passed to ai4rag (max_number_of_rag_patterns). Defaults to 8. |
 
 ## Metadata 🗂️
 
-- **Name**: documents_rag_optimization_pipeline
+- **Name**: documents-rag-optimization-pipeline
 - **Stability**: beta
 - **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
-    - Name: Pipelines, Version: >=2.15.2
+    - Name: Pipelines, Version: 2.16.1
   - External Services:
-    - Name: ai4rag, Version: >=1.0.0
-    - Name: llama-stack API, Version: >=1.0.0
+    - Name: ai4rag, Version: ~=0.6.4
+    - Name: OGX API, Version: ~=1.1.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
@@ -50,16 +50,65 @@ The system integrates with llama-stack API for inference and vector database ope
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-03-25 00:00:00+00:00
+- **Last Verified**: 2026-06-09 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
-    - filip-komarzyniec
-    - witold-nowogorski
+    - DorotaDR
   - Reviewers:
-    - LukaszCmielowski
+    - filip-komarzyniec
+    - jakub-walaszczyk
+    - MichalSteczko
 
 <!-- custom-content -->
+
+### Progress and dashboard artifacts
+
+Besides RAG pattern and data artifacts below, each run publishes:
+
+| KFP task | Output | File | Purpose |
+| -------- | ------ | ---- | ------- |
+| `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the RAG pipeline (published once at run start). |
+| `test-data-loader` | `component_status` | `component_status.json` | Stage progress for benchmark test data download and sampling. |
+| `documents-discovery` | `component_status` | `component_status.json` | Stage progress for listing and sampling source documents. |
+| `text-extraction` | `component_status` | `component_status.json` | Stage progress for docling text extraction. |
+| `search-space-preparation` | `component_status` | `component_status.json` | Stage progress for search-space preparation and model pre-selection. |
+| `rag-templates-optimization` | `component_status` | `component_status.json` | Stage progress for RAG template optimization (including sub-steps). |
+| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+
+Example artifact-store layout (task folder names are kebab-case):
+
+```text
+<pipeline_name>/<run_id>/
+├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
+├── test-data-loader/<task_id>/component_status/component_status.json
+├── documents-discovery/<task_id>/component_status/component_status.json
+├── text-extraction/<task_id>/component_status/component_status.json
+├── search-space-preparation/<task_id>/component_status/component_status.json
+├── rag-templates-optimization/<task_id>/component_status/component_status.json
+└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+```
+
+See [AutoRAG training components README](../../../components/training/autorag/README.md) for JSON field details.
+
+#### Dashboard join keys
+
+Dashboards join the static map (`component_stage_map.json`) to live progress (`component_status.json`) using **snake_case component ids**, not KFP task names:
+
+| Layer | Naming | Test data loader example |
+| ----- | ------ | ------------------------ |
+| Template `components[].id` | snake_case | `test_data_loader` |
+| Runtime `component_status.json` → `component_id` | snake_case | `test_data_loader` |
+| KFP root DAG task id (compiled YAML) | kebab-case | `test-data-loader` |
+| KFP output parameter | snake_case | `component_status` |
+| Artifact file | snake_case | `component_status.json` |
+
+Use `component_id` (and stage `id` fields inside each file) to correlate artifacts. KFP task names are only for locating artifact paths in the store.
+
+Canonical component ids are defined in the pipeline JSON templates under
+[`run_status_templates/pipelines/`](../../../components/training/autorag/shared/run_status_templates/pipelines/)
+(e.g. `documents-rag-optimization-pipeline.json`).
 
 ## Optimization Engine: ai4rag 🚀
 
@@ -86,7 +135,7 @@ RAG templates with optimal parameter values, which are referred to as RAG Patter
 ### Infrastructure Components
 
 - **Vector Databases**: Milvus, Milvus Lite, ChromaDB
-- **LLM Provider**: Llama-stack-supported models and vendors
+- **LLM Provider**: OGX-supported models and vendors
 - **Experiment Tracking**: MLFlow (optional) - For experiment tracking, metrics logging, and
   artifact management
 

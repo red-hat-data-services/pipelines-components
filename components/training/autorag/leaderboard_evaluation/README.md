@@ -15,7 +15,9 @@ search_mode ("hybrid" | "vector" per ai4rag), ranker_strategy, generation.model_
 | --------- | ---- | ------- | ----------- |
 | `rag_patterns` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to the directory of RAG patterns; each subdir contains pattern.json (pattern_name, indexing_params, rag_params, scores, execution_time, final_score). |
 | `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to html_artifact.path (single file). |
+| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 | `optimization_metric` | `str` | `faithfulness` | Name of the metric used to rank patterns (e.g. faithfulness, answer_correctness, context_correctness). Shown in the leaderboard subtitle. Defaults to "faithfulness". |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 
 ## Usage Examples 🧪
 
@@ -61,8 +63,11 @@ def example_pipeline(
   - evaluation
 - **Last Verified**: 2026-02-10 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - filip-komarzyniec
-    - witold-nowogorski
+    - jakub-walaszczyk
+    - MichalSteczko

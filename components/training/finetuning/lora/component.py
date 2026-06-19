@@ -18,7 +18,7 @@ _SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
+    base_image="quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4",
     packages_to_install=[
         "kubernetes",
         "olot",
@@ -90,9 +90,6 @@ def train_model(
     training_wandb_entity: Optional[str] = None,
     training_wandb_run_name: Optional[str] = None,
     training_tensorboard_log_dir: Optional[str] = None,
-    training_mlflow_tracking_uri: Optional[str] = None,
-    training_mlflow_experiment_name: Optional[str] = None,
-    training_mlflow_run_name: Optional[str] = None,
     # Dataset format params
     training_dataset_type: Optional[str] = None,
     training_field_messages: Optional[str] = None,
@@ -158,9 +155,6 @@ def train_model(
         training_wandb_entity: Weights & Biases entity/team.
         training_wandb_run_name: Weights & Biases run name.
         training_tensorboard_log_dir: TensorBoard log directory.
-        training_mlflow_tracking_uri: MLflow tracking server URI.
-        training_mlflow_experiment_name: MLflow experiment name.
-        training_mlflow_run_name: MLflow run name.
         training_dataset_type: Dataset format type.
         training_field_messages: Field name for messages in dataset.
         training_field_instruction: Field name for instruction in dataset.
@@ -332,12 +326,6 @@ def train_model(
                 b["wandb_run_name"] = training_wandb_run_name
             if training_tensorboard_log_dir:
                 b["tensorboard_log_dir"] = training_tensorboard_log_dir
-            if training_mlflow_tracking_uri:
-                b["mlflow_tracking_uri"] = training_mlflow_tracking_uri
-            if training_mlflow_experiment_name:
-                b["mlflow_experiment_name"] = training_mlflow_experiment_name
-            if training_mlflow_run_name:
-                b["mlflow_run_name"] = training_mlflow_run_name
 
             # Dataset format params
             if training_dataset_type:
@@ -359,13 +347,13 @@ def train_model(
 
         params = _params()
 
-        def _train_func(p):
+        def _train_func(**p):
             import os
 
             from training_hub import lora_sft as tr
 
             print("[PY] Launching LoRA training...", flush=True)
-            result = tr(**(p or {}))
+            result = tr(**p)
 
             # Merge LoRA adapter weights into base model for eval/deployment compatibility.
             # LoRA training saves adapter-only files (adapter_config.json, adapter_model.safetensors)

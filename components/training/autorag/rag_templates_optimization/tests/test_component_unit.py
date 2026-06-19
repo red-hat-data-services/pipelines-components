@@ -1,5 +1,6 @@
 """Tests for the rag_templates_optimization component."""
 
+import json
 import os
 import ssl
 import sys
@@ -53,27 +54,15 @@ def _make_minimal_httpx_module():
     return mod
 
 
-def _make_llama_stack_client_module():
-    """Stub llama_stack_client with a real APIConnectionError (MagicMock breaks except clauses)."""
-    mod = types.ModuleType("llama_stack_client")
+def _make_ogx_client_module():
+    """Stub ogx_client with a real APIConnectionError (MagicMock breaks except clauses)."""
+    mod = types.ModuleType("ogx_client")
 
     class APIConnectionError(Exception):
         pass
 
     mod.APIConnectionError = APIConnectionError
-    mod.LlamaStackClient = mock.MagicMock()
-    return mod
-
-
-def _make_openai_module():
-    """Stub openai with a real APIConnectionError (MagicMock breaks except clauses)."""
-    mod = types.ModuleType("openai")
-
-    class APIConnectionError(Exception):
-        pass
-
-    mod.APIConnectionError = APIConnectionError
-    mod.OpenAI = mock.MagicMock()
+    mod.OgxClient = mock.MagicMock()
     return mod
 
 
@@ -92,12 +81,10 @@ def _make_all_mocks():
         "ai4rag.rag",
         "ai4rag.rag.embedding",
         "ai4rag.rag.embedding.base_model",
-        "ai4rag.rag.embedding.llama_stack",
-        "ai4rag.rag.embedding.openai_model",
+        "ai4rag.rag.embedding.ogx",
         "ai4rag.rag.foundation_models",
         "ai4rag.rag.foundation_models.base_model",
-        "ai4rag.rag.foundation_models.llama_stack",
-        "ai4rag.rag.foundation_models.openai_model",
+        "ai4rag.rag.foundation_models.ogx",
         "ai4rag.search_space",
         "ai4rag.search_space.src",
         "ai4rag.search_space.src.parameter",
@@ -137,12 +124,10 @@ def _minimal_dependency_modules():
         "ai4rag.rag": mock.MagicMock(),
         "ai4rag.rag.embedding": mock.MagicMock(),
         "ai4rag.rag.embedding.base_model": mock.MagicMock(BaseEmbeddingModel=mock.MagicMock()),
-        "ai4rag.rag.embedding.llama_stack": mock.MagicMock(LSEmbeddingModel=mock.MagicMock()),
-        "ai4rag.rag.embedding.openai_model": mock.MagicMock(OpenAIEmbeddingModel=mock.MagicMock()),
+        "ai4rag.rag.embedding.ogx": mock.MagicMock(OGXEmbeddingModel=mock.MagicMock()),
         "ai4rag.rag.foundation_models": mock.MagicMock(),
         "ai4rag.rag.foundation_models.base_model": mock.MagicMock(BaseFoundationModel=mock.MagicMock()),
-        "ai4rag.rag.foundation_models.llama_stack": mock.MagicMock(LSFoundationModel=mock.MagicMock()),
-        "ai4rag.rag.foundation_models.openai_model": mock.MagicMock(OpenAIFoundationModel=mock.MagicMock()),
+        "ai4rag.rag.foundation_models.ogx": mock.MagicMock(OGXFoundationModel=mock.MagicMock()),
         "ai4rag.search_space": mock.MagicMock(),
         "ai4rag.search_space.src": mock.MagicMock(),
         "ai4rag.search_space.src.parameter": mock.MagicMock(Parameter=mock.MagicMock()),
@@ -155,8 +140,7 @@ def _minimal_dependency_modules():
         ),
         "langchain_core": mock.MagicMock(),
         "langchain_core.documents": mock.MagicMock(Document=mock.MagicMock()),
-        "llama_stack_client": mock.MagicMock(LlamaStackClient=mock.MagicMock()),
-        "openai": mock.MagicMock(OpenAI=mock.MagicMock()),
+        "ogx_client": mock.MagicMock(OgxClient=mock.MagicMock()),
         "httpx": _make_minimal_httpx_module(),
     }
 
@@ -180,36 +164,17 @@ class TestRagTemplatesOptimizationUnitTests:
         assert "search_space_prep_report" in params
         assert "rag_patterns" in params
 
-    def test_missing_chat_model_url_raises_type_error(self):
-        """Missing required model endpoint args raises TypeError early."""
-        with mock.patch.dict(sys.modules, _minimal_dependency_modules()):
-            with pytest.raises(TypeError, match="chat_model_url must be a non-empty string"):
-                rag_templates_optimization.python_func(
-                    extracted_text="/tmp/extracted",
-                    test_data="/tmp/test_data.json",
-                    search_space_prep_report="/tmp/report.yml",
-                    rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
-                    embedded_artifact=mock.MagicMock(path="/tmp/embedded"),
-                    test_data_key="small-dataset/benchmark.json",
-                    chat_model_url="",
-                    chat_model_token="token",
-                    embedding_model_url="https://emb",
-                    embedding_model_token="token",
-                    optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
-                )
-
-    def _setup_llama_stack_mocks(self, tmp_path, abort_at_experiment=True):
-        """Set up mocks and temp files for llama-stack (non-in-memory) vector store tests.
+    def _setup_ogx_mocks(self, tmp_path, abort_at_experiment=True):
+        """Set up mocks and temp files for OGX vector store tests.
 
         Returns (mocks, extracted_text, test_data_path, search_space_report).
         """
         mocks = _make_all_mocks()
-        llama_mod = _make_llama_stack_client_module()
-        mock_ls = mock.MagicMock()
-        mock_ls.models.list.return_value = []
-        llama_mod.LlamaStackClient.return_value = mock_ls
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
         if abort_at_experiment:
             mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.side_effect = _SentinelAbort
 
@@ -221,15 +186,15 @@ class TestRagTemplatesOptimizationUnitTests:
 
         return mocks, extracted_text, str(test_data_path), str(search_space_report)
 
-    def _run_with_llama_stack(self, mocks, extracted_text, test_data, search_space_report, **kwargs):
-        """Run the component with llama-stack env vars and the given mocks."""
+    def _run_with_ogx(self, mocks, extracted_text, test_data, search_space_report, **kwargs):
+        """Run the component with OGX env vars and the given mocks."""
         with (
             mock.patch.dict(sys.modules, mocks),
             mock.patch.dict(
                 os.environ,
                 {
-                    "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-                    "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+                    "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+                    "OGX_CLIENT_API_KEY": "test-api-key",
                 },
             ),
         ):
@@ -238,7 +203,6 @@ class TestRagTemplatesOptimizationUnitTests:
                 "test_data": test_data,
                 "search_space_prep_report": search_space_report,
                 "rag_patterns": mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
-                "embedded_artifact": mock.MagicMock(path="/tmp/embedded"),
                 "test_data_key": "small-dataset/benchmark.json",
                 "optimization_settings": {"metric": "faithfulness", "max_number_of_rag_patterns": 8},
             }
@@ -246,88 +210,72 @@ class TestRagTemplatesOptimizationUnitTests:
             rag_templates_optimization.python_func(**defaults)
 
     def test_any_vector_store_id_is_accepted(self, tmp_path):
-        """Any non-empty llama_stack_vector_io_provider_id string is accepted (no allowlist)."""
-        mocks, extracted_text, test_data, report = self._setup_llama_stack_mocks(tmp_path)
+        """Any non-empty vector_io_provider_id string is accepted (no allowlist)."""
+        mocks, extracted_text, test_data, report = self._setup_ogx_mocks(tmp_path)
         with pytest.raises(_SentinelAbort):
-            self._run_with_llama_stack(
-                mocks, extracted_text, test_data, report, llama_stack_vector_io_provider_id="my_custom_milvus"
-            )
+            self._run_with_ogx(mocks, extracted_text, test_data, report, vector_io_provider_id="my_custom_milvus")
 
-    def test_ls_prefix_added_for_non_in_memory_scenario(self, tmp_path):
-        """AI4RAGExperiment receives vector_store_type with 'ls_' prefix when not in-memory."""
-        mocks, extracted_text, test_data, report = self._setup_llama_stack_mocks(tmp_path)
+    def test_vector_store_type_set_to_ogx(self, tmp_path):
+        """AI4RAGExperiment receives vector_store_type 'ogx'."""
+        mocks, extracted_text, test_data, report = self._setup_ogx_mocks(tmp_path)
         with pytest.raises(_SentinelAbort):
-            self._run_with_llama_stack(
-                mocks, extracted_text, test_data, report, llama_stack_vector_io_provider_id="milvus"
-            )
+            self._run_with_ogx(mocks, extracted_text, test_data, report, vector_io_provider_id="milvus")
 
         ai4rag_exp = mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment
         ai4rag_exp.assert_called_once()
-        assert ai4rag_exp.call_args.kwargs["vector_store_type"] == "ls_milvus"
+        assert ai4rag_exp.call_args.kwargs["vector_store_type"] == "ogx"
 
-    def test_ls_prefix_not_doubled(self, tmp_path):
-        """When user provides a value already prefixed with 'ls_', it is not doubled."""
-        mocks, extracted_text, test_data, report = self._setup_llama_stack_mocks(tmp_path)
-        with pytest.raises(_SentinelAbort):
-            self._run_with_llama_stack(
-                mocks, extracted_text, test_data, report, llama_stack_vector_io_provider_id="ls_milvus"
-            )
+    def test_missing_provider_id_raises_value_error(self, tmp_path):
+        """None provider_id raises ValueError."""
+        mocks, extracted_text, test_data, report = self._setup_ogx_mocks(tmp_path, abort_at_experiment=False)
+        with pytest.raises(ValueError, match="vector_io_provider_id must be a non-empty string"):
+            self._run_with_ogx(mocks, extracted_text, test_data, report, vector_io_provider_id=None)
 
-        ai4rag_exp = mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment
-        ai4rag_exp.assert_called_once()
-        assert ai4rag_exp.call_args.kwargs["vector_store_type"] == "ls_milvus"
-
-    def test_missing_provider_id_non_in_memory_raises_value_error(self, tmp_path):
-        """None provider_id in non-in-memory (llama-stack) mode raises ValueError."""
-        mocks, extracted_text, test_data, report = self._setup_llama_stack_mocks(tmp_path, abort_at_experiment=False)
-        with pytest.raises(ValueError, match="llama_stack_vector_io_provider_id must be provided"):
-            self._run_with_llama_stack(mocks, extracted_text, test_data, report, llama_stack_vector_io_provider_id=None)
-
-    def test_whitespace_provider_id_non_in_memory_raises_value_error(self, tmp_path):
-        """Whitespace-only provider_id in non-in-memory (llama-stack) mode raises ValueError."""
-        mocks, extracted_text, test_data, report = self._setup_llama_stack_mocks(tmp_path, abort_at_experiment=False)
-        with pytest.raises(ValueError, match="llama_stack_vector_io_provider_id must be provided"):
-            self._run_with_llama_stack(
-                mocks, extracted_text, test_data, report, llama_stack_vector_io_provider_id="   "
-            )
+    def test_whitespace_provider_id_raises_value_error(self, tmp_path):
+        """Whitespace-only provider_id raises ValueError."""
+        mocks, extracted_text, test_data, report = self._setup_ogx_mocks(tmp_path, abort_at_experiment=False)
+        with pytest.raises(ValueError, match="vector_io_provider_id must be a non-empty string"):
+            self._run_with_ogx(mocks, extracted_text, test_data, report, vector_io_provider_id="   ")
 
     def test_max_number_of_rag_patterns_non_numeric_string_raises_value_error(self):
         """UI may pass string parameters; non-numeric strings are rejected with a clear error."""
         with mock.patch.dict(sys.modules, _minimal_dependency_modules()):
-            with pytest.raises(ValueError, match="max_number_of_rag_patterns must be a valid integer"):
-                rag_templates_optimization.python_func(
-                    extracted_text="/tmp/extracted",
-                    test_data="/tmp/test_data.json",
-                    search_space_prep_report="/tmp/report.yml",
-                    rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
-                    embedded_artifact=mock.MagicMock(path="/tmp/embedded"),
-                    test_data_key="small-dataset/benchmark.json",
-                    chat_model_url="https://chat",
-                    chat_model_token="token",
-                    embedding_model_url="https://emb",
-                    embedding_model_token="token",
-                    optimization_settings={
-                        "metric": "faithfulness",
-                        "max_number_of_rag_patterns": "not-a-number",
-                    },
-                )
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+                    "OGX_CLIENT_API_KEY": "test-api-key",
+                },
+            ):
+                with pytest.raises(ValueError, match="max_number_of_rag_patterns must be a valid integer"):
+                    rag_templates_optimization.python_func(
+                        extracted_text="/tmp/extracted",
+                        test_data="/tmp/test_data.json",
+                        search_space_prep_report="/tmp/report.yml",
+                        rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
+                        test_data_key="small-dataset/benchmark.json",
+                        vector_io_provider_id="milvus",
+                        optimization_settings={
+                            "metric": "faithfulness",
+                            "max_number_of_rag_patterns": "not-a-number",
+                        },
+                    )
 
     @mock.patch.dict(
         os.environ,
         {
-            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
     def test_max_number_of_rag_patterns_numeric_string_coerced_for_gam_opt(self, tmp_path):
         """Pipeline UI often sends numbers as strings; they must coerce to int for GAMOptSettings."""
         mocks = _make_all_mocks()
-        llama_mod = _make_llama_stack_client_module()
-        mock_ls = mock.MagicMock()
-        mock_ls.models.list.return_value = []
-        llama_mod.LlamaStackClient.return_value = mock_ls
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
         mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.side_effect = _SentinelAbort
 
         search_space_report = tmp_path / "report.yml"
@@ -337,7 +285,6 @@ class TestRagTemplatesOptimizationUnitTests:
         test_data_path.write_text("[]")
         test_data = str(test_data_path)
         rag_patterns = mock.MagicMock()
-        embedded_artifact = mock.MagicMock()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -346,17 +293,31 @@ class TestRagTemplatesOptimizationUnitTests:
                     test_data=test_data,
                     search_space_prep_report=str(search_space_report),
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
                     test_data_key="small-dataset/benchmark.json",
-                    llama_stack_vector_io_provider_id="milvus",
+                    vector_io_provider_id="milvus",
                     optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": "8"},
                 )
 
         mocks["ai4rag.core.hpo.gam_opt"].GAMOptSettings.assert_called_once_with(max_evals=8)
 
+    def test_missing_ogx_env_vars_raises_value_error(self):
+        """Missing OGX environment variables raises ValueError."""
+        with mock.patch.dict(sys.modules, _minimal_dependency_modules()):
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with pytest.raises(ValueError, match="OGX_CLIENT_BASE_URL and OGX_CLIENT_API_KEY"):
+                    rag_templates_optimization.python_func(
+                        extracted_text="/tmp/extracted",
+                        test_data="/tmp/test_data.json",
+                        search_space_prep_report="/tmp/report.yml",
+                        rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
+                        test_data_key="small-dataset/benchmark.json",
+                        vector_io_provider_id="milvus",
+                        optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
+                    )
+
 
 class TestSSLFallbackRagTemplatesOptimization:
-    """Tests for SSL retry logic in _create_llama_stack_client and _create_openai_client."""
+    """Tests for SSL retry logic in _create_ogx_client."""
 
     def _make_paths(self, tmp_path):
         """Create minimal real files needed by the component."""
@@ -370,48 +331,46 @@ class TestSSLFallbackRagTemplatesOptimization:
 
     def _make_output_artifacts(self):
         rag_patterns = mock.MagicMock()
-        embedded_artifact = mock.MagicMock()
-        return rag_patterns, embedded_artifact
+        return rag_patterns
 
     @mock.patch.dict(
         "os.environ",
         {
-            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_llama_stack_client_ssl_retry_with_verify_false(self, tmp_path):
-        """SSL error on models.list() retries LlamaStackClient with verify=False."""
+    def test_ogx_client_ssl_retry_with_verify_false(self, tmp_path):
+        """SSL error on models.list() retries OgxClient with verify=False."""
         mocks = _make_all_mocks()
 
-        mock_ls_client_fail = mock.MagicMock()
-        mock_ls_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
+        mock_ogx_client_fail = mock.MagicMock()
+        mock_ogx_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
             "CERTIFICATE_VERIFY_FAILED: self-signed certificate"
         )
-        mock_ls_client_ok = mock.MagicMock()
-        mock_ls_client_ok.models.list.return_value = []
+        mock_ogx_client_ok = mock.MagicMock()
+        mock_ogx_client_ok.models.list.return_value = []
 
-        ls_call_count = 0
-        ls_kwargs_history = []
+        ogx_call_count = 0
+        ogx_kwargs_history = []
 
-        def fake_ls_client(**kwargs):
-            nonlocal ls_call_count
-            ls_call_count += 1
-            ls_kwargs_history.append(kwargs)
-            if ls_call_count == 1:
-                return mock_ls_client_fail
-            return mock_ls_client_ok
+        def fake_ogx_client(**kwargs):
+            nonlocal ogx_call_count
+            ogx_call_count += 1
+            ogx_kwargs_history.append(kwargs)
+            if ogx_call_count == 1:
+                return mock_ogx_client_fail
+            return mock_ogx_client_ok
 
-        llama_mod = _make_llama_stack_client_module()
-        llama_mod.LlamaStackClient.side_effect = fake_ls_client
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        ogx_mod = _make_ogx_client_module()
+        ogx_mod.OgxClient.side_effect = fake_ogx_client
+        mocks["ogx_client"] = ogx_mod
 
         # Abort after client creation via AI4RAGSearchSpace
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        rag_patterns = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -420,58 +379,57 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
                     test_data_key="small-dataset/benchmark.json",
+                    vector_io_provider_id="milvus",
                 )
 
-        assert ls_call_count == 2, "LlamaStackClient should be instantiated twice (initial + SSL retry)"
-        assert ls_kwargs_history[0].get("http_client") is None, "First call should not disable SSL"
-        assert isinstance(ls_kwargs_history[1].get("http_client"), mocks["httpx"].Client), (
+        assert ogx_call_count == 2, "OgxClient should be instantiated twice (initial + SSL retry)"
+        assert ogx_kwargs_history[0].get("http_client") is None, "First call should not disable SSL"
+        assert isinstance(ogx_kwargs_history[1].get("http_client"), mocks["httpx"].Client), (
             "Second call should pass httpx.Client"
         )
-        assert ls_kwargs_history[1]["http_client"].kwargs.get("verify") is False
+        assert ogx_kwargs_history[1]["http_client"].kwargs.get("verify") is False
 
     @mock.patch.dict(
         "os.environ",
         {
-            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_llama_stack_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
-        """LSAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
+    def test_ogx_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
+        """OGXAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
         mocks = _make_all_mocks()
 
-        llama_mod = _make_llama_stack_client_module()
-        LSAPIConnectionError = llama_mod.APIConnectionError
+        ogx_mod = _make_ogx_client_module()
+        OGXAPIConnectionError = ogx_mod.APIConnectionError
         ssl_err = ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED: self-signed certificate")
-        api_err = LSAPIConnectionError("Connection error.")
+        api_err = OGXAPIConnectionError("Connection error.")
         api_err.__cause__ = ssl_err
 
-        mock_ls_client_fail = mock.MagicMock()
-        mock_ls_client_fail.models.list.side_effect = api_err
-        mock_ls_client_ok = mock.MagicMock()
-        mock_ls_client_ok.models.list.return_value = []
+        mock_ogx_client_fail = mock.MagicMock()
+        mock_ogx_client_fail.models.list.side_effect = api_err
+        mock_ogx_client_ok = mock.MagicMock()
+        mock_ogx_client_ok.models.list.return_value = []
 
-        ls_call_count = 0
-        ls_kwargs_history = []
+        ogx_call_count = 0
+        ogx_kwargs_history = []
 
-        def fake_ls_client(**kwargs):
-            nonlocal ls_call_count
-            ls_call_count += 1
-            ls_kwargs_history.append(kwargs)
-            if ls_call_count == 1:
-                return mock_ls_client_fail
-            return mock_ls_client_ok
+        def fake_ogx_client(**kwargs):
+            nonlocal ogx_call_count
+            ogx_call_count += 1
+            ogx_kwargs_history.append(kwargs)
+            if ogx_call_count == 1:
+                return mock_ogx_client_fail
+            return mock_ogx_client_ok
 
-        llama_mod.LlamaStackClient.side_effect = fake_ls_client
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        ogx_mod.OgxClient.side_effect = fake_ogx_client
+        mocks["ogx_client"] = ogx_mod
 
         mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        rag_patterns = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(_SentinelAbort):
@@ -480,36 +438,72 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
                     test_data_key="small-dataset/benchmark.json",
+                    vector_io_provider_id="milvus",
                 )
 
-        assert ls_call_count == 2, "LlamaStackClient should be instantiated twice (initial + SSL retry)"
-        assert ls_kwargs_history[0].get("http_client") is None
-        assert isinstance(ls_kwargs_history[1].get("http_client"), mocks["httpx"].Client)
-        assert ls_kwargs_history[1]["http_client"].kwargs.get("verify") is False
+        assert ogx_call_count == 2, "OgxClient should be instantiated twice (initial + SSL retry)"
+        assert ogx_kwargs_history[0].get("http_client") is None
+        assert isinstance(ogx_kwargs_history[1].get("http_client"), mocks["httpx"].Client)
+        assert ogx_kwargs_history[1]["http_client"].kwargs.get("verify") is False
 
     @mock.patch.dict(
         "os.environ",
         {
-            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_llama_stack_client_non_ssl_error_is_reraised(self, tmp_path):
+    def test_ogx_client_ssl_substring_in_message_does_not_retry(self, tmp_path):
+        """Messages mentioning 'SSL' without an SSL failure do not trigger verify=False retry."""
+        mocks = _make_all_mocks()
+
+        ogx_mod = _make_ogx_client_module()
+        OGXAPIConnectionError = ogx_mod.APIConnectionError
+        err = OGXAPIConnectionError("Failed to initialize SSL context for unrelated reason")
+        err.__cause__ = TimeoutError("timed out")
+
+        mock_ogx_client = mock.MagicMock()
+        mock_ogx_client.models.list.side_effect = err
+        ogx_mod.OgxClient.return_value = mock_ogx_client
+        mocks["ogx_client"] = ogx_mod
+
+        extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
+        rag_patterns = self._make_output_artifacts()
+
+        with mock.patch.dict(sys.modules, mocks):
+            with pytest.raises(OGXAPIConnectionError):
+                rag_templates_optimization.python_func(
+                    extracted_text=extracted_text,
+                    test_data=test_data,
+                    search_space_prep_report=search_space_report,
+                    rag_patterns=rag_patterns,
+                    test_data_key="small-dataset/benchmark.json",
+                    vector_io_provider_id="milvus",
+                )
+
+        assert ogx_mod.OgxClient.call_count == 1, "Non-SSL errors must not retry with verify=False"
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_ogx_client_non_ssl_error_is_reraised(self, tmp_path):
         """Non-SSL error from models.list() propagates without retry."""
         mocks = _make_all_mocks()
 
-        mock_ls_client = mock.MagicMock()
-        mock_ls_client.models.list.side_effect = ConnectionRefusedError("Connection refused")
+        mock_ogx_client = mock.MagicMock()
+        mock_ogx_client.models.list.side_effect = ConnectionRefusedError("Connection refused")
 
-        llama_mod = _make_llama_stack_client_module()
-        llama_mod.LlamaStackClient.return_value = mock_ls_client
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        ogx_mod = _make_ogx_client_module()
+        ogx_mod.OgxClient.return_value = mock_ogx_client
+        mocks["ogx_client"] = ogx_mod
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        rag_patterns = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
             with pytest.raises(ConnectionRefusedError):
@@ -518,187 +512,277 @@ class TestSSLFallbackRagTemplatesOptimization:
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
                     test_data_key="small-dataset/benchmark.json",
+                    vector_io_provider_id="milvus",
                 )
 
     @mock.patch.dict(
         "os.environ",
         {
-            "LLAMA_STACK_CLIENT_BASE_URL": "https://llama-stack.example.com",
-            "LLAMA_STACK_CLIENT_API_KEY": "test-api-key",
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
         },
     )
-    def test_llama_stack_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
-        """LSAPIConnectionError whose cause is NOT SSL propagates without retry."""
+    def test_ogx_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
+        """OGXAPIConnectionError whose cause is NOT SSL propagates without retry."""
         mocks = _make_all_mocks()
 
-        llama_mod = _make_llama_stack_client_module()
-        LSAPIConnectionError = llama_mod.APIConnectionError
-        err = LSAPIConnectionError("Connection timeout")
+        ogx_mod = _make_ogx_client_module()
+        OGXAPIConnectionError = ogx_mod.APIConnectionError
+        err = OGXAPIConnectionError("Connection timeout")
         err.__cause__ = TimeoutError("timed out")
 
-        mock_ls_client = mock.MagicMock()
-        mock_ls_client.models.list.side_effect = err
-        llama_mod.LlamaStackClient.return_value = mock_ls_client
-        mocks["llama_stack_client"] = llama_mod
-        mocks["openai"] = _make_openai_module()
+        mock_ogx_client = mock.MagicMock()
+        mock_ogx_client.models.list.side_effect = err
+        ogx_mod.OgxClient.return_value = mock_ogx_client
+        mocks["ogx_client"] = ogx_mod
 
         extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        rag_patterns = self._make_output_artifacts()
 
         with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(LSAPIConnectionError):
+            with pytest.raises(OGXAPIConnectionError):
                 rag_templates_optimization.python_func(
                     extracted_text=extracted_text,
                     test_data=test_data,
                     search_space_prep_report=search_space_report,
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
                     test_data_key="small-dataset/benchmark.json",
+                    vector_io_provider_id="milvus",
                 )
 
-    def test_openai_client_ssl_retry_with_verify_false(self, tmp_path):
-        """SSL error on OpenAI models.list() retries with httpx.Client(verify=False)."""
+
+class TestMultilingualPromptOverrides:
+    """Tests for detected_language prompt override and _build_system_message dedup."""
+
+    def _setup_with_language(self, tmp_path, detected_language=None):
+        """Set up mocks with detected_language in search space YAML."""
         mocks = _make_all_mocks()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
+        mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.side_effect = _SentinelAbort
 
-        openai_call_count = 0
-        openai_kwargs_history = []
+        search_space_data = {}
+        if detected_language:
+            search_space_data["detected_language"] = detected_language
 
-        mock_openai_client_fail = mock.MagicMock()
-        mock_openai_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
-            "CERTIFICATE_VERIFY_FAILED: self-signed certificate"
+        mock_yaml = mock.MagicMock()
+        mock_yaml.safe_load.return_value = search_space_data
+        mocks["yaml"] = mock_yaml
+
+        report = tmp_path / "report.yml"
+        report.write_text("{}")
+        test_data = tmp_path / "test_data.json"
+        test_data.write_text("[]")
+
+        return mocks, str(tmp_path / "extracted"), str(test_data), str(report)
+
+    def _run(self, mocks, extracted_text, test_data, report, **kwargs):
+        with (
+            mock.patch.dict(sys.modules, mocks),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+                    "OGX_CLIENT_API_KEY": "test-api-key",
+                },
+            ),
+        ):
+            rag_templates_optimization.python_func(
+                extracted_text=extracted_text,
+                test_data=test_data,
+                search_space_prep_report=report,
+                rag_patterns=mock.MagicMock(path="/tmp/rag_patterns", metadata={}, uri=""),
+                test_data_key="small-dataset/benchmark.json",
+                vector_io_provider_id="milvus",
+                optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
+                **kwargs,
+            )
+
+    def test_detected_language_sets_prompts_on_foundation_models(self, tmp_path):
+        """When detected_language is present, foundation models get explicit language instruction."""
+        mocks, ext, td, report = self._setup_with_language(tmp_path, detected_language={"code": "de", "name": "German"})
+        mock_fm = mock.MagicMock()
+        mock_search_space = mock.MagicMock()
+        mock_search_space.__getitem__ = mock.MagicMock(return_value=mock.MagicMock(values=[mock_fm]))
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.return_value = mock_search_space
+
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
+
+        assert "You MUST respond in German." in mock_fm.system_message_text
+        assert "You MUST respond in German." in mock_fm.user_message_text
+
+    def test_no_detected_language_preserves_defaults(self, tmp_path):
+        """Without detected_language, foundation model prompts are untouched."""
+        mocks, ext, td, report = self._setup_with_language(tmp_path)
+        mock_fm = mock.MagicMock()
+        original_sys = mock_fm.system_message_text
+        mock_search_space = mock.MagicMock()
+        mock_search_space.__getitem__ = mock.MagicMock(return_value=mock.MagicMock(values=[mock_fm]))
+        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.return_value = mock_search_space
+
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
+
+        assert mock_fm.system_message_text == original_sys
+
+    def test_detected_language_popped_before_search_space_construction(self, tmp_path):
+        """detected_language must not leak into AI4RAGSearchSpace as a parameter."""
+        mocks, ext, td, report = self._setup_with_language(
+            tmp_path, detected_language={"code": "ja", "name": "Japanese"}
         )
-        mock_openai_client_ok = mock.MagicMock()
-        _models_list_ok = mock.MagicMock()
-        _models_list_ok.data = [mock.MagicMock(id="test-model", max_model_len=8192)]
-        mock_openai_client_ok.models.list.return_value = _models_list_ok
 
-        def fake_openai(**kwargs):
-            nonlocal openai_call_count
-            openai_call_count += 1
-            openai_kwargs_history.append(kwargs)
-            if openai_call_count % 2 == 1:  # first call per endpoint fails
-                return mock_openai_client_fail
-            return mock_openai_client_ok
+        with pytest.raises(_SentinelAbort):
+            self._run(mocks, ext, td, report)
 
-        openai_mod = _make_openai_module()
-        openai_mod.OpenAI.side_effect = fake_openai
-        mocks["openai"] = openai_mod
-        mocks["llama_stack_client"] = _make_llama_stack_client_module()
+        param_calls = mocks["ai4rag.search_space.src.parameter"].Parameter.call_args_list
+        param_names = [c.args[0] if c.args else c.kwargs.get("name", "") for c in param_calls]
+        assert "detected_language" not in param_names
 
-        # Abort after client creation
-        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
 
-        extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+def _make_evaluation(pattern_name: str):
+    """Minimal ai4rag evaluation result for optimize_templates status tests."""
+    evaluation = mock.MagicMock()
+    evaluation.pattern_name = pattern_name
+    evaluation.indexing_params = {}
+    evaluation.rag_params = {}
+    evaluation.scores = {}
+    evaluation.final_score = 0.9
+    evaluation.execution_time = 1.0
+    evaluation.collection = "test-collection"
+    return evaluation
 
-        with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(_SentinelAbort):
-                rag_templates_optimization.python_func(
-                    extracted_text=extracted_text,
-                    test_data=test_data,
-                    search_space_prep_report=search_space_report,
-                    rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
-                    test_data_key="small-dataset/benchmark.json",
-                    chat_model_url="http://chat.example.com",
-                    chat_model_token="chat-token",
-                    embedding_model_url="http://embed.example.com",
-                    embedding_model_token="embed-token",
-                )
 
-        # Each endpoint: initial call fails (SSL), retry succeeds → 2 calls per endpoint = 4 total
-        assert openai_call_count == 4
-        for retry_idx in [1, 3]:
-            assert isinstance(openai_kwargs_history[retry_idx].get("http_client"), mocks["httpx"].Client)
-            assert openai_kwargs_history[retry_idx]["http_client"].kwargs.get("verify") is False
+class TestOptimizeTemplatesStatus:
+    """Tests for optimize_templates stage progress in component_status."""
 
-    def test_openai_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
-        """OAIAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_optimize_templates_records_max_rag_patterns_and_selected_patterns(self, tmp_path):
+        """optimize_templates completed stage records max_rag_patterns and selected_patterns."""
         mocks = _make_all_mocks()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        mock_provider = mock.MagicMock()
+        mock_provider.provider_type = "milvus"
+        mock_ogx.providers.retrieve.return_value = mock_provider
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
 
-        openai_mod = _make_openai_module()
-        OAIAPIConnectionError = openai_mod.APIConnectionError
-        ssl_err = ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED: self-signed certificate")
-        api_err = OAIAPIConnectionError("Connection error.")
-        api_err.__cause__ = ssl_err
+        mock_exp = mock.MagicMock()
+        mock_exp.results.evaluations = [
+            _make_evaluation("pattern_alpha"),
+            _make_evaluation("pattern_beta"),
+        ]
+        mock_exp.results.evaluation_data = [[], []]
+        mock_exp.results.max_combinations = 2
+        mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.return_value = mock_exp
 
-        openai_call_count = 0
-        openai_kwargs_history = []
+        search_space_report = tmp_path / "report.yml"
+        search_space_report.write_text("{}")
+        test_data = tmp_path / "test_data.json"
+        test_data.write_text("[]")
+        extracted_text = tmp_path / "extracted_text"
+        extracted_text.mkdir()
 
-        mock_openai_client_fail = mock.MagicMock()
-        mock_openai_client_fail.models.list.side_effect = api_err
-        mock_openai_client_ok = mock.MagicMock()
-        mock_openai_client_ok.models.list.return_value = []
+        rag_patterns_dir = tmp_path / "rag_patterns"
+        rag_patterns_dir.mkdir()
+        rag_patterns = mock.MagicMock()
+        rag_patterns.path = str(rag_patterns_dir)
+        rag_patterns.uri = "s3://bucket/rag_patterns"
+        rag_patterns.metadata = {}
 
-        def fake_openai(**kwargs):
-            nonlocal openai_call_count
-            openai_call_count += 1
-            openai_kwargs_history.append(kwargs)
-            if openai_call_count % 2 == 1:
-                return mock_openai_client_fail
-            return mock_openai_client_ok
-
-        openai_mod.OpenAI.side_effect = fake_openai
-        mocks["openai"] = openai_mod
-        mocks["llama_stack_client"] = _make_llama_stack_client_module()
-
-        mocks["ai4rag.search_space.src.search_space"].AI4RAGSearchSpace.side_effect = _SentinelAbort
-
-        extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "component_status_out")
+        component_status.metadata = {}
 
         with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(_SentinelAbort):
-                rag_templates_optimization.python_func(
-                    extracted_text=extracted_text,
-                    test_data=test_data,
-                    search_space_prep_report=search_space_report,
-                    rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
-                    test_data_key="small-dataset/benchmark.json",
-                    chat_model_url="http://chat.example.com",
-                    chat_model_token="chat-token",
-                    embedding_model_url="http://embed.example.com",
-                    embedding_model_token="embed-token",
-                )
+            rag_templates_optimization.python_func(
+                extracted_text=str(extracted_text),
+                test_data=str(test_data),
+                search_space_prep_report=str(search_space_report),
+                rag_patterns=rag_patterns,
+                component_status=component_status,
+                test_data_key="small-dataset/benchmark.json",
+                vector_io_provider_id="milvus",
+                optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
+            )
 
-        # Each endpoint: initial call fails (SSL), retry succeeds → 2 calls per endpoint = 4 total
-        assert openai_call_count == 4
-        for retry_idx in [1, 3]:
-            assert isinstance(openai_kwargs_history[retry_idx].get("http_client"), mocks["httpx"].Client)
-            assert openai_kwargs_history[retry_idx]["http_client"].kwargs.get("verify") is False
+        status_file = tmp_path / "component_status_out" / "component_status.json"
+        status_data = json.loads(status_file.read_text())
+        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "optimize_templates")
+        assert run_stage["status"] == "completed"
+        assert run_stage["max_rag_patterns"] == 8
+        assert run_stage["selected_patterns"] == ["pattern_alpha", "pattern_beta"]
+        assert run_stage["steps"] == [
+            "chunking",
+            "embedding",
+            "retrieval",
+            "generation",
+            "evaluation",
+        ]
+        assert component_status.metadata["display_name"] == "RAG Templates Optimization Status"
 
-    def test_openai_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
-        """OAIAPIConnectionError whose cause is NOT SSL propagates without retry."""
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_optimize_templates_search_failure_marks_stage_failed(self, tmp_path):
+        """optimize_templates stage is marked failed when rag_exp.search() raises."""
         mocks = _make_all_mocks()
+        ogx_mod = _make_ogx_client_module()
+        mock_ogx = mock.MagicMock()
+        mock_ogx.models.list.return_value = []
+        ogx_mod.OgxClient.return_value = mock_ogx
+        mocks["ogx_client"] = ogx_mod
 
-        openai_mod = _make_openai_module()
-        OAIAPIConnectionError = openai_mod.APIConnectionError
-        err = OAIAPIConnectionError("Connection timeout")
-        err.__cause__ = TimeoutError("timed out")
+        mock_exp = mock.MagicMock()
+        mock_exp.search.side_effect = RuntimeError("search failed")
+        mocks["ai4rag.core.experiment.experiment"].AI4RAGExperiment.return_value = mock_exp
 
-        mock_openai_client = mock.MagicMock()
-        mock_openai_client.models.list.side_effect = err
-        openai_mod.OpenAI.return_value = mock_openai_client
-        mocks["openai"] = openai_mod
-        mocks["llama_stack_client"] = _make_llama_stack_client_module()
+        search_space_report = tmp_path / "report.yml"
+        search_space_report.write_text("{}")
+        test_data = tmp_path / "test_data.json"
+        test_data.write_text("[]")
+        extracted_text = tmp_path / "extracted_text"
+        extracted_text.mkdir()
 
-        extracted_text, test_data, search_space_report = self._make_paths(tmp_path)
-        rag_patterns, embedded_artifact = self._make_output_artifacts()
+        rag_patterns_dir = tmp_path / "rag_patterns"
+        rag_patterns_dir.mkdir()
+        rag_patterns = mock.MagicMock()
+        rag_patterns.path = str(rag_patterns_dir)
+
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "component_status_out")
+        component_status.metadata = {}
 
         with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(OAIAPIConnectionError):
+            with pytest.raises(RuntimeError, match="search failed"):
                 rag_templates_optimization.python_func(
-                    extracted_text=extracted_text,
-                    test_data=test_data,
-                    search_space_prep_report=search_space_report,
+                    extracted_text=str(extracted_text),
+                    test_data=str(test_data),
+                    search_space_prep_report=str(search_space_report),
                     rag_patterns=rag_patterns,
-                    embedded_artifact=embedded_artifact,
+                    component_status=component_status,
                     test_data_key="small-dataset/benchmark.json",
-                    chat_model_url="http://chat.example.com",
-                    chat_model_token="chat-token",
-                    embedding_model_url="http://embed.example.com",
-                    embedding_model_token="embed-token",
+                    vector_io_provider_id="milvus",
+                    optimization_settings={"metric": "faithfulness", "max_number_of_rag_patterns": 8},
                 )
+
+        status_data = json.loads((tmp_path / "component_status_out" / "component_status.json").read_text())
+        run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "optimize_templates")
+        assert run_stage["status"] == "failed"
+        assert "search failed" in run_stage["error"]

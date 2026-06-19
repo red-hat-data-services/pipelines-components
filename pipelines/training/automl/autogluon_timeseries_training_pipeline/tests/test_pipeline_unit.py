@@ -12,10 +12,9 @@ from kfp_components.utils.pipeline_dag_tasks import (
 from ..pipeline import autogluon_timeseries_training_pipeline
 
 _EXPECTED_ROOT_DAG_TASK_IDS = (
-    "autogluon-timeseries-models-selection",
-    "for-loop-1",
+    "condition-branches-1",
+    "publish-component-stage-map",
     "timeseries-data-loader",
-    "timeseries-leaderboard-evaluation",
 )
 
 
@@ -54,6 +53,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             "known_covariates_names",
             "prediction_length",
             "top_n",
+            "preset",
+            "eval_metric",
         }
         inputs = autogluon_timeseries_training_pipeline.component_spec.inputs
         params = set(inputs.keys())
@@ -61,6 +62,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert inputs["prediction_length"].default == 1
         assert inputs["top_n"].default == 3
         assert inputs["known_covariates_names"].default is None
+        assert inputs["preset"].default == "speed"
+        assert inputs["eval_metric"].default == "MASE"
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that compiled pipeline YAML contains expected pipeline input names."""
@@ -83,6 +86,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
                 "known_covariates_names",
                 "prediction_length",
                 "top_n",
+                "preset",
+                "eval_metric",
             ):
                 assert name in content, f"Expected pipeline input '{name}' in compiled YAML"
         except Exception as e:
@@ -96,3 +101,40 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             pipeline_func=autogluon_timeseries_training_pipeline,
             expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
+
+    def test_compiled_pipeline_yaml_is_ascii_only(self):
+        """PipelineRuntimeManifest storage requires ASCII-only compiled YAML (MySQL utf8)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content_bytes = Path(tmp_path).read_bytes()
+            try:
+                content = content_bytes.decode("ascii")
+            except UnicodeDecodeError as exc:
+                pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+        assert "componentInputParameter: eval_metric" in content
+        assert "outputParameterKey: eval_metric" in content
+        assert "componentInputParameter: preset" in content
+
+    def test_compiled_pipeline_wires_preset_to_training_task(self):
+        """Preset pipeline input is forwarded into the training task; medium_quality branch has higher resources."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "componentInputParameter: preset" in content
+        assert "condition-branches-1" in content

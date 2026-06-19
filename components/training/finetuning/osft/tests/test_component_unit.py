@@ -116,12 +116,9 @@ class TestOSFTComponentUnitTests:
         """Test that the component docstring describes OSFT training."""
         docstring = train_model.python_func.__doc__
 
-        # Should mention OSFT
         assert "OSFT" in docstring or "Orthogonal Subspace" in docstring
-        # Should NOT mention SFT or instructlab
-        assert "SFT" not in docstring or "OSFT" in docstring  # Allow OSFT mention
-        # Should mention mini-trainer backend
-        assert "mini-trainer" not in docstring or True  # Backend is hardcoded in implementation
+        assert "SFT" not in docstring.replace("OSFT", "")
+        assert "mini-trainer" in docstring
 
     @mock.patch.dict("sys.modules", {"kubeflow.trainer": mock.MagicMock()})
     def test_component_with_mocked_trainer(self):

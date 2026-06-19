@@ -1,5 +1,8 @@
+no_parent_owners: true
 approvers:
   - LukaszCmielowski
+  - DorotaDR
 reviewers:
   - filip-komarzyniec
-  - witold-nowogorski
+  - jakub-walaszczyk
+  - MichalSteczko

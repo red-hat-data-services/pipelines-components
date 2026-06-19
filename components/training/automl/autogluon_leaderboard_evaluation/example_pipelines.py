@@ -6,7 +6,19 @@ from kfp_components.components.training.automl.autogluon_leaderboard_evaluation 
 )
 
 
-@dsl.pipeline(name="autogluon-leaderboard-evaluation-example")
+@dsl.pipeline(
+    name="autogluon-leaderboard-evaluation-example",
+    pipeline_config=dsl.PipelineConfig(
+        workspace=dsl.WorkspaceConfig(
+            size="1Gi",
+            kubernetes=dsl.KubernetesWorkspaceConfig(
+                pvcSpecPatch={
+                    "accessModes": ["ReadWriteOnce"],
+                }
+            ),
+        ),
+    ),
+)
 def example_pipeline(
     eval_metric: str = "root_mean_squared_error",
 ):
@@ -23,3 +35,4 @@ def example_pipeline(
         models_artifact=models_artifact.output,
         eval_metric=eval_metric,
     )
+    # component_status output is created by KFP when composed in a pipeline.
