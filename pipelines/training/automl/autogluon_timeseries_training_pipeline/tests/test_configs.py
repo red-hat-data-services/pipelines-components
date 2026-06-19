@@ -30,6 +30,7 @@ class TestConfig:
     prediction_length: int
     top_n: int
     tags: list[str]
+    eval_metric: str | None = None
 
     def get_pipeline_arguments(
         self,
@@ -38,7 +39,7 @@ class TestConfig:
         train_data_secret_name: str,
     ) -> dict[str, Any]:
         """Build pipeline arguments dict for this config."""
-        return {
+        args: dict[str, Any] = {
             "train_data_secret_name": train_data_secret_name,
             "train_data_bucket_name": train_data_bucket_name,
             "train_data_file_key": train_data_file_key,
@@ -49,6 +50,9 @@ class TestConfig:
             "prediction_length": self.prediction_length,
             "top_n": self.top_n,
         }
+        if self.eval_metric is not None:
+            args["eval_metric"] = self.eval_metric
+        return args
 
 
 def _load_configs() -> list[TestConfig]:
@@ -85,6 +89,7 @@ def _load_configs() -> list[TestConfig]:
                     prediction_length=int(item.get("prediction_length", 1)),
                     top_n=int(item.get("top_n", 3)),
                     tags=tags,
+                    eval_metric=item.get("eval_metric"),
                 )
             )
         except KeyError as e:

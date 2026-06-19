@@ -63,3 +63,17 @@ class TestDocumentsRagOptimizationPipelineUnit:
             assert "publish-component-stage-map" in loader_task["dependentTasks"]
         finally:
             Path(tmp_path).unlink(missing_ok=True)
+
+    def test_compiled_pipeline_declares_component_resource_tiers(self):
+        """Every AutoRAG optimization step declares the expected CPU/memory tier."""
+        from kfp_components.utils.pipeline_task_resources import (
+            AUTORAG_OPTIMIZATION_EXECUTOR_RESOURCES,
+            assert_executor_resources,
+            compile_executor_resources,
+        )
+
+        assert_executor_resources(
+            compile_executor_resources(documents_rag_optimization_pipeline),
+            AUTORAG_OPTIMIZATION_EXECUTOR_RESOURCES,
+            pipeline_name="documents_rag_optimization_pipeline",
+        )

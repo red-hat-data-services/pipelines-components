@@ -6,6 +6,9 @@ from kfp_components.components.data_processing.autorag.documents_discovery.compo
 from kfp_components.components.data_processing.autorag.documents_indexing.component import documents_indexing
 from kfp_components.components.data_processing.autorag.text_extraction.component import text_extraction
 
+MAX_CPUS = "32"
+MAX_MEMORY = "64Gi"
+
 
 @dsl.pipeline(
     name="AutoRAG Documents Indexing Pipeline",
@@ -54,9 +57,17 @@ def documents_indexing_pipeline(
         input_data_bucket_name=input_data_bucket_name,
         input_data_path=input_data_key,
     )
+    documents_discovery_task.set_caching_options(False)
+    documents_discovery_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
+    )
 
     text_extraction_task = text_extraction(
         documents_descriptor=documents_discovery_task.outputs["discovered_documents"],
+    )
+    text_extraction_task.set_caching_options(False)
+    text_extraction_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
     )
 
     documents_indexing_task = documents_indexing(
@@ -70,6 +81,10 @@ def documents_indexing_pipeline(
         chunk_overlap=chunk_overlap,
         batch_size=batch_size,
         collection_name=collection_name,
+    )
+    documents_indexing_task.set_caching_options(False)
+    documents_indexing_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+        MAX_MEMORY
     )
 
     def set_input_data_secrets(task, secret_name):

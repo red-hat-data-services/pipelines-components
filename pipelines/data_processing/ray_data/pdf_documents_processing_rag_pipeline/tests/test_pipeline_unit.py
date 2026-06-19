@@ -39,7 +39,7 @@ def test_pipeline_signature():
 
 def test_root_dag_task_ids():
     """Root DAG has expected task IDs (catches unintended graph changes)."""
-    from utils.pipeline_dag_tasks import assert_compiled_pipeline_root_dag_task_ids
+    from kfp_components.utils.pipeline_dag_tasks import assert_compiled_pipeline_root_dag_task_ids
 
     assert_compiled_pipeline_root_dag_task_ids(
         pipeline_func=rag_multistep_pipeline,

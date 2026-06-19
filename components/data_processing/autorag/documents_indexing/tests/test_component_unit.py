@@ -151,6 +151,87 @@ class TestDocumentsIndexingUnitTests:
                     chunk_size="1024",
                 )
 
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_chunk_and_embedding_params_forwarded(self, tmp_path):
+        """Chunker, embedding model, and embedding params receive pipeline inputs."""
+        mods, _ = _patch_indexing_dependencies()
+        mock_ogx_client = mock.MagicMock()
+        mock_ogx_client.models.list.return_value = []
+        mods["ogx_client"].OgxClient.return_value = mock_ogx_client
+
+        extracted_text_dir = tmp_path / "extracted"
+        extracted_text_dir.mkdir()
+        (extracted_text_dir / "doc0.md").write_text("hello", encoding="utf-8")
+
+        extracted_text = mock.MagicMock()
+        extracted_text.path = str(extracted_text_dir)
+
+        with mock.patch.dict(sys.modules, mods):
+            documents_indexing.python_func(
+                embedding_model_id="vllm-embedding/bge-m3",
+                extracted_text=extracted_text,
+                vector_io_provider_id="milvus",
+                embedding_params={"embedding_dimension": 1024},
+                chunking_method="recursive",
+                chunk_size=512,
+                chunk_overlap=64,
+                distance_metric="cosine",
+            )
+
+        chunker_cls = mods["ai4rag.rag.chunking"].LangChainChunker
+        chunker_cls.assert_called_once_with(method="recursive", chunk_size=512, chunk_overlap=64)
+
+        embedding_params_cls = mods["ai4rag.rag.embedding.ogx"].OGXEmbeddingParams
+        embedding_params_cls.assert_called_once_with(embedding_dimension=1024)
+
+        embedding_model_cls = mods["ai4rag.rag.embedding.ogx"].OGXEmbeddingModel
+        embedding_model_cls.assert_called_once()
+        assert embedding_model_cls.call_args.kwargs["model_id"] == "vllm-embedding/bge-m3"
+
+        vector_store_cls = mods["ai4rag.rag.vector_store.ogx"].OGXVectorStore
+        vector_store_cls.assert_called_once()
+        assert vector_store_cls.call_args.kwargs["provider_id"] == "milvus"
+        assert vector_store_cls.call_args.kwargs["distance_metric"] == "cosine"
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+            "OGX_CLIENT_API_KEY": "test-api-key",
+        },
+    )
+    def test_collection_name_passed_to_vector_store(self, tmp_path):
+        """reuse_collection_name is set when collection_name is provided."""
+        mods, mock_vectorstore = _patch_indexing_dependencies()
+        mock_ogx_client = mock.MagicMock()
+        mock_ogx_client.models.list.return_value = []
+        mods["ogx_client"].OgxClient.return_value = mock_ogx_client
+
+        extracted_text_dir = tmp_path / "extracted"
+        extracted_text_dir.mkdir()
+        (extracted_text_dir / "doc0.md").write_text("hello", encoding="utf-8")
+
+        extracted_text = mock.MagicMock()
+        extracted_text.path = str(extracted_text_dir)
+
+        with mock.patch.dict(sys.modules, mods):
+            documents_indexing.python_func(
+                embedding_model_id="embed-model",
+                extracted_text=extracted_text,
+                vector_io_provider_id="milvus",
+                collection_name="my-collection",
+            )
+
+        vector_store_cls = mods["ai4rag.rag.vector_store.ogx"].OGXVectorStore
+        assert vector_store_cls.call_args.kwargs["reuse_collection_name"] == "my-collection"
+        mock_vectorstore.add_documents.assert_called_once()
+
 
 class TestSSLFallbackDocumentsIndexing:
     """Tests for SSL retry logic in _create_ogx_client."""

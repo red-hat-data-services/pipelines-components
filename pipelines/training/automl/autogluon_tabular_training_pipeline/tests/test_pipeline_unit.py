@@ -172,6 +172,25 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
         assert "componentInputParameter: preset" in content
         assert "condition-branches-1" in content
 
+    def test_compiled_pipeline_declares_speed_and_balanced_resource_tiers(self):
+        """Speed and balanced preset branches request different training CPU/memory."""
+        from kfp_components.utils.pipeline_task_resources import (
+            AUTOML_TABULAR_EXECUTOR_RESOURCES,
+            assert_executor_resources,
+            compile_executor_resources,
+        )
+
+        actual = compile_executor_resources(autogluon_tabular_training_pipeline)
+        assert_executor_resources(
+            actual,
+            {
+                "autogluon-models-training": AUTOML_TABULAR_EXECUTOR_RESOURCES["autogluon-models-training"],
+                "autogluon-models-training-2": AUTOML_TABULAR_EXECUTOR_RESOURCES["autogluon-models-training-2"],
+            },
+            pipeline_name="autogluon_tabular_training_pipeline (training tiers only)",
+            allow_extra=True,
+        )
+
     def test_compiled_pipeline_data_loader_declares_task_type_and_label(self):
         """Tabular data loader component exposes task_type and label_column inputs."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
