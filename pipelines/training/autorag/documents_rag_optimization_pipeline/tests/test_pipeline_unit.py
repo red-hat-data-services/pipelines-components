@@ -67,10 +67,11 @@ class TestDocumentsRagOptimizationPipelineUnit:
     def test_compiled_pipeline_declares_component_resource_tiers(self):
         """Every AutoRAG optimization step declares the expected CPU/memory tier."""
         from kfp_components.utils.pipeline_task_resources import (
-            AUTORAG_OPTIMIZATION_EXECUTOR_RESOURCES,
             assert_executor_resources,
             compile_executor_resources,
         )
+
+        from .pipeline_resource_expectations import AUTORAG_OPTIMIZATION_EXECUTOR_RESOURCES
 
         assert_executor_resources(
             compile_executor_resources(documents_rag_optimization_pipeline),

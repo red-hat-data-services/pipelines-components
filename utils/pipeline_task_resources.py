@@ -62,8 +62,8 @@ def _executor_resources_from_document(doc: dict[str, Any]) -> dict[str, Executor
             container = executor.get("container")
             if not isinstance(container, dict):
                 continue
-            raw = container.get("resources") or container
-            if not all(key in raw for key in _RESOURCE_KEYS):
+            raw = container.get("resources")
+            if raw is None or not all(key in raw for key in _RESOURCE_KEYS):
                 continue
             collected[str(executor_name)] = ExecutorResources.from_mapping(raw)
     return collected
@@ -136,51 +136,3 @@ def assert_executor_resources(
     if mismatches:
         header = f"{pipeline_name}: executor resources changed (update tests if intentional):"
         raise AssertionError("\n".join([header, *mismatches]))
-
-
-# Expected tiers (limits mirror MAX_CPUS / MAX_MEMORY in pipeline modules).
-# Update these when pipeline resource tiers change intentionally.
-STAGE_MAP_RESOURCES = ExecutorResources("0.5", "512Mi", "1", "1Gi")
-WORKLOAD_RESOURCES = ExecutorResources("2", "8Gi", "32", "64Gi")
-LEADERBOARD_RESOURCES = ExecutorResources("1", "4Gi", "32", "64Gi")
-TRAINING_SPEED_RESOURCES = ExecutorResources("4", "16Gi", "32", "64Gi")
-TRAINING_BALANCED_RESOURCES = ExecutorResources("8", "32Gi", "32", "64Gi")
-
-AUTOML_TABULAR_EXECUTOR_RESOURCES = {
-    "publish-component-stage-map": STAGE_MAP_RESOURCES,
-    "automl-data-loader": WORKLOAD_RESOURCES,
-    "autogluon-models-training": TRAINING_BALANCED_RESOURCES,
-    "leaderboard-evaluation": LEADERBOARD_RESOURCES,
-    "autogluon-models-training-2": TRAINING_SPEED_RESOURCES,
-    "leaderboard-evaluation-2": LEADERBOARD_RESOURCES,
-}
-
-AUTOML_TIMESERIES_EXECUTOR_RESOURCES = {
-    "publish-component-stage-map": STAGE_MAP_RESOURCES,
-    "timeseries-data-loader": WORKLOAD_RESOURCES,
-    "autogluon-timeseries-models-training": TRAINING_BALANCED_RESOURCES,
-    "leaderboard-evaluation": LEADERBOARD_RESOURCES,
-    "autogluon-timeseries-models-training-2": TRAINING_SPEED_RESOURCES,
-    "leaderboard-evaluation-2": LEADERBOARD_RESOURCES,
-}
-
-AUTORAG_OPTIMIZATION_EXECUTOR_RESOURCES = {
-    "publish-component-stage-map": STAGE_MAP_RESOURCES,
-    "test-data-loader": WORKLOAD_RESOURCES,
-    "documents-discovery": WORKLOAD_RESOURCES,
-    "text-extraction": WORKLOAD_RESOURCES,
-    "search-space-preparation": WORKLOAD_RESOURCES,
-    "rag-templates-optimization": WORKLOAD_RESOURCES,
-    "leaderboard-evaluation": LEADERBOARD_RESOURCES,
-}
-
-AUTORAG_INDEXING_EXECUTOR_RESOURCES = {
-    "documents-discovery": WORKLOAD_RESOURCES,
-    "text-extraction": WORKLOAD_RESOURCES,
-    "documents-indexing": WORKLOAD_RESOURCES,
-}
-
-AUTOML_TRAINING_TIER_RESOURCES = {
-    "balanced": TRAINING_BALANCED_RESOURCES,
-    "speed": TRAINING_SPEED_RESOURCES,
-}

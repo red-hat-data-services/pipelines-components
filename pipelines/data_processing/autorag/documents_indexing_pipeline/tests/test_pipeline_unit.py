@@ -116,10 +116,11 @@ class TestDocumentsIndexingPipelineUnit:
     def test_compiled_pipeline_declares_component_resource_tiers(self):
         """All indexing pipeline steps declare the workload CPU/memory tier."""
         from kfp_components.utils.pipeline_task_resources import (
-            AUTORAG_INDEXING_EXECUTOR_RESOURCES,
             assert_executor_resources,
             compile_executor_resources,
         )
+
+        from .pipeline_resource_expectations import AUTORAG_INDEXING_EXECUTOR_RESOURCES
 
         assert_executor_resources(
             compile_executor_resources(documents_indexing_pipeline),

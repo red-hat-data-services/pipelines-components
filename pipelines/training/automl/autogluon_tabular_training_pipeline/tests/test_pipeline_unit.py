@@ -175,10 +175,11 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
     def test_compiled_pipeline_declares_speed_and_balanced_resource_tiers(self):
         """Speed and balanced preset branches request different training CPU/memory."""
         from kfp_components.utils.pipeline_task_resources import (
-            AUTOML_TABULAR_EXECUTOR_RESOURCES,
             assert_executor_resources,
             compile_executor_resources,
         )
+
+        from .pipeline_resource_expectations import AUTOML_TABULAR_EXECUTOR_RESOURCES
 
         actual = compile_executor_resources(autogluon_tabular_training_pipeline)
         assert_executor_resources(
