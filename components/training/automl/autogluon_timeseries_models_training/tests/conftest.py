@@ -5,19 +5,10 @@ from unittest import mock
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def inject_component_status(monkeypatch, tmp_path):
-    """Inject component_status when tests omit it."""
-    from ..component import autogluon_timeseries_models_training
-
-    original = autogluon_timeseries_models_training.python_func
-
-    def wrapper(*args, **kwargs):
-        if "component_status" not in kwargs:
-            art = mock.MagicMock()
-            art.path = str(tmp_path / "component_status_out")
-            art.metadata = {}
-            kwargs["component_status"] = art
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(autogluon_timeseries_models_training, "python_func", wrapper)
+@pytest.fixture
+def component_status_artifact(tmp_path):
+    """Explicit component_status output artifact for python_func calls."""
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art

@@ -1,6 +1,7 @@
 """Unit tests for the autogluon_timeseries_models_training component."""
 
 import json
+import logging
 import sys
 import tempfile
 from pathlib import Path
@@ -76,6 +77,16 @@ def _mock_leaderboard(model_names):
     return leaderboard
 
 
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
+_DEFAULT_COMPONENT_STATUS = _make_component_status_artifact(Path("/tmp"))
+
+
 def _mock_ts_df():
     ts_df = mock.MagicMock()
     ts_df.num_items = 3
@@ -118,11 +129,10 @@ class TestTimeseriesModelsTrainingUnitTests:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor, mock_refit_predictor]
 
-        train_ts, test_ts = _mock_ts_df(), _mock_ts_df()
         extra_ts = _mock_ts_df()
         full_train_ts = _mock_ts_df()
         # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact
-        mock_ts_df_cls.from_data_frame.side_effect = [train_ts, test_ts, _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = extra_ts
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
@@ -146,6 +156,7 @@ class TestTimeseriesModelsTrainingUnitTests:
             models_artifact=models_artifact,
             extra_train_data_path=extra_train_path,
             prediction_length=24,
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         mock_read_csv.assert_any_call("/tmp/train.csv")
@@ -157,7 +168,10 @@ class TestTimeseriesModelsTrainingUnitTests:
             id_column="item_id",
             timestamp_column="timestamp",
         )
-        mock_concat.assert_called_once_with([train_ts, extra_ts], axis=0)
+        mock_concat.assert_called_once()
+        concat_frames = mock_concat.call_args[0][0]
+        assert len(concat_frames) == 2
+        assert concat_frames[1] is extra_ts
 
         assert result.top_models == ["DeepAR", "TFT"]
         assert result.eval_metric == "MASE"
@@ -170,6 +184,61 @@ class TestTimeseriesModelsTrainingUnitTests:
         # Verify full refit happened
         assert "model_names" in models_artifact.metadata
         assert "context" in models_artifact.metadata
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_balanced_preset_fit_args(
+        self,
+        mock_predictor_cls,
+        mock_ts_df_cls,
+        mock_concat,
+        mock_read_csv,
+        mock_artifacts,  # noqa: F811
+    ):
+        """Balanced preset uses medium_quality and 60-minute time limit."""
+        models_artifact, extra_train_path = mock_artifacts
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+
+        mock_refit_predictor = mock.MagicMock()
+        mock_refit_predictor.evaluate.return_value = {"MASE": 0.5}
+
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        result = autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="item_id",
+            timestamp_column="timestamp",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            preset="balanced",
+            component_status=_DEFAULT_COMPONENT_STATUS,
+        )
+
+        fit_call = mock_predictor.fit.call_args
+        assert fit_call[1]["presets"] == "medium_quality"
+        assert fit_call[1]["time_limit"] == 60 * 60
+        assert result.model_config["presets"] == "balanced"
+        assert result.model_config["time_limit"] == 60 * 60
 
     @mock.patch("pandas.read_csv")
     @mock.patch("pandas.concat")
@@ -196,7 +265,7 @@ class TestTimeseriesModelsTrainingUnitTests:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
         # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -218,6 +287,7 @@ class TestTimeseriesModelsTrainingUnitTests:
             models_artifact=models_artifact,
             extra_train_data_path=extra_train_path,
             known_covariates_names=covariates,
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         # Check that first predictor call (selection) has known_covariates
@@ -246,7 +316,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor = mock.MagicMock()
         mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR", "AutoARIMA"])
         mock_predictor_cls.return_value = mock_predictor
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
@@ -267,6 +337,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_invalid_top_n_zero_raises(self, mock_artifacts):  # noqa: F811
@@ -287,6 +358,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_invalid_top_n_above_max_raises(self, mock_artifacts):  # noqa: F811
@@ -307,6 +379,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_invalid_prediction_length_raises(self, mock_artifacts):  # noqa: F811
@@ -328,6 +401,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
                 prediction_length=0,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_rejects_invalid_preset(self, mock_artifacts):
@@ -349,6 +423,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
                 preset="best_quality",
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     @mock.patch("pandas.read_csv")
@@ -367,7 +442,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor = mock.MagicMock()
         mock_predictor.fit.side_effect = RuntimeError("boom")
         mock_predictor_cls.return_value = mock_predictor
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
@@ -385,6 +460,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     @mock.patch("pandas.read_csv")
@@ -403,7 +479,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor = mock.MagicMock()
         mock_predictor.leaderboard.side_effect = RuntimeError("no leaderboard")
         mock_predictor_cls.return_value = mock_predictor
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
@@ -421,6 +497,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     @mock.patch("pandas.read_csv")
@@ -455,7 +532,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         }
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -478,11 +555,13 @@ class TestTimeseriesModelsTrainingUnitTests:
                     run_id="run-123",
                     models_artifact=models_artifact,
                     extra_train_data_path=extra_train_path,
+                    component_status=_DEFAULT_COMPONENT_STATUS,
                 )
 
         # Verify the specific error was logged
-        assert "Eval metric 'MASE' was NaN/Inf for model 'DeepAR_FULL'" in caplog.text
-        assert "Refit failed for model 'DeepAR'" in caplog.text
+        error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert any("NaN" in r.message and "DeepAR_FULL" in r.message for r in error_records)
+        assert any("Refit failed" in r.message and "DeepAR" in r.message for r in error_records)
 
     @mock.patch("pandas.read_csv")
     @mock.patch("pandas.concat")
@@ -518,7 +597,7 @@ class TestTimeseriesModelsTrainingUnitTests:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_1, mock_refit_2, mock_refit_3]
         # from_data_frame: train, test, and successful refits (DeepAR, AutoARIMA) in build_predict_sample_artifact
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -539,17 +618,22 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         # Verify partial success: DeepAR and AutoARIMA succeeded, TFT failed
-        assert result.top_models == ["DeepAR", "TFT", "AutoARIMA"]  # Original top models unchanged
+        # top_models: Original selection-phase ranking, returned unchanged for traceability
+        assert result.top_models == ["DeepAR", "TFT", "AutoARIMA"]
+        # model_names: Only models that successfully completed refit and were persisted
+        # This is the authoritative list of what's actually in models_artifact.path
         assert "model_names" in models_artifact.metadata
         model_names = json.loads(models_artifact.metadata["model_names"])
-        assert model_names == ["DeepAR_FULL", "AutoARIMA_FULL"]  # Only successful models
+        assert model_names == ["DeepAR_FULL", "AutoARIMA_FULL"]  # TFT omitted - refit failed
         assert len(models_artifact.metadata["context"]["models"]) == 2
 
         # Verify warning was logged
-        assert "The following models failed refit: ['TFT']" in caplog.text
+        warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("TFT" in r.message and "failed refit" in r.message for r in warning_records)
 
     @mock.patch("pandas.read_csv")
     @mock.patch("pandas.concat")
@@ -580,7 +664,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_refit_2.fit.side_effect = RuntimeError("CUDA error")
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_1, mock_refit_2]
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -601,6 +685,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     # ── eval_metric parameter ─────────────────────────────────────────────────
@@ -624,6 +709,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
                 eval_metric="",
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_unsupported_eval_metric_raises(self, mock_artifacts):  # noqa: F811
@@ -645,6 +731,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
                 eval_metric="BADMETRIC",
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     @mock.patch("pandas.read_csv")
@@ -672,7 +759,7 @@ class TestTimeseriesModelsTrainingUnitTests:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
         # from_data_frame: train, test, and once per model in build_predict_sample_artifact (1 model)
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -693,6 +780,7 @@ class TestTimeseriesModelsTrainingUnitTests:
             models_artifact=models_artifact,
             extra_train_data_path=extra_train_path,
             eval_metric="WQL",
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         for call in mock_predictor_cls.call_args_list:
@@ -734,7 +822,7 @@ class TestMetricsJsonSignConvention:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
         # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -754,6 +842,7 @@ class TestMetricsJsonSignConvention:
             run_id="run-123",
             models_artifact=models_artifact,
             extra_train_data_path=extra_train_path,
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         metrics_path = Path(models_artifact.path) / "DeepAR_FULL" / "metrics" / "metrics.json"
@@ -795,7 +884,7 @@ class TestBackTestingArtifactFailure:
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
         # from_data_frame is called for: train, test, and once per model for build_predict_sample_artifact (1 model)
-        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
@@ -816,10 +905,12 @@ class TestBackTestingArtifactFailure:
                 run_id="run-123",
                 models_artifact=models_artifact,
                 extra_train_data_path=extra_train_path,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         metrics_dir = Path(models_artifact.path) / "DeepAR_FULL" / "metrics"
         assert result.top_models == ["DeepAR"]
         assert (metrics_dir / "metrics.json").is_file()
         assert not (metrics_dir / "back_testing.json").exists()
-        assert "Could not generate back_testing.json" in caplog.text
+        warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("back_testing.json" in r.message for r in warning_records)

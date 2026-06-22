@@ -467,3 +467,39 @@ class TestTestDataLoaderUnitTests:
 
         result = json.loads(out_path.read_text(encoding="utf-8"))
         assert result == full_dataset
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_notebook_style_call_without_component_status(self, tmp_path):
+        """Direct python_func calls without component_status work (notebook usage)."""
+        mock_boto3 = mock.MagicMock()
+        mock_s3 = mock.MagicMock()
+        mock_s3.get_object.return_value = _s3_response(VALID_BENCHMARK_RECORDS)
+        mock_boto3.client.return_value = mock_s3
+        mock_botocore, mock_botocore_exceptions = _mock_botocore_modules()
+
+        out_path = tmp_path / "test_data.json"
+        test_data_artifact = mock.MagicMock()
+        test_data_artifact.path = str(out_path)
+
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "boto3": mock_boto3,
+                "botocore": mock_botocore,
+                "botocore.exceptions": mock_botocore_exceptions,
+            },
+        ):
+            test_data_loader.python_func(
+                test_data_bucket_name="my-bucket",
+                test_data_path="data/test.json",
+                test_data=test_data_artifact,
+                component_status=None,
+            )
+
+        # Verify primary output exists
+        assert out_path.exists()
+        result = json.loads(out_path.read_text(encoding="utf-8"))
+        assert len(result) == len(VALID_BENCHMARK_RECORDS)
+
+        # Verify no component_status.json created
+        assert not list(tmp_path.rglob("component_status.json"))

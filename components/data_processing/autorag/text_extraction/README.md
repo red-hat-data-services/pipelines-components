@@ -52,7 +52,7 @@ def example_pipeline():
   - data-processing
   - autorag
   - text-extraction
-- **Last Verified**: 2026-04-21 12:00:00+00:00
+- **Last Verified**: 2026-06-17 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

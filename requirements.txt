@@ -13,11 +13,11 @@ click==8.4.1 \
     --hash=sha256:87d40c073274de99dca9f76adc0e2900245554d321b9d738adc6827ff83c38de
 click-option-group==0.5.7 \
     --hash=sha256:d6a3f4aacbf550153b112ce5dae7d99ea3fc83cc4fda268e9c5f174c26bb1550
-cryptography==46.0.7 \
-    --hash=sha256:3b900c1b09ae2a71c7a1ab5e8f41a030078e82bf4d81e5ade4cfe8ca6784acf2 \
-    --hash=sha256:6efa0e3724a7cd7f2ea5f3bc197fff02c3db7be15e3f219dc28376364a8c59a9 \
-    --hash=sha256:876da9c3a3479d766c4e47d86d274cf7d1caae90784e1be54dca8bae80847948 \
-    --hash=sha256:a34baa60ae4f96b6710a4bcfd89bb2ebfe43a4219e47d4e42fc249c99df88435
+cryptography==49.0.0 \
+    --hash=sha256:2b75762267d1b536f48638cf7b6d0c78eb39bed22eafe5f3859f7e941fa16299 \
+    --hash=sha256:3279b794131c9cae7ca5e3cd3669254936b9c32ad1079693fb78e80c2a25bcc2 \
+    --hash=sha256:497e9f17bd6428fc8513d48d54cade3efa039af9df81cb70ea9ca19f469ff3e2 \
+    --hash=sha256:ec08cb873dcf9201b7798ee1278c33efd71c3f2703f97a73c28905965f7aaa39
 docstring-parser==0.18.0 \
     --hash=sha256:ad8ed234ea2dab23080526bd8eaa457a8b1cbabab7c3348723ec5a35a07a0040
 durationpy==0.10 \
