@@ -63,7 +63,7 @@ def _executor_resources_from_document(doc: dict[str, Any]) -> dict[str, Executor
             if not isinstance(container, dict):
                 continue
             raw = container.get("resources")
-            if raw is None or not all(key in raw for key in _RESOURCE_KEYS):
+            if not isinstance(raw, dict) or not all(key in raw for key in _RESOURCE_KEYS):
                 continue
             collected[str(executor_name)] = ExecutorResources.from_mapping(raw)
     return collected

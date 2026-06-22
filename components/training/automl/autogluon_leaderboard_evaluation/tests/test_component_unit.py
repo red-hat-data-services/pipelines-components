@@ -9,6 +9,16 @@ import pytest
 from ..component import leaderboard_evaluation
 
 
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
+_DEFAULT_COMPONENT_STATUS = _make_component_status_artifact(Path("/tmp"))
+
+
 def _make_models_artifact(
     base_path: str | Path,
     model_names: list[str],
@@ -101,6 +111,7 @@ class TestLeaderboardEvaluationUnitTests:
             models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         # Verify DataFrame was constructed with correct data
@@ -198,6 +209,7 @@ class TestLeaderboardEvaluationUnitTests:
             models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
+            component_status=_make_component_status_artifact(tmp_path),
         )
 
         # Verify all models were passed to DataFrame
@@ -232,6 +244,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         models_artifact_default = _make_models_artifact("/tmp/some_path", [], metadata={})
@@ -241,6 +254,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact_default,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_leaderboard_evaluation_rejects_empty_eval_metric(self):
@@ -254,6 +268,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
@@ -261,6 +276,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="   ",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_missing_metrics_file_raises(self, tmp_path, html_output_path):
@@ -279,6 +295,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_make_component_status_artifact(tmp_path),
             )
 
     def test_component_imports_correctly(self):
