@@ -1724,7 +1724,9 @@ class TestComponentStatusOutput:
         status_artifact = _make_component_status_artifact(tmp_path)
         Path(status_artifact.path).mkdir(parents=True, exist_ok=True)
 
-        call_kwargs = _base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path)
+        call_kwargs = _base_call_kwargs(
+            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path
+        )
         call_kwargs["component_status"] = status_artifact
         autogluon_models_training.python_func(**call_kwargs)
 
