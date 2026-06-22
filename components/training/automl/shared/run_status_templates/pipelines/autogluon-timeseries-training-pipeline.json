@@ -18,7 +18,7 @@
     },
     {
       "id": "autogluon_timeseries_models_training",
-      "description": "Train AutoGluon time series models, refit top N, and evaluate on holdout.",
+      "description": "Train AutoGluon time series models, refit top N, evaluate on holdout, and render leaderboard.",
       "stages": [
         {
           "id": "load_data",
@@ -37,13 +37,7 @@
         {
           "id": "refit_and_evaluate",
           "description": "Refit top models, evaluate on holdout, and write metrics, back_testing.json, and notebooks."
-        }
-      ]
-    },
-    {
-      "id": "leaderboard_evaluation",
-      "description": "Build the AutoML leaderboard HTML from per-model metrics.",
-      "stages": [
+        },
         {
           "id": "build_leaderboard",
           "description": "Aggregate model metrics, rank models, and render leaderboard HTML."
