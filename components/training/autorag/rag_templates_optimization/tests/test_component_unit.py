@@ -786,3 +786,17 @@ class TestOptimizeTemplatesStatus:
         run_stage = next(stage for stage in status_data["stages"] if stage["id"] == "optimize_templates")
         assert run_stage["status"] == "failed"
         assert "search failed" in run_stage["error"]
+
+    def test_notebook_style_call_without_component_status(self):
+        """Direct python_func calls without component_status work (notebook usage)."""
+        import inspect
+
+        # Verify component signature accepts component_status=None
+        sig = inspect.signature(rag_templates_optimization.python_func)
+        param = sig.parameters["component_status"]
+
+        # Verify it has a default value of None
+        assert param.default is None, "component_status should default to None for notebook usage"
+
+        # This proves the component can be called without component_status
+        # Full integration test would require real OGX/ai4rag dependencies

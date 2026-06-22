@@ -73,6 +73,55 @@ class TestComponentStatusTracker:
 
         assert utc_now_z().endswith("Z")
 
+    def test_component_status_json_schema_compliance(self, tmp_path: Path) -> None:
+        """component_status.json follows expected schema for dashboard consumption."""
+        from datetime import datetime
+
+        tracker = ComponentStatusTracker(str(tmp_path), "test_component")
+        tracker.record("stage1", "started")
+        tracker.record("stage1", "completed", rows=100, files=5)
+        tracker.record("stage2", "started", input_size_mb=50)
+        tracker.record("stage2", "completed", output_size_mb=45)
+        tracker.save()
+
+        data = json.loads((tmp_path / COMPONENT_STATUS_FILENAME).read_text(encoding="utf-8"))
+
+        # Top-level structure
+        required_fields = {"component_id", "started_at", "completed_at", "stages", "metadata"}
+        assert set(data.keys()) >= required_fields, f"Missing fields: {required_fields - set(data.keys())}"
+        assert data["component_id"] == "test_component"
+
+        # ISO-8601 timestamps with Z suffix
+        assert data["started_at"].endswith("Z"), "started_at should end with Z"
+        assert data["completed_at"].endswith("Z"), "completed_at should end with Z"
+
+        # Verify timestamps are valid ISO-8601
+        datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
+        datetime.fromisoformat(data["completed_at"].replace("Z", "+00:00"))
+
+        # Stages array structure
+        assert isinstance(data["stages"], list), "stages should be a list"
+        assert len(data["stages"]) == 2, "Should have 2 stages"
+
+        # Verify each stage has required fields
+        for stage in data["stages"]:
+            assert "id" in stage, "Each stage must have an id"
+            assert "status" in stage, "Each stage must have a status"
+            assert "timestamp" in stage, "Each stage must have a timestamp"
+            assert stage["timestamp"].endswith("Z"), "Stage timestamps should end with Z"
+
+        # Verify stage 1 metadata
+        stage1 = next(s for s in data["stages"] if s["id"] == "stage1")
+        assert stage1["status"] == "completed"
+        assert stage1["rows"] == 100
+        assert stage1["files"] == 5
+
+        # Verify stage 2 metadata
+        stage2 = next(s for s in data["stages"] if s["id"] == "stage2")
+        assert stage2["status"] == "completed"
+        assert stage2["input_size_mb"] == 50
+        assert stage2["output_size_mb"] == 45
+
 
 class TestComponentStatusEncoder:
     """Tests for JSON encoding of status metadata values."""
@@ -118,6 +167,44 @@ class TestEmbeddedStatusBootstrap:
         with status:
             with status.stage("discover_documents"):
                 pass
+
+
+class TestNullComponentStatusTracker:
+    """Tests for no-op status tracker used in notebook execution."""
+
+    def test_null_tracker_propagates_exceptions(self) -> None:
+        """Exceptions escape the context manager (not suppressed)."""
+        from kfp_components.components.training.autorag.shared.component_status import (
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+        with pytest.raises(ValueError, match="test error"):
+            with status:
+                raise ValueError("test error")
+
+    def test_null_tracker_creates_no_files(self, tmp_path: Path) -> None:
+        """No artifacts written when using null tracker."""
+        status = NullComponentStatusTracker()
+        with status:
+            status.record("stage1", "started")
+            status.set_metadata(key="value")
+            with status.stage("stage2"):
+                pass
+
+        # Verify no files created in tmp_path
+        assert list(tmp_path.iterdir()) == []
+
+    def test_null_tracker_stage_propagates_exceptions(self) -> None:
+        """stage() context manager doesn't suppress exceptions."""
+        from kfp_components.components.training.autorag.shared.component_status import (
+            null_component_status_tracker,
+        )
+
+        status = null_component_status_tracker()
+        with pytest.raises(RuntimeError, match="boom"):
+            with status.stage("test_stage"):
+                raise RuntimeError("boom")
 
 
 class TestComponentStatusTrackerStage:

@@ -114,6 +114,7 @@ requirements:
 	uv pip compile pyproject.toml --generate-hashes --no-header --no-annotate \
 		--no-emit-package kfp-components \
 		--python-version 3.12 \
+		--python-platform linux \
 		--index-url $(AIPCC_INDEX_URL) >> requirements.txt
 	echo "--index-url $(AIPCC_INDEX_URL)" > requirements-build.txt
 	echo "" >> requirements-build.txt

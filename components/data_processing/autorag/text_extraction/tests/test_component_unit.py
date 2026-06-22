@@ -331,7 +331,7 @@ class TestTextExtractionMultiFormatUnitTests:
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES)
     def test_pdf_processing_with_optimized_settings(self, tmp_path):
-        """Test that PDF format uses optimized pipeline settings (no OCR, no table structure)."""
+        """Test that PDF format uses optimized pipeline settings (no OCR, table structure enabled)."""
         descriptor_dir = tmp_path / "descriptor"
         descriptor_dir.mkdir()
         descriptor = {
@@ -400,7 +400,7 @@ class TestTextExtractionMultiFormatUnitTests:
         mock_pdf_pipeline_options.assert_called_once()
         call_kwargs = mock_pdf_pipeline_options.call_args[1]
         assert call_kwargs["do_ocr"] is False
-        assert call_kwargs["do_table_structure"] is False
+        assert call_kwargs["do_table_structure"] is True
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES)
     def test_txt_file_handling(self, tmp_path):
@@ -740,3 +740,49 @@ class TestMultiFormatProcessing:
         output_files = list(output_dir.glob("*.md"))
         assert len(output_files) == 0, "Unsupported file types should not produce output"
         mock_docling_components["converter_instance"].convert.assert_not_called()
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_notebook_style_call_without_component_status(self, tmp_path):
+        """Direct python_func calls without component_status work (notebook usage)."""
+        # Create empty documents descriptor (no documents to process)
+        descriptor_dir = tmp_path / "descriptor"
+        descriptor_dir.mkdir()
+        descriptor_file = descriptor_dir / "documents_descriptor.json"
+        descriptor_file.write_text(
+            json.dumps(
+                {
+                    "bucket": "test-bucket",
+                    "prefix": "docs/",
+                    "documents": [],  # Empty list - no processing needed
+                }
+            )
+        )
+
+        documents_descriptor_artifact = mock.MagicMock()
+        documents_descriptor_artifact.path = str(descriptor_dir)
+        extracted_text_artifact = mock.MagicMock()
+        extracted_text_artifact.path = str(tmp_path / "extracted")
+
+        boto_modules = _mock_boto_modules()
+        docling_modules = _docling_modules()
+
+        with mock.patch.dict(
+            sys.modules,
+            {
+                **boto_modules,
+                **docling_modules,
+                **_sync_multiprocess_modules(),
+            },
+        ):
+            text_extraction.python_func(
+                documents_descriptor=documents_descriptor_artifact,
+                extracted_text=extracted_text_artifact,
+                component_status=None,
+            )
+
+        # Verify primary output directory exists
+        output_dir = Path(extracted_text_artifact.path)
+        assert output_dir.exists()
+
+        # Verify no component_status.json created
+        assert not list(tmp_path.rglob("component_status.json"))
