@@ -1,22 +1,22 @@
 """Tests for the leaderboard_evaluation component."""
 
 import json
-import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-
-@pytest.fixture(autouse=True, scope="module")
-def isolated_sys_modules():
-    """Patch pandas in sys.modules only for this test module; restored on module teardown."""
-    with mock.patch.dict(sys.modules, clear=False) as mocked_modules:
-        mocked_modules["pandas"] = mock.MagicMock()
-        yield
+from ..component import leaderboard_evaluation
 
 
-from ..component import leaderboard_evaluation  # noqa: E402
+def _make_component_status_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "component_status_out")
+    art.metadata = {}
+    return art
+
+
+_DEFAULT_COMPONENT_STATUS = _make_component_status_artifact(Path("/tmp"))
 
 
 def _make_models_artifact(
@@ -111,6 +111,7 @@ class TestLeaderboardEvaluationUnitTests:
             models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
+            component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
         # Verify DataFrame was constructed with correct data
@@ -208,6 +209,7 @@ class TestLeaderboardEvaluationUnitTests:
             models_artifact=models_artifact,
             eval_metric="root_mean_squared_error",
             html_artifact=mock_html,
+            component_status=_make_component_status_artifact(tmp_path),
         )
 
         # Verify all models were passed to DataFrame
@@ -242,6 +244,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         models_artifact_default = _make_models_artifact("/tmp/some_path", [], metadata={})
@@ -251,6 +254,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact_default,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_leaderboard_evaluation_rejects_empty_eval_metric(self):
@@ -264,6 +268,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
         with pytest.raises(TypeError, match=r"eval_metric must be a non-empty string\."):
@@ -271,6 +276,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="   ",
                 html_artifact=mock_html,
+                component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
     def test_missing_metrics_file_raises(self, tmp_path, html_output_path):
@@ -289,6 +295,7 @@ class TestLeaderboardEvaluationUnitTests:
                 models_artifact=models_artifact,
                 eval_metric="rmse",
                 html_artifact=mock_html,
+                component_status=_make_component_status_artifact(tmp_path),
             )
 
     def test_component_imports_correctly(self):
@@ -296,3 +303,71 @@ class TestLeaderboardEvaluationUnitTests:
         assert callable(leaderboard_evaluation)
         assert hasattr(leaderboard_evaluation, "python_func")
         assert hasattr(leaderboard_evaluation, "component_spec")
+
+
+def _write_model_metrics(base_path: Path, model_name: str, metrics: dict) -> None:
+    metrics_dir = base_path / model_name / "metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    (metrics_dir / "metrics.json").write_text(json.dumps(metrics), encoding="utf-8")
+
+
+class TestLeaderboardMetricSorting:
+    """Verify AutoGluon negated-metric convention produces correct best-model ranking."""
+
+    def test_negated_rmse_ranks_higher_value_first(self, tmp_path):
+        """Flipped RMSE (-0.3 beats -0.8) selects the better model as best_model."""
+        combined_root = tmp_path / "models"
+        _write_model_metrics(combined_root, "ModelA", {"root_mean_squared_error": -0.8})
+        _write_model_metrics(combined_root, "ModelB", {"root_mean_squared_error": -0.3})
+
+        models_artifact = mock.MagicMock()
+        models_artifact.path = str(combined_root)
+        models_artifact.uri = "http://example.com/artifacts"
+        models_artifact.metadata = {"model_names": json.dumps(["ModelA", "ModelB"])}
+
+        html_artifact = mock.MagicMock()
+        html_artifact.path = str(tmp_path / "leaderboard.html")
+        html_artifact.metadata = {}
+
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "status")
+        component_status.metadata = {}
+
+        result = leaderboard_evaluation.python_func(
+            models_artifact=models_artifact,
+            eval_metric="root_mean_squared_error",
+            html_artifact=html_artifact,
+            component_status=component_status,
+        )
+
+        assert result.best_model == "ModelB"
+        html = Path(html_artifact.path).read_text(encoding="utf-8")
+        assert html.index("ModelB") < html.index("ModelA")
+
+    def test_mase_ranks_higher_value_first(self, tmp_path):
+        """Timeseries MASE values rank with higher-is-better AutoGluon convention."""
+        combined_root = tmp_path / "models"
+        _write_model_metrics(combined_root, "DeepAR", {"MASE": -0.55})
+        _write_model_metrics(combined_root, "TFT", {"MASE": -0.21})
+
+        models_artifact = mock.MagicMock()
+        models_artifact.path = str(combined_root)
+        models_artifact.uri = "http://example.com/artifacts"
+        models_artifact.metadata = {"model_names": json.dumps(["DeepAR", "TFT"])}
+
+        html_artifact = mock.MagicMock()
+        html_artifact.path = str(tmp_path / "leaderboard_ts.html")
+        html_artifact.metadata = {}
+
+        component_status = mock.MagicMock()
+        component_status.path = str(tmp_path / "status_ts")
+        component_status.metadata = {}
+
+        result = leaderboard_evaluation.python_func(
+            models_artifact=models_artifact,
+            eval_metric="MASE",
+            html_artifact=html_artifact,
+            component_status=component_status,
+        )
+
+        assert result.best_model == "TFT"

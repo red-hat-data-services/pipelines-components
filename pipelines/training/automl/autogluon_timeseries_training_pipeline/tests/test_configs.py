@@ -30,6 +30,7 @@ class TestConfig:
     prediction_length: int
     top_n: int
     tags: list[str]
+    eval_metric: str | None = None
 
     def get_pipeline_arguments(
         self,
@@ -38,7 +39,7 @@ class TestConfig:
         train_data_secret_name: str,
     ) -> dict[str, Any]:
         """Build pipeline arguments dict for this config."""
-        return {
+        args: dict[str, Any] = {
             "train_data_secret_name": train_data_secret_name,
             "train_data_bucket_name": train_data_bucket_name,
             "train_data_file_key": train_data_file_key,
@@ -49,11 +50,20 @@ class TestConfig:
             "prediction_length": self.prediction_length,
             "top_n": self.top_n,
         }
+        if self.eval_metric is not None:
+            args["eval_metric"] = self.eval_metric
+        return args
 
 
-def _load_configs() -> list[TestConfig]:
-    """Load test configs from test_configs.json and return TestConfig instances."""
-    raw = _CONFIGS_JSON.read_text(encoding="utf-8")
+def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
+    """Load test configs from test_configs.json and return TestConfig instances.
+
+    Args:
+        config_path: Optional path to a JSON array of config objects; defaults to
+            ``test_configs.json`` beside this module.
+    """
+    path = config_path if config_path is not None else _CONFIGS_JSON
+    raw = path.read_text(encoding="utf-8")
     data = json.loads(raw)
     if not isinstance(data, list):
         raise ValueError(f"test_configs.json must be a JSON array; got {type(data).__name__}")
@@ -74,6 +84,14 @@ def _load_configs() -> list[TestConfig]:
                 raise ValueError(
                     f"test_configs.json[{i}] 'known_covariates_names' must be a list; got {type(known_covariates_names).__name__}"  # noqa: E501
                 )
+            eval_metric = item.get("eval_metric")
+            if eval_metric is not None:
+                if not isinstance(eval_metric, str) or not eval_metric.strip():
+                    raise ValueError(
+                        f"test_configs.json[{i}] 'eval_metric' must be a non-empty string when provided; "
+                        f"got {eval_metric!r}"
+                    )
+                eval_metric = eval_metric.strip()
             configs.append(
                 TestConfig(
                     id=item["id"],
@@ -85,6 +103,7 @@ def _load_configs() -> list[TestConfig]:
                     prediction_length=int(item.get("prediction_length", 1)),
                     top_n=int(item.get("top_n", 3)),
                     tags=tags,
+                    eval_metric=eval_metric,
                 )
             )
         except KeyError as e:
