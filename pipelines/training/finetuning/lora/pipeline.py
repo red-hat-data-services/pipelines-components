@@ -109,9 +109,6 @@ def lora_pipeline(
     phase_02_train_opt_wandb_entity: str = "",
     phase_02_train_opt_wandb_run_name: str = "",
     phase_02_train_opt_tensorboard_log_dir: str = "",
-    phase_02_train_opt_mlflow_tracking_uri: str = "",
-    phase_02_train_opt_mlflow_experiment_name: str = "",
-    phase_02_train_opt_mlflow_run_name: str = "",
     # Dataset format params
     phase_02_train_opt_dataset_type: str = "",
     phase_02_train_opt_field_messages: str = "",
@@ -191,9 +188,6 @@ def lora_pipeline(
             phase_02_train_opt_wandb_entity: Weights & Biases entity/team
             phase_02_train_opt_wandb_run_name: Weights & Biases run name
             phase_02_train_opt_tensorboard_log_dir: TensorBoard log directory
-            phase_02_train_opt_mlflow_tracking_uri: MLflow tracking server URI
-            phase_02_train_opt_mlflow_experiment_name: MLflow experiment name
-            phase_02_train_opt_mlflow_run_name: MLflow run name
             phase_02_train_opt_dataset_type: Dataset format type
             phase_02_train_opt_field_messages: Field name for messages in dataset
             phase_02_train_opt_field_instruction: Field name for instruction in dataset
@@ -298,9 +292,6 @@ def lora_pipeline(
         training_wandb_entity=phase_02_train_opt_wandb_entity,
         training_wandb_run_name=phase_02_train_opt_wandb_run_name,
         training_tensorboard_log_dir=phase_02_train_opt_tensorboard_log_dir,
-        training_mlflow_tracking_uri=phase_02_train_opt_mlflow_tracking_uri,
-        training_mlflow_experiment_name=phase_02_train_opt_mlflow_experiment_name,
-        training_mlflow_run_name=phase_02_train_opt_mlflow_run_name,
         # Dataset format params
         training_dataset_type=phase_02_train_opt_dataset_type,
         training_field_messages=phase_02_train_opt_field_messages,

@@ -61,9 +61,6 @@ Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics
 | `training_wandb_entity` | `Optional[str]` | `None` | Weights & Biases entity/team. |
 | `training_wandb_run_name` | `Optional[str]` | `None` | Weights & Biases run name. |
 | `training_tensorboard_log_dir` | `Optional[str]` | `None` | TensorBoard log directory. |
-| `training_mlflow_tracking_uri` | `Optional[str]` | `None` | MLflow tracking server URI. |
-| `training_mlflow_experiment_name` | `Optional[str]` | `None` | MLflow experiment name. |
-| `training_mlflow_run_name` | `Optional[str]` | `None` | MLflow run name. |
 | `training_dataset_type` | `Optional[str]` | `None` | Dataset format type. |
 | `training_field_messages` | `Optional[str]` | `None` | Field name for messages in dataset. |
 | `training_field_instruction` | `Optional[str]` | `None` | Field name for instruction in dataset. |
@@ -100,6 +97,7 @@ Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics
   - parameter_efficient
 - **Last Verified**: 2026-02-23 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - briangallagher
     - Fiona-Waters

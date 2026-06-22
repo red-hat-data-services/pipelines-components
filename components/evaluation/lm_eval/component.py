@@ -79,11 +79,10 @@ def universal_llm_evaluator(
     import torch
 
     # Delayed imports for lm-eval
-    from lm_eval import tasks
     from lm_eval.api.instance import Instance
     from lm_eval.api.metrics import mean
     from lm_eval.api.registry import get_model
-    from lm_eval.api.task import TaskConfig
+    from lm_eval.api.task import Task, TaskConfig
     from lm_eval.evaluator import evaluate
     from lm_eval.tasks import get_task_dict
 
@@ -167,7 +166,7 @@ def universal_llm_evaluator(
     # =========================================================================
     # Custom Chat Holdout Task
     # =========================================================================
-    class ChatHoldoutTask(tasks.Task):
+    class ChatHoldoutTask(Task):
         """A custom lm-eval task for evaluating on chat-format holdout data."""
 
         VERSION = 0
@@ -181,14 +180,12 @@ def universal_llm_evaluator(
             prompts_log: list = None,
         ):
             self.dataset_path = dataset_path
-            self.task_name = task_name
             self.max_gen_toks = max_gen_toks
             self.log_prompts = log_prompts
             self.prompts_log = [] if prompts_log is None else prompts_log
 
             config = TaskConfig(task=task_name, dataset_path=dataset_path)
             super().__init__(config=config)
-            self.config.task = task_name
             self.fewshot_rnd = random.Random()
 
         def download(self, data_dir=None, cache_dir=None, download_mode=None, **kwargs) -> None:
@@ -300,13 +297,12 @@ def universal_llm_evaluator(
                             "prediction": prediction,
                         }
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to log prompt for doc: {e}")
 
             exact_match = 1.0 if prediction.lower() == target.lower() else 0.0
 
-            target_start = target.lower()[:50] if len(target) > 50 else target.lower()
-            contains_match = 1.0 if target_start in prediction.lower() else 0.0
+            contains_match = 1.0 if target and target.lower() in prediction.lower() else 0.0
 
             try:
                 bleu = sacrebleu.sentence_bleu(prediction, [target]).score / 100.0

@@ -2,17 +2,22 @@ from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
 from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_models_training import autogluon_models_training
+from kfp_components.components.training.automl.component_stage_map_publisher import publish_component_stage_map
+
+MAX_CPUS = "32"
+MAX_MEMORY = "64Gi"
+
+# Must match run_status_templates/pipelines/<name>.json
+PIPELINE_NAME = "autogluon-tabular-training-pipeline"
 
 
 @dsl.pipeline(
-    name="autogluon-tabular-training-pipeline",
+    name=PIPELINE_NAME,
     description=(
-        "End-to-end AutoGluon tabular training pipeline implementing a two-stage approach: "
-        "first builds and selects top-performing models on sampled data, then refits them "
-        "on the full dataset. The pipeline loads data from S3, splits it into train/test sets, "
-        "trains multiple AutoGluon models using ensembling (stacking and bagging), selects the "
-        "top N performers, refits each on the complete training data sequentially, and finally "
-        "evaluates all refitted models to generate a comprehensive leaderboard with performance metrics."
+        "AutoML tabular training pipeline for building high-quality models on structured data with minimal "
+        "effort. Powered by AutoGluon, it automates discovery, ensembling, and selection, then refits top "
+        "candidates for maximum accuracy. Delivers production-ready predictors, clear metrics, and a ranked "
+        "leaderboard to choose the best deployment option."
     ),
     pipeline_config=dsl.PipelineConfig(
         workspace=dsl.WorkspaceConfig(
@@ -34,12 +39,19 @@ def autogluon_tabular_training_pipeline(
     label_column: str,
     task_type: str,
     top_n: int = 3,
+    positive_class: str = "",
+    eval_metric: str = "",
+    preset: str = "speed",
 ):
     """AutoGluon Tabular Training Pipeline.
 
     This pipeline implements an efficient two-stage training approach for AutoGluon tabular models
     that balances computational cost with model quality. The pipeline automates the complete
     machine learning workflow from data loading to final model evaluation.
+
+    **Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or
+    string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns,
+    which reject multi-byte characters.
 
     **Storage strategy:**
 
@@ -49,6 +61,9 @@ def autogluon_tabular_training_pipeline(
     component). The workspace is provisioned via ``PipelineConfig.workspace``.
 
     **Pipeline Stages:**
+
+    0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP
+       artifact for dashboards before any data I/O.
 
     1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible
        object storage bucket using AWS credentials configured via Kubernetes secrets.
@@ -108,6 +123,9 @@ def autogluon_tabular_training_pipeline(
         label_column: Name of the target/label column in the dataset.
         task_type: "binary", "multiclass", or "regression"; drives metrics and model types.
         top_n: Number of top models to select and refit (default: 3); positive integer from range [1, 10].
+        positive_class: Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values.
+        eval_metric: Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification.
+        preset: Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB).
 
     Returns:
         HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
@@ -135,6 +153,16 @@ def autogluon_tabular_training_pipeline(
     """  # noqa: E501
     from kfp.kubernetes import use_secret_as_env
 
+    # Publish component-to-stage-to-step map first so dashboards know expected structure
+    component_stage_map_task = publish_component_stage_map(
+        pipeline_id=PIPELINE_NAME,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+    )
+    component_stage_map_task.set_caching_options(False)
+    component_stage_map_task.set_cpu_request("0.5").set_memory_request("512Mi").set_cpu_limit("1").set_memory_limit(
+        "1Gi"
+    )
+
     data_loader_task = automl_data_loader(
         bucket_name=train_data_bucket_name,
         file_key=train_data_file_key,
@@ -142,8 +170,9 @@ def autogluon_tabular_training_pipeline(
         label_column=label_column,
         task_type=task_type,
     )
+    data_loader_task.after(component_stage_map_task)
     data_loader_task.set_caching_options(False)
-    data_loader_task.set_cpu_request("2").set_memory_request("8Gi")
+    data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
     use_secret_as_env(
         data_loader_task,
@@ -157,11 +186,14 @@ def autogluon_tabular_training_pipeline(
         optional=True,  # Mark as optional to not block the pipeline. If needed, error will be raised by component
     )
 
-    # Stage 1 + 2: Model selection and sequential refit of top N models
-    training_task = autogluon_models_training(
+    # Stage 1 + 2: Model selection and sequential refit of top N models.
+    # Resource limits differ by preset: balanced needs more CPU/memory than speed.
+    # TODO: when possible, the leaderboard evaluation task should be outside the if/else block.
+    _training_kwargs = dict(
         label_column=label_column,
         task_type=task_type,
         top_n=top_n,
+        positive_class=positive_class,
         train_data_path=data_loader_task.outputs["models_selection_train_data_path"],
         test_data=data_loader_task.outputs["sampled_test_dataset"],
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
@@ -171,17 +203,40 @@ def autogluon_tabular_training_pipeline(
         sampling_config=data_loader_task.outputs["sample_config"],
         split_config=data_loader_task.outputs["split_config"],
         extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
+        preset=preset,
+        eval_metric=eval_metric,
     )
-    training_task.set_caching_options(False)
-    training_task.set_cpu_request("4").set_memory_request("16Gi")
+    with dsl.If(preset == "balanced"):
+        training_task_bl = autogluon_models_training(**_training_kwargs)
+        training_task_bl.set_caching_options(False)
+        training_task_bl.set_cpu_request("8").set_memory_request("32Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
+        )
 
-    # Generate leaderboard
-    leaderboard_evaluation_task = leaderboard_evaluation(
-        models_artifact=training_task.outputs["models_artifact"],
-        eval_metric=training_task.outputs["eval_metric"],
-    )
-    leaderboard_evaluation_task.set_caching_options(False)
-    leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi")
+        leaderboard_evaluation_task_bl = leaderboard_evaluation(
+            models_artifact=training_task_bl.outputs["models_artifact"],
+            eval_metric=training_task_bl.outputs["eval_metric"],
+        )
+        leaderboard_evaluation_task_bl.set_caching_options(False)
+        leaderboard_evaluation_task_bl.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(
+            MAX_CPUS
+        ).set_memory_limit(MAX_MEMORY)
+
+    with dsl.Else():
+        training_task_sp = autogluon_models_training(**_training_kwargs)
+        training_task_sp.set_caching_options(False)
+        training_task_sp.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+            MAX_MEMORY
+        )
+
+        leaderboard_evaluation_task_sp = leaderboard_evaluation(
+            models_artifact=training_task_sp.outputs["models_artifact"],
+            eval_metric=training_task_sp.outputs["eval_metric"],
+        )
+        leaderboard_evaluation_task_sp.set_caching_options(False)
+        leaderboard_evaluation_task_sp.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(
+            MAX_CPUS
+        ).set_memory_limit(MAX_MEMORY)
 
 
 if __name__ == "__main__":

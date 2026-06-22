@@ -17,7 +17,9 @@ from kfp import dsl
 
 # Import reusable components
 from components.data_processing.dataset_download import dataset_download
-from components.deployment.kubeflow_model_registry import kubeflow_model_registry
+from components.deployment.kubeflow_model_registry import (
+    kubeflow_model_registry as model_registry,
+)
 from components.evaluation.lm_eval import universal_llm_evaluator
 from components.training.finetuning.osft import train_model
 
@@ -72,6 +74,7 @@ def osft_minimal_pipeline(
     phase_02_train_opt_use_liger: bool = True,
     phase_02_train_opt_runtime: str = "training-hub",
     phase_04_registry_opt_port: int = 8080,
+    phase_04_registry_opt_format_version: str = "2.9",
 ):
     """OSFT Minimal Training Pipeline - Continual learning without catastrophic forgetting.
 
@@ -102,6 +105,7 @@ def osft_minimal_pipeline(
         phase_02_train_opt_use_liger: [OSFT] Enable Liger kernel optimizations. Recommended
         phase_02_train_opt_runtime: Name of the ClusterTrainingRuntime to use.
         phase_04_registry_opt_port: Model registry server port
+        phase_04_registry_opt_format_version: Model format version for registry (default "2.9")
     """
     # =========================================================================
     # Stage 1: Dataset Download
@@ -141,7 +145,6 @@ def osft_minimal_pipeline(
         training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        # training_target_patterns=phase_02_train_opt_target_patterns,
         training_seed=42,
         training_num_epochs=phase_02_train_man_train_epochs,
         # OSFT-specific optimizations
@@ -211,7 +214,7 @@ def osft_minimal_pipeline(
     # =========================================================================
     # Stage 4: Model Registry
     # =========================================================================
-    model_registry_task = kubeflow_model_registry(
+    model_registry_task = model_registry(
         pvc_mount_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         input_model=training_task.outputs["output_model"],
         input_metrics=training_task.outputs["output_metrics"],
@@ -222,7 +225,7 @@ def osft_minimal_pipeline(
         model_name=phase_04_registry_man_reg_name,
         model_version=phase_04_registry_man_reg_version,
         model_format_name="pytorch",
-        model_format_version="2.9",
+        model_format_version=phase_04_registry_opt_format_version,
         model_description="",
         author="pipeline",
         shared_log_file="pipeline_log.txt",

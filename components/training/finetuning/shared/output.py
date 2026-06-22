@@ -6,6 +6,8 @@ import os
 import shutil
 from typing import Dict, List, Optional
 
+log = logging.getLogger(__name__)
+
 
 def find_model_dir(root: str) -> Optional[str]:
     """Find the most recent model checkpoint directory.
@@ -113,8 +115,8 @@ def extract_metrics_from_jsonl(metrics_file: str) -> tuple[Dict, List[float]]:
                             loss.append(float(lv))
                         except (ValueError, TypeError):
                             pass
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning(f"Failed to parse metrics line: {e}")
     if loss:
         met["final_loss"], met["min_loss"] = loss[-1], min(loss)
         met["final_perplexity"] = __import__("math").exp(min(loss[-1], 10))

@@ -16,15 +16,12 @@ Carries out the iterative RAG optimization process.
 | `test_data` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to test data used for evaluating RAG pattern quality. |
 | `search_space_prep_report` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to a .yml file containig short report on the experiment's first phase (search space preparation). |
 | `rag_patterns` | `dsl.Output[dsl.Artifact]` | `None` | kfp-enforced argument specifying an output artifact. Provided by kfp backend automatically. |
-| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | kfp-enforced argument to allow access of base64 encoded dir with notebook templates. |
 | `test_data_key` | `Optional[str]` | `None` | Path to the benchmark JSON file in object storage used by generated notebooks. |
-| `chat_model_url` | `Optional[str]` | `None` | Inference endpoint URL for the chat/generation model (OpenAI-compatible). Required for in-memory scenario. |
-| `chat_model_token` | `Optional[str]` | `None` | Optional API token for the chat model endpoint. Omit if deployment has no auth. |
-| `embedding_model_url` | `Optional[str]` | `None` | Inference endpoint URL for the embedding model. Required for in-memory scenario. |
-| `embedding_model_token` | `Optional[str]` | `None` | Optional API token for the embedding model endpoint. Omit if no auth. |
-| `llama_stack_vector_io_provider_id` | `Optional[str]` | `None` | Vector I/O provider identifier as registered in llama-stack. |
+| `vector_io_provider_id` | `str` | `None` | Vector I/O provider identifier as registered in OGX. |
+| `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 | `optimization_settings` | `Optional[dict]` | `None` | Additional settings customising the experiment. |
 | `input_data_key` | `Optional[str]` | `""` | A path to documents dir within a bucket used as an input to AI4RAG experiment. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 
 ## Usage Examples 🧪
 
@@ -40,14 +37,14 @@ from kfp_components.components.training.autorag.rag_templates_optimization impor
 @dsl.pipeline(name="rag-templates-optimization-example")
 def example_pipeline(
     test_data_key: str = "questions",
-    llama_stack_vector_io_provider_id: str = "milvus",
+    vector_io_provider_id: str = "milvus",
     input_data_key: str = "",
 ):
     """Example pipeline using rag_templates_optimization.
 
     Args:
         test_data_key: Key for the test data.
-        llama_stack_vector_io_provider_id: Vector I/O provider identifier.
+        vector_io_provider_id: Vector I/O provider identifier.
         input_data_key: Key for the input data.
     """
     extracted_text = dsl.importer(
@@ -67,7 +64,7 @@ def example_pipeline(
         test_data=test_data.output,
         search_space_prep_report=search_space_prep_report.output,
         test_data_key=test_data_key,
-        llama_stack_vector_io_provider_id=llama_stack_vector_io_provider_id,
+        vector_io_provider_id=vector_io_provider_id,
         input_data_key=input_data_key,
     )
 
@@ -81,8 +78,8 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: >=1.0.0
-    - Name: llama-stack API, Version: >=1.0.0
+    - Name: ai4rag, Version: ~=0.6.4
+    - Name: OGX API, Version: ~=1.1.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
 - **Tags**:
@@ -90,10 +87,19 @@ def example_pipeline(
   - autorag
   - optimization
   - rag-patterns
-- **Last Verified**: 2026-01-23 14:23:12+00:00
+- **Last Verified**: 2026-06-10 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - filip-komarzyniec
-    - witold-nowogorski
+    - jakub-walaszczyk
+    - MichalSteczko
+
+<!-- custom-content -->
+
+Generated indexing and inference notebooks are built from templates in
+``shared/notebook_templates/`` (installed with ``kfp_components`` on the AutoRAG
+runtime image), matching the AutoML training components pattern.

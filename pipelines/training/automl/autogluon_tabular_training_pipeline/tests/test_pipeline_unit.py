@@ -13,9 +13,9 @@ from ..pipeline import autogluon_tabular_training_pipeline
 
 # Root DAG task IDs from ``root.dag.tasks`` (fresh compile). Update when the graph changes.
 _EXPECTED_ROOT_DAG_TASK_IDS = (
-    "autogluon-models-training",
+    "condition-branches-1",
     "automl-data-loader",
-    "leaderboard-evaluation",
+    "publish-component-stage-map",
 )
 
 
@@ -52,11 +52,16 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             "label_column",
             "task_type",
             "top_n",
+            "positive_class",
+            "preset",
+            "eval_metric",
         }
         inputs = autogluon_tabular_training_pipeline.component_spec.inputs
         params = set(inputs.keys())
         assert params == expected_params, f"Pipeline params {params} != expected {expected_params}"
         assert inputs["top_n"].default == 3
+        assert inputs["preset"].default == "speed"
+        assert inputs["eval_metric"].default == ""
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that the compiled pipeline YAML contains expected pipeline inputs."""
@@ -76,6 +81,9 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
                 "label_column",
                 "task_type",
                 "top_n",
+                "positive_class",
+                "preset",
+                "eval_metric",
             ):
                 assert name in content, f"Expected pipeline input '{name}' in compiled YAML"
         except Exception as e:
@@ -89,3 +97,95 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             pipeline_func=autogluon_tabular_training_pipeline,
             expected_task_ids=_EXPECTED_ROOT_DAG_TASK_IDS,
         )
+
+    def test_compiled_pipeline_yaml_is_ascii_only(self):
+        """PipelineRuntimeManifest storage requires ASCII-only compiled YAML (MySQL utf8)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_bytes()
+            try:
+                content.decode("ascii")
+            except UnicodeDecodeError as exc:
+                pytest.fail(f"Compiled pipeline YAML must be ASCII-only: {exc}")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+    def test_compiled_pipeline_wires_loader_outputs_to_training_task(self):
+        """Training step consumes data-loader outputs (sample_row, paths, configs)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "dependentTasks:" in content
+        assert "autogluon-models-training:" in content
+        assert "automl-data-loader" in content
+        assert "producerTask: automl-data-loader" in content
+        assert "outputParameterKey: sample_row" in content
+        assert "outputParameterKey: models_selection_train_data_path" in content
+        assert "outputParameterKey: split_config" in content
+        assert "outputParameterKey: sample_config" in content
+        assert "outputParameterKey: extra_train_data_path" in content
+        assert "positive_class" in content
+
+    def test_compiled_pipeline_wires_eval_metric_to_training_task(self):
+        """eval_metric pipeline input is forwarded into the training task and its output wired to the leaderboard."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "componentInputParameter: eval_metric" in content
+        assert "outputParameterKey: eval_metric" in content
+
+    def test_compiled_pipeline_wires_preset_to_training_task(self):
+        """Preset pipeline input is forwarded into the training task; good_quality branch has higher resources."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "componentInputParameter: preset" in content
+        assert "condition-branches-1" in content
+
+    def test_compiled_pipeline_data_loader_declares_task_type_and_label(self):
+        """Tabular data loader component exposes task_type and label_column inputs."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "comp-automl-data-loader:" in content
+        assert "task_type:" in content
+        assert "label_column:" in content
+        assert "defaultValue: regression" in content

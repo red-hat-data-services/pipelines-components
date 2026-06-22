@@ -8,12 +8,16 @@ AutoGluon Tabular Training Pipeline.
 
 This pipeline implements an efficient two-stage training approach for AutoGluon tabular models that balances computational cost with model quality. The pipeline automates the complete machine learning workflow from data loading to final model evaluation.
 
+**Compiled pipeline encoding:** Keep this module ASCII-only (no Unicode in docstrings or string literals). Some deployments persist compiled pipeline YAML in MySQL ``utf8`` columns, which reject multi-byte characters.
+
 **Storage strategy:**
 
 Training datasets are stored on a PVC workspace (not S3 artifacts) so that all pipeline steps sharing the workspace can access them without extra downloads. Only the test dataset is written to an S3 artifact (for use by the leaderboard evaluation component). The workspace is provisioned via
 ``PipelineConfig.workspace``.
 
 **Pipeline Stages:**
+
+0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP artifact for dashboards before any data I/O.
 
 1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS credentials configured via Kubernetes secrets. The component samples the data (up to 1GB), then performs a two-stage split: *Primary split** (default 80/20): separates a *test set* (20%,
 written to an S3 artifact) from the *train portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.csv`` (30%, used for model selection) and ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both train CSVs are
@@ -54,30 +58,79 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 | `label_column` | `str` | `None` | Name of the target/label column in the dataset. |
 | `task_type` | `str` | `None` | "binary", "multiclass", or "regression"; drives metrics and model types. |
 | `top_n` | `int` | `3` | Number of top models to select and refit (default: 3); positive integer from range [1, 10]. |
+| `positive_class` | `str` | `""` | Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values. |
+| `eval_metric` | `str` | `""` | Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification. |
+| `preset` | `str` | `speed` | Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB). |
 
 ## Metadata 🗂️
 
-- **Name**: autogluon_tabular_training_pipeline
+- **Name**: autogluon-tabular-training-pipeline
 - **Stability**: beta
 - **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
-    - Name: Pipelines, Version: >=2.15.2
+    - Name: Pipelines, Version: 2.16.1
     - Name: Kubernetes, Version: >=1.28.0
 - **Tags**:
   - training
   - pipeline
   - automl
   - autogluon-tabular-training-pipeline
-- **Last Verified**: 2026-03-30 15:09:22+00:00
+- **Last Verified**: 2026-06-10 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
 
 <!-- custom-content -->
+
+### Progress and dashboard artifacts
+
+Besides model and data artifacts below, each run publishes:
+
+| KFP task | Output | File | Purpose |
+| -------- | ------ | ---- | ------- |
+| `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the tabular pipeline (published once at run start). |
+| `automl-data-loader` | `component_status` | `component_status.json` | Stage progress for data loading and splitting. |
+| `autogluon-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, and evaluation. |
+| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+
+Example artifact-store layout (task folder names are kebab-case):
+
+```text
+<pipeline_name>/<run_id>/
+├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
+├── automl-data-loader/<task_id>/component_status/component_status.json
+├── autogluon-models-training/<task_id>/component_status/component_status.json
+└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+```
+
+See [AutoML training components README](../../../components/training/automl/README.md) for JSON field details.
+
+#### Dashboard join keys
+
+Dashboards join the static map (`component_stage_map.json`) to live progress (`component_status.json`) using **snake_case component ids**, not KFP task names:
+
+| Layer | Naming | Tabular data loader example |
+| ----- | ------ | --------------------------- |
+| Template `components[].id` | snake_case | `automl_data_loader` |
+| Runtime `component_status.json` → `component_id` | snake_case | `automl_data_loader` |
+| KFP root DAG task id (compiled YAML) | kebab-case | `automl-data-loader` |
+| KFP output parameter | snake_case | `component_status` |
+| Artifact file | snake_case | `component_status.json` |
+
+Use `component_id` (and stage `id` fields inside each file) to correlate artifacts. KFP task names are only for locating artifact paths in the store.
+
+Canonical component ids are defined in the pipeline JSON templates under
+[`run_status_templates/pipelines/`](../../../components/training/automl/shared/run_status_templates/pipelines/)
+(e.g. `autogluon-tabular-training-pipeline.json`). Legacy workspace helpers in
+[`run_status.py`](../../../components/training/automl/shared/run_status.py) expose the same ids as
+`COMPONENT_*` constants.
+
 ### Files stored in user storage
 
 Pipeline outputs are written to the artifact store (S3-compatible storage configured for Kubeflow Pipelines). The layout below matches what components write and what downstream consumers expect when loading the leaderboard or a refitted model.
@@ -97,7 +150,8 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
     │           │   ├── metrics/
     │           │   │   ├── metrics.json         # model evaluation metrics (eval_metric, etc.)
     │           │   │   ├── feature_importance.json
-    │           │   │   └── confusion_matrix.json  # for classification tasks only
+    │           │   │   ├── confusion_matrix.json  # for classification tasks only
+    │           │   │   └── curves.json            # for classification tasks only (ROC + PR)
     │           │   └── notebooks/
     │           │       └── automl_predictor_notebook.ipynb   # Jupyter notebook for inference & exploration
     │           └── <ModelName>_FULL/

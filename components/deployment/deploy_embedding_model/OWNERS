@@ -1,0 +1,9 @@
+no_parent_owners: true
+approvers:
+  - szaher
+  - kryanbeane
+  - CathalOConnorRH
+reviewers:
+  - szaher
+  - kryanbeane
+  - CathalOConnorRH

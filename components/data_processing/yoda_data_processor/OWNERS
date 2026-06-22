@@ -1,5 +1,5 @@
+no_parent_owners: true
 approvers:
   - mprahl
   - nsingla
-reviewers:
   - HumairAK

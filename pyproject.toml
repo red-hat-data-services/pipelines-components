@@ -11,8 +11,9 @@ license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "kfp>=2.15.2",
-    "kfp-kubernetes>=2.15.2",
+    "kfp>=2.16.1",
+    "kfp-kubernetes>=2.16.1",
+    "protobuf<6.32"
 ]
 
 [project.optional-dependencies]
@@ -62,6 +63,7 @@ Issues = "https://github.com/kubeflow/pipelines-components/issues"
 [tool.setuptools]
 packages = [
     "kfp_components",
+    "kfp_components.utils",
     "kfp_components.components",
     "kfp_components.components.data_processing",
     "kfp_components.components.data_processing.automl",
@@ -73,23 +75,29 @@ packages = [
     "kfp_components.components.data_processing.autorag.test_data_loader",
     "kfp_components.components.data_processing.autorag.text_extraction",
     "kfp_components.components.data_processing.dataset_download",
-    "kfp_components.components.data_processing.yoda_data_processor",
+    "kfp_components.components.data_processing.download_model",
+    "kfp_components.components.data_processing.ingest_to_milvus",
+    "kfp_components.components.data_processing.parse_and_chunk",
     "kfp_components.components.data_processing.sdg",
+    "kfp_components.components.data_processing.yoda_data_processor",
     "kfp_components.components.deployment",
-    "kfp_components.components.deployment.autorag",
-    "kfp_components.components.deployment.autorag.build_responses_request_bodies",
+    "kfp_components.components.deployment.deploy_embedding_model",
     "kfp_components.components.deployment.kubeflow_model_registry",
+    "kfp_components.components.deployment.model_deployment",
     "kfp_components.components.evaluation",
+    "kfp_components.components.evaluation.evalhub",
+    "kfp_components.components.evaluation.evalhub.kserve",
     "kfp_components.components.evaluation.lm_eval",
     "kfp_components.components.training",
     "kfp_components.components.training.automl",
     "kfp_components.components.training.automl.autogluon_leaderboard_evaluation",
     "kfp_components.components.training.automl.autogluon_models_training",
-    "kfp_components.components.training.automl.autogluon_timeseries_leaderboard_evaluation",
-    "kfp_components.components.training.automl.autogluon_timeseries_models_full_refit",
-    "kfp_components.components.training.automl.autogluon_timeseries_models_selection",
+    "kfp_components.components.training.automl.autogluon_timeseries_models_training",
+    "kfp_components.components.training.automl.component_stage_map_publisher",
     "kfp_components.components.training.automl.shared",
     "kfp_components.components.training.autorag",
+    "kfp_components.components.training.autorag.component_stage_map_publisher",
+    "kfp_components.components.training.autorag.shared",
     "kfp_components.components.training.autorag.leaderboard_evaluation",
     "kfp_components.components.training.autorag.rag_templates_optimization",
     "kfp_components.components.training.autorag.search_space_preparation",
@@ -102,6 +110,8 @@ packages = [
     "kfp_components.pipelines.data_processing",
     "kfp_components.pipelines.data_processing.autorag",
     "kfp_components.pipelines.data_processing.autorag.documents_indexing_pipeline",
+    "kfp_components.pipelines.data_processing.ray_data",
+    "kfp_components.pipelines.data_processing.ray_data.pdf_documents_processing_rag_pipeline",
     "kfp_components.pipelines.data_processing.sdg",
     "kfp_components.pipelines.deployment",
     "kfp_components.pipelines.evaluation",
@@ -118,6 +128,13 @@ packages = [
     "kfp_components.pipelines.training.finetuning.osft_minimal",
     "kfp_components.pipelines.training.finetuning.sft",
     "kfp_components.pipelines.training.finetuning.sft_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub",
+    "kfp_components.pipelines.training.finetuning_evalhub.lora",
+    "kfp_components.pipelines.training.finetuning_evalhub.lora_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub.osft",
+    "kfp_components.pipelines.training.finetuning_evalhub.osft_minimal",
+    "kfp_components.pipelines.training.finetuning_evalhub.sft",
+    "kfp_components.pipelines.training.finetuning_evalhub.sft_minimal",
 ]
 
 [tool.setuptools.package-dir]
@@ -128,10 +145,16 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
-"kfp_components.components.training.automl.autogluon_models_training" = ["notebook_templates/*.ipynb"]
-"kfp_components.components.training.automl.autogluon_timeseries_models_full_refit" = ["notebook_templates/*.ipynb"]
-"kfp_components.components.training.automl.shared" = ["*.html"]
-"kfp_components.components.training.autorag.rag_templates_optimization" = ["notebook_templates/*.ipynb"]
+"kfp_components.components.training.automl.shared" = [
+    "*.html",
+    "run_status_templates/pipelines/*.json",
+    "notebook_templates/*.ipynb",
+]
+"kfp_components.components.training.autorag.shared" = [
+    "run_status_templates/pipelines/*.json",
+    "notebook_templates/*.ipynb",
+    "**/*.templ",
+]
 
 [tool.ruff]
 line-length = 120
@@ -144,7 +167,7 @@ exclude = [
     "__pycache__",
     "node_modules",
     "**/_generated/",
-    "**/test_data/**",  # Test fixtures may have intentional styles (quote types, etc.)
+    "**/test_data/**", # Test fixtures may have intentional styles (quote types, etc.)
 ]
 
 [tool.ruff.lint]

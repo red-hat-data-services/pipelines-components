@@ -120,7 +120,7 @@ class TestSFTComponentUnitTests:
         # Should NOT mention OSFT
         assert "OSFT" not in docstring
         # Should mention instructlab-training backend
-        assert "instructlab" not in docstring or True  # Backend is hardcoded in implementation
+        assert "instructlab" in docstring  # Backend is hardcoded in implementation
 
     @mock.patch.dict("sys.modules", {"kubeflow.trainer": mock.MagicMock()})
     def test_component_with_mocked_trainer(self):

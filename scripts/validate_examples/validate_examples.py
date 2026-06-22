@@ -116,7 +116,7 @@ def collect_pipeline_functions(module_path: Path, module: ModuleType) -> List[Tu
 
 
 def compile_pipeline(pipeline_callable: object, output_stub: str) -> None:
-    """Compile a pipeline function to a JSON package.
+    """Compile a pipeline function to a YAML package.
 
     Args:
         pipeline_callable: The pipeline function to compile.
@@ -127,7 +127,8 @@ def compile_pipeline(pipeline_callable: object, output_stub: str) -> None:
     """
     compiler_instance = compiler.Compiler()
     with tempfile.TemporaryDirectory() as temp_dir:
-        package_path = Path(temp_dir) / f"{output_stub}.json"
+        # Some pipelines use platform-specific features that KFP only serializes to YAML.
+        package_path = Path(temp_dir) / f"{output_stub}.yaml"
         compiler_instance.compile(
             pipeline_func=pipeline_callable,
             package_path=str(package_path),

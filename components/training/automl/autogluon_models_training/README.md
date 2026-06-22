@@ -6,9 +6,11 @@
 
 Train AutoGluon models, select the top N, and refit each on the full dataset.
 
+Expects pre-cleaned CSV data from the tabular data loader (infinite values replaced, duplicates removed, missing labels dropped). Reads train/test/extra-train CSVs and validates that the label column exists in each dataset.
+
 This component combines the model selection and full-refit stages into a single step. It trains a TabularPredictor on sampled data, ranks all models on the test set, then refits each of the top N models on the full training data in a single ``refit_full`` call. Post-refit work (predict, evaluate,
-feature importance, confusion matrix, notebook generation) runs concurrently across all top-N models via ``ThreadPoolExecutor``. The deployment clone (``set_model_best`` + ``clone_for_deployment``) is serialized afterward because it mutates predictor state. All artifacts are written under a single
-output artifact so the pipeline does not require a ParallelFor loop. Each model directory contains a ``model.json`` file with model metadata (name, location, metrics).
+feature importance, confusion matrix (via evaluate_predictions detailed_report), classification curves, notebook generation) runs concurrently across all top-N models via ``ThreadPoolExecutor``. The deployment clone (``set_model_best`` + ``clone_for_deployment``) is serialized afterward because it
+mutates predictor state. All artifacts are written under a single output artifact so the pipeline does not require a ParallelFor loop. Each model directory contains a ``model.json`` file with model metadata (name, location, metrics).
 
 ## Inputs 📥
 
@@ -24,10 +26,13 @@ output artifact so the pipeline does not require a ParallelFor loop. Each model 
 | `run_id` | `str` | `None` | Pipeline run ID written into the generated notebook. |
 | `sample_row` | `str` | `None` | JSON array of row dicts for the notebook example input; label column is stripped. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Output Model artifact containing all refitted model subdirectories. |
-| `notebooks` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded notebook templates injected by the KFP runtime. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_config` | `Optional[dict]` | `None` | Data sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Data split config stored in artifact metadata. |
 | `extra_train_data_path` | `str` | `""` | Optional path to extra training CSV passed to ``refit_full``. |
+| `positive_class` | `str` | `""` | Label value for the positive class in **binary** classification (e.g. ``"1"`` or ``"yes"``). Passed to ``TabularPredictor`` when set. Empty string (default) lets AutoGluon infer the positive class when ``fit`` runs. Ignored for ``multiclass`` and ``regression``. |
+| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default) or ``"balanced"`` (may run more than 2x longer). |
+| `eval_metric` | `str` | `""` | Metric for model ranking (e.g. ``"r2"``, ``"accuracy"``). Defaults to ``"r2"`` for regression and ``"accuracy"`` otherwise. |
 
 ## Outputs 📤
 
@@ -45,15 +50,25 @@ output artifact so the pipeline does not require a ParallelFor loop. Each model 
 - **Tags**:
   - training
   - automl
-- **Last Verified**: 2026-03-30 15:09:22+00:00
+- **Last Verified**: 2026-06-10 12:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
 
 <!-- custom-content -->
+
+### Component status artifact
+
+Writes ``component_status.json`` under the ``component_status`` output artifact with ``component_id``
+``autogluon_models_training`` and stages such as ``load_data``, ``model_selection`` (optional ``steps``
+when completed), ``refit_and_evaluate``. Artifact metadata display name:
+**Models Training Status**.
+
 ## Usage Examples 💡
 
 This component is typically used inside a KFP pipeline. It depends on a PVC workspace (for predictor storage) and a test dataset artifact (for leaderboard evaluation).
@@ -126,7 +141,8 @@ models_artifact/
     ├── metrics/
     │   ├── metrics.json           # Evaluation results on test data (metric names → values)
     │   ├── feature_importance.json
-    │   └── confusion_matrix.json  # Classification tasks only
+    │   ├── confusion_matrix.json  # Classification tasks only
+    │   └── curves.json            # Classification tasks only (ROC + precision-recall)
     └── notebooks/
         └── automl_predictor_notebook.ipynb  # Pre-filled inference notebook
 ```
@@ -143,7 +159,8 @@ Each model directory contains a `model.json` file with the model's metadata, mat
   "location": {
     "model_directory": "LightGBM_BAG_L1_FULL",
     "predictor": "LightGBM_BAG_L1_FULL/predictor",
-    "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+    "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+    "metrics": "LightGBM_BAG_L1_FULL/metrics"
   },
   "metrics": {
     "test_data": {"root_mean_squared_error": 0.42, "r2": 0.85}
@@ -177,7 +194,7 @@ Each entry in **`context.models`** contains:
 | Key | Type | Description |
 | --- | ---- | ----------- |
 | `name` | `str` | Model name with `_FULL` suffix (e.g. `"LightGBM_BAG_L1_FULL"`). |
-| `location` | `dict` | Paths relative to `models_artifact.path`: `model_directory`, `predictor`, `notebook`. |
+| `location` | `dict` | Paths relative to `models_artifact.path`: `model_directory`, `predictor`, `notebook`, `metrics`. |
 | `metrics` | `dict` | `test_data` — evaluation results dict from `evaluate_predictions` (metric names → values). |
 
 Example:
@@ -199,7 +216,8 @@ Example:
         "location": {
           "model_directory": "LightGBM_BAG_L1_FULL",
           "predictor": "LightGBM_BAG_L1_FULL/predictor",
-          "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+          "notebook": "LightGBM_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+          "metrics": "LightGBM_BAG_L1_FULL/metrics"
         },
         "metrics": {
           "test_data": {"root_mean_squared_error": 0.42, "r2": 0.85}
@@ -210,7 +228,8 @@ Example:
         "location": {
           "model_directory": "CatBoost_BAG_L1_FULL",
           "predictor": "CatBoost_BAG_L1_FULL/predictor",
-          "notebook": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+          "notebook": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb",
+          "metrics": "CatBoost_BAG_L1_FULL/metrics"
         },
         "metrics": {
           "test_data": {"root_mean_squared_error": 0.51, "r2": 0.80}

@@ -16,6 +16,13 @@ The component reads data in chunks to efficiently handle large files without loa
 
 For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is **stratified** by the label column by default.
 
+Rows with a missing label (NaN / empty in ``label_column``) are dropped after load and before splitting, so regression runs do not propagate null targets into splits or the ``sample_row`` JSON (stratified sampling already dropped per chunk; this applies the same rule to random and first-n-rows
+paths).
+
+After cleansing (infinity replacement, duplicate removal, and label drop), at least **100** valid records must remain; otherwise the component fails with a clear error so downstream AutoML training does not run on datasets too small to split reliably.
+
+After sampling, **+/- infinity** values in the frame are replaced with **NaN** (same idea as AutoAI ``loadXy``), then **full-row duplicates** are dropped before the label drop and train/test split.
+
 Authentication uses AWS-style credentials provided via environment variables (e.g. from a Kubernetes secret).
 
 ## Inputs 📥
@@ -27,6 +34,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 | `workspace_path` | `str` | `None` | PVC workspace directory where train CSVs will be written. |
 | `label_column` | `str` | `None` | Name of the label/target column in the dataset. |
 | `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
+| `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_method` | `Optional[str]` | `None` | "first_n_rows", "stratified", or "random"; if None, derived from task_type. |
 | `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
 | `split_config` | `Optional[dict]` | `None` | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
@@ -86,10 +94,12 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
 - **Tags**:
   - data-processing
-- **Last Verified**: 2026-04-02 00:00:00+00:00
+- **Last Verified**: 2026-05-22 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
+    - DorotaDR
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR
@@ -207,6 +217,17 @@ load_task = automl_data_loader(
     task_type="binary",
 )
 ```
+
+<!-- custom-content -->
+
+### Component status artifact
+
+In the tabular training pipeline, this component writes ``component_status.json`` under the
+``component_status`` output artifact. The file includes ``component_id`` (``automl_data_loader``),
+``started_at``, ``completed_at``, a ``stages`` list (ids such as ``prepare_data``,
+``split_and_export``), and optional ``metadata``.
+Match stage ids to the tabular pipeline entry in ``component_stage_map.json`` from the
+``publish-component-stage-map`` task.
 
 ## Supported formats and limits 📋
 

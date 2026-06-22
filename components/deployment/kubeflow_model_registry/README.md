@@ -53,8 +53,10 @@ Uses the upstream model artifact (input_model) produced by training, or falls ba
   - kubeflow
 - **Last Verified**: 2026-01-15 00:00:00+00:00
 - **Owners**:
+  - No Parent Owners: Yes
   - Approvers:
     - briangallagher
+    - efazal
     - Fiona-Waters
     - kramaranya
     - MStokluska

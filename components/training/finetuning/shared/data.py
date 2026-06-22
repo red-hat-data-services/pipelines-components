@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 from typing import List, Optional
 
 
@@ -111,18 +112,23 @@ def _skopeo_copy(ref: str, dest: str, auth: Optional[str], log: logging.Logger) 
     os.makedirs(dest, exist_ok=True)
     af = None
     if auth:
-        af = "/tmp/skopeo-auth.json"
-        with open(af, "w") as f:
-            f.write(auth)
-    cmd = ["skopeo", "copy"]
-    if af:
-        cmd.extend(["--authfile", af])
-    cmd.extend([f"docker://{ref}", f"dir:{dest}"])
-    log.info(f"Run: {' '.join(cmd)}")
-    r = subprocess.run(cmd, text=True, capture_output=True)
-    if r.returncode != 0:
-        log.error(f"skopeo fail: {r.stderr}")
-        r.check_returncode()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            os.chmod(tmp.name, 0o600)
+            tmp.write(auth)
+            af = tmp.name
+    try:
+        cmd = ["skopeo", "copy"]
+        if af:
+            cmd.extend(["--authfile", af])
+        cmd.extend([f"docker://{ref}", f"dir:{dest}"])
+        log.info(f"Run: {' '.join(cmd)}")
+        r = subprocess.run(cmd, text=True, capture_output=True)
+        if r.returncode != 0:
+            log.error(f"skopeo fail: {r.stderr}")
+            r.check_returncode()
+    finally:
+        if af:
+            os.unlink(af)
 
 
 def _extract_tar(img_dir: str, out: str, log: logging.Logger) -> List[str]:
