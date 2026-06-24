@@ -88,7 +88,7 @@ def search_space_preparation(
                 ogx_client=ogx_client,
                 embedding_models=embedding_models,
                 generation_models=generation_models,
-                metric=metric or "faithfulness",
+                metric=metric if metric is not None else "faithfulness",
             )
 
             report.save_yaml(search_space_prep_report.path)

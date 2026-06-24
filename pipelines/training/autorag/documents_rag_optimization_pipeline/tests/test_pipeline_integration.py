@@ -80,7 +80,7 @@ def _collect_artifact_keys(s3_client, bucket, prefix):
                 ipynb_keys.append(key)
             elif key.endswith("/pattern.json"):
                 pattern_json_keys.append(key)
-            elif "rag_patterns" in key or "pattern" in key.lower():
+            elif "/rag_patterns/" in key or key.endswith("/rag_patterns"):
                 pattern_keys.append(key)
     return html_keys, ipynb_keys, pattern_keys, pattern_json_keys
 

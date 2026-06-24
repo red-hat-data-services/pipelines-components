@@ -122,7 +122,9 @@ def rag_templates_optimization(
             html_content = build_leaderboard_html(
                 patterns_dir=output_dir,
                 optimization_metric=(
-                    optimization_settings.get("metric") if isinstance(optimization_settings, dict) else DEFAULT_METRIC
+                    optimization_settings.get("metric") or DEFAULT_METRIC
+                    if isinstance(optimization_settings, dict)
+                    else DEFAULT_METRIC
                 ),
             )
 
