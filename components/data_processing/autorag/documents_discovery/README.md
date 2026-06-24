@@ -6,7 +6,7 @@
 
 Documents discovery component.
 
-Lists available documents from S3, performs sampling if applied and writes a JSON manifest (documents_descriptor.json) with metadata. Does not download document contents.
+Thin wrapper that delegates to ``ai4rag.components.data.documents_discovery.discover_documents``.
 
 ## Inputs 📥
 
@@ -63,7 +63,7 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: RHOAI Connections API, Version: >=1.0.0
-    - Name: ai4rag, Version: ~=0.6.4
+    - Name: ai4rag, Version: ~=0.8.0
 - **Tags**:
   - data-processing
   - autorag

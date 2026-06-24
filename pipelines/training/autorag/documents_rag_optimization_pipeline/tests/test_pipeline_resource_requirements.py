@@ -14,7 +14,7 @@ from .pipeline_resource_expectations import AUTORAG_OPTIMIZATION_EXECUTOR_RESOUR
 
 
 class TestDocumentsRagOptimizationPipelineResourceRequirements:
-    """RAG optimization pipeline assigns workload tiers to data/HPO steps and a lighter tier to leaderboard."""
+    """RAG optimization pipeline assigns workload tiers to data/HPO steps."""
 
     def test_rag_optimization_pipeline_executor_resources(self):
         """RAG optimization pipeline sets resources on every component step."""
