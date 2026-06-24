@@ -151,8 +151,6 @@ packages = [
 ]
 "kfp_components.components.training.autorag.shared" = [
     "run_status_templates/pipelines/*.json",
-    "notebook_templates/*.ipynb",
-    "**/*.templ",
 ]
 
 [tool.ruff]

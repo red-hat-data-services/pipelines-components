@@ -270,30 +270,6 @@ def tracker_from_embedded(
     return component_status_tracker(component_status, component_id)
 
 
-def init_status_tracker(
-    embedded_artifact: Any,
-    component_status: Any,
-    component_id: str,
-) -> ComponentStatusTracker | NullComponentStatusTracker:
-    """Initialize a component status tracker for a KFP wrapper component.
-
-    Replaces the inline ``importlib.util`` bootstrap previously duplicated in
-    every wrapper.  Handles both the pipeline case (``component_status`` is a
-    KFP output artifact) and the local/test case (``component_status is None``).
-
-    Args:
-        embedded_artifact: KFP embedded artifact injected via
-            ``embedded_artifact_path``.
-        component_status: KFP output artifact for status tracking, or ``None``
-            when running outside a pipeline.
-        component_id: Snake-case component identifier
-            (e.g. ``"text_extraction"``).
-    """
-    if component_status is None:
-        return null_component_status_tracker()
-    return tracker_from_embedded(embedded_artifact, component_status, component_id)
-
-
 def bootstrap_status_tracker(
     embedded_artifact: Any,
     component_status: Any,
