@@ -56,13 +56,7 @@
             "generation",
             "evaluation"
           ]
-        }
-      ]
-    },
-    {
-      "id": "leaderboard_evaluation",
-      "description": "Build HTML leaderboard from optimized RAG pattern scores.",
-      "stages": [
+        },
         {
           "id": "build_leaderboard",
           "description": "Aggregate pattern metrics and render leaderboard HTML."

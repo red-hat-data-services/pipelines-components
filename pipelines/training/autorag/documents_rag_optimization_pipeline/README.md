@@ -9,8 +9,8 @@ Automated system for building and optimizing Retrieval-Augmented Generation (RAG
 The Documents RAG Optimization Pipeline is an automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications within Red Hat OpenShift AI. It leverages Kubeflow Pipelines to orchestrate the optimization workflow, using the ai4rag optimization engine to systematically
 explore RAG configurations and identify the best performing parameter settings based on an upfront-specified quality metric.
 
-The system integrates with OGX API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. After optimization, request JSON bodies for OGX ``/v1/responses`` are emitted per pattern
-(``prepare_responses_api_requests``).
+The system integrates with OGX API for inference and vector database operations, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. Each optimized pattern contains a ``pattern.json`` with deployment settings (including
+``settings.responses_template`` for OGX ``/v1/responses``), executable notebooks, and evaluation results.
 
 ## Inputs 📥
 
@@ -38,7 +38,7 @@ The system integrates with OGX API for inference and vector database operations,
   - Kubeflow:
     - Name: Pipelines, Version: 2.16.1
   - External Services:
-    - Name: ai4rag, Version: ~=0.6.4
+    - Name: ai4rag, Version: ~=0.8.0
     - Name: OGX API, Version: ~=1.1.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
@@ -75,7 +75,7 @@ Besides RAG pattern and data artifacts below, each run publishes:
 | `text-extraction` | `component_status` | `component_status.json` | Stage progress for docling text extraction. |
 | `search-space-preparation` | `component_status` | `component_status.json` | Stage progress for search-space preparation and model pre-selection. |
 | `rag-templates-optimization` | `component_status` | `component_status.json` | Stage progress for RAG template optimization (including sub-steps). |
-| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+| `rag-templates-optimization` | `html_artifact` | `*.html` | Leaderboard HTML comparing optimized RAG patterns. |
 
 Example artifact-store layout (task folder names are kebab-case):
 
@@ -87,7 +87,7 @@ Example artifact-store layout (task folder names are kebab-case):
 ├── text-extraction/<task_id>/component_status/component_status.json
 ├── search-space-preparation/<task_id>/component_status/component_status.json
 ├── rag-templates-optimization/<task_id>/component_status/component_status.json
-└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+└── rag-templates-optimization/<task_id>/html_artifact/<leaderboard>.html
 ```
 
 See [AutoRAG training components README](../../../components/training/autorag/README.md) for JSON field details.
@@ -109,6 +109,18 @@ Use `component_id` (and stage `id` fields inside each file) to correlate artifac
 Canonical component ids are defined in the pipeline JSON templates under
 [`run_status_templates/pipelines/`](../../../components/training/autorag/shared/run_status_templates/pipelines/)
 (e.g. `documents-rag-optimization-pipeline.json`).
+
+## Breaking Changes (ai4rag 0.8.0)
+
+This version introduces breaking changes to the pipeline's artifact format and
+task topology. Existing pipeline runs cached against the previous version are
+incompatible and must be re-run.
+
+| Change | Before | After | Action required |
+| ------ | ------ | ----- | --------------- |
+| Extracted text format | Flat text / markdown files | DoclingDocument JSON files | Invalidate KFP step caches; re-run text extraction. |
+| Leaderboard task | Separate `leaderboard-evaluation` task | Built-in stage of `rag-templates-optimization` | Update dashboard artifact path expectations. |
+| Responses API payload | Separate `v1_responses_body.json` via `prepare_responses_api_requests` | `settings.responses_template` inside `pattern.json` | Update downstream consumers to read from `pattern.json`. |
 
 ## Optimization Engine: ai4rag 🚀
 
