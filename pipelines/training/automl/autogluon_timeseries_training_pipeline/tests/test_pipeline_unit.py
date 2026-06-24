@@ -121,7 +121,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         finally:
             Path(tmp_path).unlink(missing_ok=True)
         assert "componentInputParameter: eval_metric" in content
-        assert "outputParameterKey: eval_metric" in content
+        assert "best_model_name:\n          parameterType: STRING" in content
         assert "componentInputParameter: preset" in content
 
     def test_compiled_pipeline_wires_preset_to_training_task(self):

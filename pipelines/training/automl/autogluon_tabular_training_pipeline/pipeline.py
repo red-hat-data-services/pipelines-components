@@ -1,6 +1,5 @@
 from kfp import dsl
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
-from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_models_training import autogluon_models_training
 from kfp_components.components.training.automl.component_stage_map_publisher import publish_component_stage_map
 
@@ -84,10 +83,6 @@ def autogluon_tabular_training_pipeline(
        ``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and
        optimized for deployment. All model artifacts are stored under a single output
        artifact, avoiding a ``ParallelFor`` loop in the pipeline.
-
-    3. **Leaderboard Evaluation**: Reads pre-computed metrics from the combined models
-       artifact and generates an HTML-formatted leaderboard ranking models by their
-       performance metrics for comparison and selection.
 
     **Two-Stage Training Benefits:**
 
@@ -188,7 +183,6 @@ def autogluon_tabular_training_pipeline(
 
     # Stage 1 + 2: Model selection and sequential refit of top N models.
     # Resource limits differ by preset: balanced needs more CPU/memory than speed.
-    # TODO: when possible, the leaderboard evaluation task should be outside the if/else block.
     _training_kwargs = dict(
         label_column=label_column,
         task_type=task_type,
@@ -213,30 +207,12 @@ def autogluon_tabular_training_pipeline(
             MAX_MEMORY
         )
 
-        leaderboard_evaluation_task_bl = leaderboard_evaluation(
-            models_artifact=training_task_bl.outputs["models_artifact"],
-            eval_metric=training_task_bl.outputs["eval_metric"],
-        )
-        leaderboard_evaluation_task_bl.set_caching_options(False)
-        leaderboard_evaluation_task_bl.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(
-            MAX_CPUS
-        ).set_memory_limit(MAX_MEMORY)
-
     with dsl.Else():
         training_task_sp = autogluon_models_training(**_training_kwargs)
         training_task_sp.set_caching_options(False)
         training_task_sp.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
             MAX_MEMORY
         )
-
-        leaderboard_evaluation_task_sp = leaderboard_evaluation(
-            models_artifact=training_task_sp.outputs["models_artifact"],
-            eval_metric=training_task_sp.outputs["eval_metric"],
-        )
-        leaderboard_evaluation_task_sp.set_caching_options(False)
-        leaderboard_evaluation_task_sp.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(
-            MAX_CPUS
-        ).set_memory_limit(MAX_MEMORY)
 
 
 if __name__ == "__main__":

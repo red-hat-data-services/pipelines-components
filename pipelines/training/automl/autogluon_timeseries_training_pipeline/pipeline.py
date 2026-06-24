@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from kfp import dsl
 from kfp_components.components.data_processing.automl.timeseries_data_loader import timeseries_data_loader
-from kfp_components.components.training.automl.autogluon_leaderboard_evaluation import leaderboard_evaluation
 from kfp_components.components.training.automl.autogluon_timeseries_models_training import (
     autogluon_timeseries_models_training,
 )
@@ -81,9 +80,6 @@ def autogluon_timeseries_training_pipeline(
        AutoGluon TimeSeries models on the selection split, picks top ``top_n``, and refits each selected model
        on the full train portion (**selection + extra** splits). The component writes all refitted models to a
        single combined ``models_artifact``.
-
-    3. **Leaderboard** (``leaderboard_evaluation``): Builds an HTML leaderboard from the combined refitted-model
-       artifact using the training stage's evaluation metric.
 
     Args:
         train_data_secret_name: Kubernetes secret name containing S3 credentials
@@ -172,7 +168,6 @@ def autogluon_timeseries_training_pipeline(
 
     # Stage 2: Combined model generation + full refit.
     # Resource limits differ by preset: medium_quality needs more CPU/memory.
-    # TODO: when possible, the leaderboard evaluation task should be outside the if/else block.
     _training_kwargs = dict(
         target=target,
         id_column=id_column,
@@ -199,28 +194,10 @@ def autogluon_timeseries_training_pipeline(
             MAX_MEMORY
         )
 
-        leaderboard_task_bl = leaderboard_evaluation(
-            models_artifact=training_task_bl.outputs["models_artifact"],
-            eval_metric=training_task_bl.outputs["eval_metric"],
-        )
-        leaderboard_task_bl.set_caching_options(False)
-        leaderboard_task_bl.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
-            MAX_MEMORY
-        )
-
     with dsl.Else():
         training_task_sp = autogluon_timeseries_models_training(**_training_kwargs)
         training_task_sp.set_caching_options(False)
         training_task_sp.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
-            MAX_MEMORY
-        )
-
-        leaderboard_task_sp = leaderboard_evaluation(
-            models_artifact=training_task_sp.outputs["models_artifact"],
-            eval_metric=training_task_sp.outputs["eval_metric"],
-        )
-        leaderboard_task_sp.set_caching_options(False)
-        leaderboard_task_sp.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
             MAX_MEMORY
         )
 

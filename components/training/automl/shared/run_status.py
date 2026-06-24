@@ -38,7 +38,6 @@ COMPONENT_DATA_LOADER = "automl_data_loader"
 COMPONENT_MODELS_TRAINING = "autogluon_models_training"
 COMPONENT_TIMESERIES_DATA_LOADER = "timeseries_data_loader"
 COMPONENT_TIMESERIES_MODELS_TRAINING = "autogluon_timeseries_models_training"
-COMPONENT_LEADERBOARD = "leaderboard_evaluation"
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"

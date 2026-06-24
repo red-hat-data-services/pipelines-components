@@ -18,7 +18,7 @@
     },
     {
       "id": "autogluon_models_training",
-      "description": "Train AutoGluon tabular models, refit, and evaluate on validation data.",
+      "description": "Train AutoGluon tabular models, refit, evaluate on validation data, and render leaderboard.",
       "stages": [
         {
           "id": "load_data",
@@ -37,13 +37,7 @@
         {
           "id": "refit_and_evaluate",
           "description": "Refit best models on combined data and write evaluation metrics."
-        }
-      ]
-    },
-    {
-      "id": "leaderboard_evaluation",
-      "description": "Build the AutoML leaderboard HTML from per-model metrics.",
-      "stages": [
+        },
         {
           "id": "build_leaderboard",
           "description": "Aggregate model metrics, rank models, and render leaderboard HTML."
