@@ -141,7 +141,7 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
         assert "positive_class" in content
 
     def test_compiled_pipeline_wires_eval_metric_to_training_task(self):
-        """eval_metric pipeline input is forwarded into the training task and its output wired to the leaderboard."""
+        """eval_metric pipeline input is forwarded into the training task."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
             tmp_path = tmp_file.name
         try:
@@ -154,7 +154,7 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert "componentInputParameter: eval_metric" in content
-        assert "outputParameterKey: eval_metric" in content
+        assert "best_model_name:\n          parameterType: STRING" in content
 
     def test_compiled_pipeline_wires_preset_to_training_task(self):
         """Preset pipeline input is forwarded into the training task; good_quality branch has higher resources."""

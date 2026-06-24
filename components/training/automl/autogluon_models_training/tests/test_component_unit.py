@@ -199,7 +199,11 @@ def _make_component_status_artifact(tmp_path):
     return art
 
 
-_DEFAULT_COMPONENT_STATUS = _make_component_status_artifact(Path("/tmp"))
+def _make_html_artifact(tmp_path):
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "leaderboard.html")
+    art.metadata = {}
+    return art
 
 
 def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None):
@@ -208,6 +212,11 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None)
         _make_component_status_artifact(tmp_path)
         if tmp_path is not None
         else mock.MagicMock(path="/tmp/rs", metadata={})
+    )
+    html = (
+        _make_html_artifact(tmp_path)
+        if tmp_path is not None
+        else mock.MagicMock(path="/tmp/leaderboard.html", metadata={})
     )
     return dict(
         label_column="target",
@@ -220,12 +229,15 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None)
         run_id=RUN_ID,
         sample_row=SAMPLE_ROW,
         models_artifact=models_artifact,
+        html_artifact=html,
         component_status=rs,
         extra_train_data_path="/tmp/extra.csv",
     )
 
 
 _NOTEBOOK_TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "shared" / "notebook_templates"
+_DEFAULT_COMPONENT_STATUS = _make_component_status_artifact(Path("/tmp"))
+_DEFAULT_HTML_ARTIFACT = _make_html_artifact(Path("/tmp"))
 
 
 class TestAutogluonModelsTrainingUnitTests:
@@ -292,6 +304,8 @@ class TestAutogluonModelsTrainingUnitTests:
 
         # Return value
         assert result.eval_metric == "r2"
+        assert isinstance(result.best_model_name, str)
+        assert result.best_model_name in ("LightGBM_BAG_L1_FULL", "CatBoost_BAG_L1_FULL")
 
         # TabularPredictor constructed and fitted with correct params
         mock_predictor_class.assert_called_once_with(
@@ -431,6 +445,7 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
             preset="speed",
             component_status=_make_component_status_artifact(tmp_path),
         )
@@ -485,6 +500,7 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
             preset="balanced",
             component_status=_make_component_status_artifact(tmp_path),
         )
@@ -535,6 +551,7 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
             extra_train_data_path="",
             component_status=_make_component_status_artifact(tmp_path),
         )
@@ -726,6 +743,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         mock_predictor_clone.predict.assert_not_called()
@@ -822,6 +840,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         mock_predictor_clone.predict.assert_not_called()
@@ -898,6 +917,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         curves_path = Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "metrics" / "curves.json"
@@ -968,6 +988,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         # Global ordering invariants (single model, so no inter-model concurrency to worry about)
@@ -1021,6 +1042,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         expected_work_path = Path(workspace_path) / "refit_work"
@@ -1069,6 +1091,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         mock_predictor_clone.refit_full.assert_called_once_with(model=top_models, train_data_extra=None)
@@ -1121,6 +1144,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         context = mock_models_artifact.metadata["context"]
@@ -1196,6 +1220,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=mock_models_artifact,
+                html_artifact=_make_html_artifact(tmp_path),
                 component_status=_make_component_status_artifact(tmp_path),
             )
 
@@ -1232,6 +1257,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=mock_models_artifact,
+                html_artifact=_make_html_artifact(tmp_path),
                 component_status=_make_component_status_artifact(tmp_path),
             )
 
@@ -1258,6 +1284,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1275,6 +1302,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1292,6 +1320,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1309,6 +1338,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1326,6 +1356,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1343,6 +1374,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1360,6 +1392,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1377,6 +1410,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id="  ",
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1394,6 +1428,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row="not valid json{{{",
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1411,6 +1446,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row='{"key": "value"}',
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
@@ -1428,6 +1464,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 sampling_config="invalid",
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
@@ -1446,6 +1483,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 split_config=[],
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
@@ -1464,6 +1502,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 preset="best_quality",
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
@@ -1482,6 +1521,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 eval_metric="   ",
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
@@ -1500,6 +1540,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 run_id=RUN_ID,
                 sample_row=SAMPLE_ROW,
                 models_artifact=self._minimal_artifact(),
+                html_artifact=_DEFAULT_HTML_ARTIFACT,
                 eval_metric="accuracy",  # valid for binary/multiclass, not regression,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
@@ -1541,6 +1582,7 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
             eval_metric="r2",
             component_status=_make_component_status_artifact(tmp_path),
         )
@@ -1589,6 +1631,7 @@ class TestAutogluonModelsTrainingUnitTests:
             run_id=RUN_ID,
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
             eval_metric=None,
             component_status=_make_component_status_artifact(tmp_path),
         )
@@ -1637,6 +1680,7 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         assert mock_predictor_class.call_args[1]["eval_metric"] == "accuracy"
@@ -1682,10 +1726,125 @@ class TestAutogluonModelsTrainingUnitTests:
             sample_row=SAMPLE_ROW,
             models_artifact=mock_models_artifact,
             component_status=_make_component_status_artifact(tmp_path),
+            html_artifact=_make_html_artifact(tmp_path),
         )
 
         assert mock_predictor_class.call_args[1]["eval_metric"] == "accuracy"
         assert result.eval_metric == "accuracy"
+
+    # ── Leaderboard phase ──────────────────────────────────────────────────────
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_leaderboard_html_written_and_best_model_returned(self, mock_predictor_class, mock_read_csv, tmp_path):
+        """After Phase A/B the leaderboard HTML is written and best_model_name is returned."""
+        top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor_class.return_value.fit.return_value = mock_predictor
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_predictor.eval_metric = "r2"
+        _mock_leaderboard_top_models(mock_predictor, top_models)
+        mock_predictor_clone.evaluate_predictions.side_effect = [
+            {"r2": 0.9, "root_mean_squared_error": -0.31},
+            {"r2": 0.8, "root_mean_squared_error": -0.42},
+        ]
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+        mock_predictor_clone.predict.return_value = mock.MagicMock()
+
+        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+
+        workspace_path = str(tmp_path / "ws")
+        Path(workspace_path).mkdir()
+        models_output_dir = str(tmp_path / "out")
+        Path(models_output_dir).mkdir()
+        mock_models_artifact = mock.MagicMock()
+        mock_models_artifact.path = models_output_dir
+        mock_models_artifact.uri = "s3://bucket/run123/models"
+        mock_models_artifact.metadata = {}
+        html_artifact = _make_html_artifact(tmp_path)
+
+        result = autogluon_models_training.python_func(
+            label_column="target",
+            task_type="regression",
+            top_n=2,
+            train_data_path="/tmp/train.csv",
+            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            workspace_path=workspace_path,
+            pipeline_name=PIPELINE_NAME,
+            run_id=RUN_ID,
+            sample_row=SAMPLE_ROW,
+            models_artifact=mock_models_artifact,
+            html_artifact=html_artifact,
+            component_status=_make_component_status_artifact(tmp_path),
+        )
+
+        # HTML file was written
+        assert Path(html_artifact.path).exists()
+        html_text = Path(html_artifact.path).read_text(encoding="utf-8")
+        assert "r2" in html_text
+        assert "LightGBM_BAG_L1_FULL" in html_text
+
+        # best_model_name is the top-ranked model (highest r2)
+        assert result.best_model_name == "LightGBM_BAG_L1_FULL"
+
+        # context["best_model_name"] matches the return value
+        assert mock_models_artifact.metadata["context"]["best_model_name"] == result.best_model_name
+
+        # metadata["data"] must be a JSON string with string keys (MLMD Struct requirement)
+        data_raw = html_artifact.metadata["data"]
+        assert isinstance(data_raw, str), "html_artifact.metadata['data'] must be a JSON string"
+        data_parsed = json.loads(data_raw)
+        assert isinstance(data_parsed, list), "parsed data must be a list of records"
+        assert all(isinstance(k, str) for record in data_parsed for k in record), "all record keys must be strings"
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_leaderboard_best_model_name_in_context(self, mock_predictor_class, mock_read_csv, tmp_path):
+        """best_model_name is stored in models_artifact context metadata."""
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor_class.return_value.fit.return_value = mock_predictor
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_predictor.eval_metric = "r2"
+        _mock_leaderboard_top_models(mock_predictor, ["LightGBM_BAG_L1"])
+        mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.95}
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+        mock_predictor_clone.predict.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+
+        workspace_path = str(tmp_path / "ws")
+        Path(workspace_path).mkdir()
+        models_output_dir = str(tmp_path / "out")
+        Path(models_output_dir).mkdir()
+        mock_models_artifact = mock.MagicMock()
+        mock_models_artifact.path = models_output_dir
+        mock_models_artifact.uri = "s3://bucket/run/models"
+        mock_models_artifact.metadata = {}
+
+        result = autogluon_models_training.python_func(
+            label_column="target",
+            task_type="regression",
+            top_n=1,
+            train_data_path="/tmp/train.csv",
+            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            workspace_path=workspace_path,
+            pipeline_name=PIPELINE_NAME,
+            run_id=RUN_ID,
+            sample_row=SAMPLE_ROW,
+            models_artifact=mock_models_artifact,
+            html_artifact=_make_html_artifact(tmp_path),
+            component_status=_make_component_status_artifact(tmp_path),
+        )
+
+        assert result.best_model_name == "LightGBM_BAG_L1_FULL"
+        context = mock_models_artifact.metadata["context"]
+        assert "best_model_name" in context
+        assert context["best_model_name"] == "LightGBM_BAG_L1_FULL"
 
 
 class TestComponentStatusOutput:
@@ -1721,6 +1880,7 @@ class TestComponentStatusOutput:
         mock_models_artifact = mock.MagicMock()
         mock_models_artifact.path = models_output_dir
         mock_models_artifact.metadata = {}
+
         status_artifact = _make_component_status_artifact(tmp_path)
         Path(status_artifact.path).mkdir(parents=True, exist_ok=True)
 

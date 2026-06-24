@@ -26,8 +26,6 @@ written to the PVC workspace under ``{workspace_path}/datasets/``. For classific
 2. **Model Training & Refitting**: Trains multiple AutoGluon models on the *selection train* data using stacking (1 level) and bagging (4 folds). All models are evaluated on the test set and ranked by performance. The top N models are selected and refitted sequentially on the full training data via
 ``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and optimized for deployment. All model artifacts are stored under a single output artifact, avoiding a ``ParallelFor`` loop in the pipeline.
 
-3. **Leaderboard Evaluation**: Reads pre-computed metrics from the combined models artifact and generates an HTML-formatted leaderboard ranking models by their performance metrics for comparison and selection.
-
 **Two-Stage Training Benefits:**
 
 - **Efficient Exploration:** Initial model training uses a smaller selection-train split with efficient ensembling rather than expensive hyperparameter optimization.
@@ -96,8 +94,7 @@ Besides model and data artifacts below, each run publishes:
 | -------- | ------ | ---- | ------- |
 | `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the tabular pipeline (published once at run start). |
 | `automl-data-loader` | `component_status` | `component_status.json` | Stage progress for data loading and splitting. |
-| `autogluon-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, and evaluation. |
-| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+| `autogluon-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, evaluation, and leaderboard generation. |
 
 Example artifact-store layout (task folder names are kebab-case):
 
@@ -105,8 +102,7 @@ Example artifact-store layout (task folder names are kebab-case):
 <pipeline_name>/<run_id>/
 ├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
 ├── automl-data-loader/<task_id>/component_status/component_status.json
-├── autogluon-models-training/<task_id>/component_status/component_status.json
-└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+└── autogluon-models-training/<task_id>/component_status/component_status.json
 ```
 
 See [AutoML training components README](../../../components/training/automl/README.md) for JSON field details.
@@ -138,11 +134,9 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
 ```text
 <pipeline_name>/
 └── <run_id>/
-    ├── leaderboard-evaluation/
-    │   └── <task_id>/
-    │       └── html_artifact                     # HTML leaderboard (model names + metrics)
     ├── autogluon-models-training/
     │   └── <task_id>/
+    │       ├── html_artifact                    # HTML leaderboard (model names + metrics)
     │       └── models_artifact/
     │           ├── <ModelName>_FULL/            # e.g. LightGBM_BAG_L1_FULL (one per top-N model)
     │           │   ├── model.json               # Model metadata (name, location, metrics)
@@ -161,8 +155,7 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
             └── sampled_test_dataset/            # Test split (S3 artifact)
 ```
 
-- **leaderboard-evaluation**: Contains the HTML leaderboard artifact summarizing all model results.
-- **autogluon-models-training**: All top-N refitted model artifacts are written under a single task, each under its own `<ModelName>_FULL/` subdirectory,
+- **autogluon-models-training**: Writes the HTML leaderboard (`html_artifact`) and all top-N refitted model artifacts, each under its own `<ModelName>_FULL/` subdirectory,
 including the saved TabularPredictor, metrics, pre-filled inference notebook, and a `model.json` with model metadata (name, location paths, evaluation metrics).
 - **automl-data-loader**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.
 
@@ -170,11 +163,11 @@ For loading:
 
 - Load a refitted model for deployment or notebook exploration using `TabularPredictor.load(<.../models_artifact/<ModelName>_FULL/predictor>)`.
 - Model metrics and feature importances are always at `metrics/` under each model directory.
-- The leaderboard HTML is at `leaderboard-evaluation/<task_id>/html_artifact`.
+- The leaderboard HTML is at `autogluon-models-training/<task_id>/html_artifact`.
 
 ### Model Artifact metadata
 
-The `autogluon-models-training` component writes a single Model artifact (`models_artifact`) covering all top-N refitted models. Downstream components (e.g. leaderboard evaluation) and consumers can rely on this structure:
+The `autogluon-models-training` component writes a single Model artifact (`models_artifact`) covering all top-N refitted models. Consumers can rely on this structure:
 
 | Key | Type | Description |
 | ----- | ------ | ----------- |
@@ -189,6 +182,7 @@ The `autogluon-models-training` component writes a single Model artifact (`model
 | `task_type` | `str` | Problem type: `"regression"`, `"binary"`, or `"multiclass"`. |
 | `label_column` | `str` | Name of the target/label column. |
 | `model_config` | `dict` | Training configuration: `preset`, `eval_metric`, `time_limit`. |
+| `best_model_name` | `str` | Name of the top-ranked refitted model (e.g. `"LightGBM_BAG_L1_FULL"`). |
 | `models` | `list[dict]` | Per-model location and metrics (one entry per top-N model). |
 
 Each entry in **`context.models`** contains:
