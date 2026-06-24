@@ -1,386 +1,156 @@
-"""Tests for the documents_indexing component."""
+"""Tests for the documents_indexing thin wrapper component."""
 
-import ssl
-import sys
-import types
+import inspect
 from unittest import mock
 
 import pytest
 
 from ..component import documents_indexing
 
-
-def _make_httpx_module():
-    """Return a minimal fake httpx module with a trackable Client class."""
-    mod = types.ModuleType("httpx")
-
-    class ConnectError(Exception):
-        pass
-
-    class Client:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-
-    mod.ConnectError = ConnectError
-    mod.Client = Client
-    return mod
+MOCKED_ENV_VARIABLES = {
+    "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
+    "OGX_CLIENT_API_KEY": "test-api-key",
+}
 
 
-def _make_ogx_client_module():
-    """Stub ogx_client with a real APIConnectionError (MagicMock breaks except clauses)."""
-    mod = types.ModuleType("ogx_client")
+def _make_ai4rag_mocks():
+    """Build mock modules for ai4rag submodule imports."""
+    mock_create_ogx_client = mock.MagicMock(name="create_ogx_client")
+    mock_index_documents = mock.MagicMock(name="index_documents")
 
-    class APIConnectionError(Exception):
-        """Stand-in for ogx_client.APIConnectionError."""
+    mock_ogx_client_module = mock.MagicMock()
+    mock_ogx_client_module.create_ogx_client = mock_create_ogx_client
 
-    mod.APIConnectionError = APIConnectionError
-    mod.OgxClient = mock.MagicMock()
-    return mod
+    mock_indexing_module = mock.MagicMock()
+    mock_indexing_module.index_documents = mock_index_documents
 
-
-def _make_all_mocks():
-    """Build sys.modules patch dict for all heavy dependencies."""
-    mocks = {}
-    for name in [
-        "ai4rag",
-        "ai4rag.rag",
-        "ai4rag.rag.chunking",
-        "ai4rag.rag.embedding",
-        "ai4rag.rag.embedding.ogx",
-        "ai4rag.rag.vector_store",
-        "ai4rag.rag.vector_store.ogx",
-        "langchain_core",
-        "langchain_core.documents",
-        "langchain_text_splitters",
-    ]:
-        mocks[name] = mock.MagicMock()
-
-    mocks["httpx"] = _make_httpx_module()
-    mocks["ogx_client"] = _make_ogx_client_module()
-    return mocks
-
-
-def _patch_indexing_dependencies():
-    """Return modules dict to mock ai4rag/langchain/ogx imports."""
-    mock_chunker_cls = mock.MagicMock()
-    mock_chunker = mock.MagicMock()
-    mock_chunker.split_documents.return_value = ["chunk-1", "chunk-2"]
-    mock_chunker_cls.return_value = mock_chunker
-
-    mock_ogx_embedding_params = mock.MagicMock()
-    mock_ogx_embedding_model = mock.MagicMock()
-    mock_ogx_vectorstore = mock.MagicMock()
-    mock_ogx_vectorstore.add_documents = mock.MagicMock()
-    mock_ogx_client = mock.MagicMock()
-    mock_document = mock.MagicMock(side_effect=lambda **kwargs: kwargs)
-
-    mods = {
+    modules = {
         "ai4rag": mock.MagicMock(),
-        "ai4rag.rag": mock.MagicMock(),
-        "ai4rag.rag.chunking": mock.MagicMock(LangChainChunker=mock_chunker_cls),
-        "ai4rag.rag.embedding": mock.MagicMock(),
-        "ai4rag.rag.embedding.ogx": mock.MagicMock(
-            OGXEmbeddingModel=mock_ogx_embedding_model,
-            OGXEmbeddingParams=mock_ogx_embedding_params,
-        ),
-        "ai4rag.rag.vector_store": mock.MagicMock(),
-        "ai4rag.rag.vector_store.ogx": mock.MagicMock(
-            OGXVectorStore=mock.MagicMock(return_value=mock_ogx_vectorstore),
-        ),
-        "langchain_core": mock.MagicMock(),
-        "langchain_core.documents": mock.MagicMock(Document=mock_document),
-        "httpx": _make_httpx_module(),
-        "ogx_client": _make_ogx_client_module(),
+        "ai4rag.components": mock.MagicMock(),
+        "ai4rag.components.utils": mock.MagicMock(),
+        "ai4rag.components.utils.ogx_client": mock_ogx_client_module,
+        "ai4rag.components.data": mock.MagicMock(),
+        "ai4rag.components.data.indexing": mock_indexing_module,
     }
-    mods["ogx_client"].OgxClient.return_value = mock_ogx_client
-    return mods, mock_ogx_vectorstore
+    return modules, mock_create_ogx_client, mock_index_documents
 
 
 class TestDocumentsIndexingUnitTests:
-    """Unit tests for component logic."""
+    """Unit tests for the documents_indexing thin wrapper."""
 
     def test_component_function_exists(self):
-        """Test that the component function is properly imported."""
+        """Component factory exists and exposes python_func."""
         assert callable(documents_indexing)
         assert hasattr(documents_indexing, "python_func")
 
     def test_component_has_expected_interface(self):
-        """Test component has expected interface (required args)."""
-        import inspect
-
+        """Component has expected required parameters."""
         sig = inspect.signature(documents_indexing.python_func)
         params = list(sig.parameters)
         assert "embedding_model_id" in params
         assert "extracted_text" in params
         assert "vector_io_provider_id" in params
+        assert sig.parameters["distance_metric"].default == "cosine"
+        assert sig.parameters["chunk_size"].default == 1024
+        assert sig.parameters["batch_size"].default == 20
 
-    def test_empty_vector_store_type_raises_value_error(self, tmp_path):
-        """Empty vector_io_provider_id raises ValueError."""
-        mods, _ = _patch_indexing_dependencies()
-        extracted = mock.MagicMock(path=str(tmp_path))
-        with mock.patch.dict(sys.modules, mods):
-            with pytest.raises(ValueError, match="vector_io_provider_id must be a non-empty string"):
-                documents_indexing.python_func(
-                    embedding_model_id="embed-model",
-                    extracted_text=extracted,
-                    vector_io_provider_id="",
-                )
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_delegates_to_ai4rag_index_documents(self, tmp_path):
+        """Wrapper calls create_ogx_client and index_documents with correct args."""
+        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
+        mock_ogx_client = mock.MagicMock(name="ogx_client_instance")
+        mock_create_ogx.return_value = mock_ogx_client
 
-    def test_empty_embedding_model_id_raises_value_error(self, tmp_path):
-        """Empty embedding_model_id is rejected."""
-        mods, _ = _patch_indexing_dependencies()
-        extracted = mock.MagicMock(path=str(tmp_path))
-        with mock.patch.dict(sys.modules, mods):
+        extracted = mock.MagicMock()
+        extracted.path = str(tmp_path / "extracted")
+
+        with mock.patch.dict("sys.modules", modules):
+            documents_indexing.python_func(
+                embedding_model_id="embed-v1",
+                extracted_text=extracted,
+                vector_io_provider_id="provider-1",
+                embedding_params={"embedding_dimension": 768},
+                distance_metric="cosine",
+                chunking_method="hybrid",
+                chunk_size=512,
+                chunk_overlap=64,
+                batch_size=10,
+                collection_name="my-collection",
+            )
+
+        mock_create_ogx.assert_called_once_with(
+            base_url="https://ogx.example.com",
+            api_key="test-api-key",
+        )
+        mock_index.assert_called_once_with(
+            extracted_text_dir=str(tmp_path / "extracted"),
+            embedding_model_id="embed-v1",
+            vector_io_provider_id="provider-1",
+            ogx_client=mock_ogx_client,
+            embedding_params={"embedding_dimension": 768},
+            distance_metric="cosine",
+            chunking_method="hybrid",
+            chunk_size=512,
+            chunk_overlap=64,
+            batch_size=10,
+            collection_name="my-collection",
+        )
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_default_parameters_passed_through(self, tmp_path):
+        """Default parameter values are forwarded to index_documents."""
+        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
+        mock_create_ogx.return_value = mock.MagicMock()
+
+        extracted = mock.MagicMock()
+        extracted.path = str(tmp_path)
+
+        with mock.patch.dict("sys.modules", modules):
+            documents_indexing.python_func(
+                embedding_model_id="embed-v1",
+                extracted_text=extracted,
+                vector_io_provider_id="provider-1",
+            )
+
+        call_kwargs = mock_index.call_args.kwargs
+        assert call_kwargs["distance_metric"] == "cosine"
+        assert call_kwargs["chunking_method"] == "recursive"
+        assert call_kwargs["chunk_size"] == 1024
+        assert call_kwargs["chunk_overlap"] == 0
+        assert call_kwargs["batch_size"] == 20
+        assert call_kwargs["collection_name"] is None
+        assert call_kwargs["embedding_params"] is None
+
+    def test_missing_ogx_env_raises_key_error(self, tmp_path):
+        """Missing OGX env vars raise KeyError."""
+        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
+
+        extracted = mock.MagicMock()
+        extracted.path = str(tmp_path)
+
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch.dict("sys.modules", modules):
+                with pytest.raises(KeyError):
+                    documents_indexing.python_func(
+                        embedding_model_id="embed-v1",
+                        extracted_text=extracted,
+                        vector_io_provider_id="provider-1",
+                    )
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_propagates_ai4rag_exception(self, tmp_path):
+        """Exceptions from ai4rag are propagated to the caller."""
+        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
+        mock_create_ogx.return_value = mock.MagicMock()
+        mock_index.side_effect = ValueError("embedding_model_id must be a non-empty string.")
+
+        extracted = mock.MagicMock()
+        extracted.path = str(tmp_path)
+
+        with mock.patch.dict("sys.modules", modules):
             with pytest.raises(ValueError, match="embedding_model_id must be a non-empty string"):
                 documents_indexing.python_func(
                     embedding_model_id="",
                     extracted_text=extracted,
-                    vector_io_provider_id="milvus",
+                    vector_io_provider_id="provider-1",
                 )
-
-    def test_invalid_chunk_size_type_raises_type_error(self, tmp_path):
-        """Non-int chunk_size is rejected."""
-        mods, _ = _patch_indexing_dependencies()
-        extracted = mock.MagicMock(path=str(tmp_path))
-        with mock.patch.dict(sys.modules, mods):
-            with pytest.raises(TypeError, match="chunk_size must be an integer"):
-                documents_indexing.python_func(
-                    embedding_model_id="embed-model",
-                    extracted_text=extracted,
-                    vector_io_provider_id="milvus",
-                    chunk_size="1024",
-                )
-
-
-class TestSSLFallbackDocumentsIndexing:
-    """Tests for SSL retry logic in _create_ogx_client."""
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_ogx_client_ssl_retry_with_verify_false(self, tmp_path):
-        """SSL error on models.list() retries OgxClient with verify=False."""
-        mocks = _make_all_mocks()
-
-        mock_ogx_client_fail = mock.MagicMock()
-        mock_ogx_client_fail.models.list.side_effect = ssl.SSLCertVerificationError(
-            "CERTIFICATE_VERIFY_FAILED: self-signed certificate"
-        )
-        mock_ogx_client_ok = mock.MagicMock()
-        mock_ogx_client_ok.models.list.return_value = []
-
-        ogx_call_count = 0
-        ogx_kwargs_history = []
-
-        def fake_ogx_client(**kwargs):
-            nonlocal ogx_call_count
-            ogx_call_count += 1
-            ogx_kwargs_history.append(kwargs)
-            if ogx_call_count == 1:
-                return mock_ogx_client_fail
-            return mock_ogx_client_ok
-
-        mocks["ogx_client"].OgxClient.side_effect = fake_ogx_client
-
-        # Provide an empty directory — component returns early when no .md files found
-        extracted_text_dir = tmp_path / "extracted"
-        extracted_text_dir.mkdir()
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(extracted_text_dir)
-
-        with mock.patch.dict(sys.modules, mocks):
-            documents_indexing.python_func(
-                embedding_model_id="granite-embedding",
-                extracted_text=extracted_text,
-                vector_io_provider_id="milvus",
-            )
-
-        assert ogx_call_count == 2, "OgxClient should be instantiated twice (initial + SSL retry)"
-        assert ogx_kwargs_history[0].get("http_client") is None, "First call should not disable SSL"
-        assert isinstance(ogx_kwargs_history[1].get("http_client"), mocks["httpx"].Client), (
-            "Retry call should pass httpx.Client"
-        )
-        assert ogx_kwargs_history[1]["http_client"].kwargs.get("verify") is False
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_ogx_client_api_connection_error_wrapping_ssl_retries(self, tmp_path):
-        """OGXAPIConnectionError wrapping an SSL cause triggers the verify=False retry (production case)."""
-        mocks = _make_all_mocks()
-
-        OGXAPIConnectionError = mocks["ogx_client"].APIConnectionError
-        ssl_err = ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED: self-signed certificate")
-        api_err = OGXAPIConnectionError("Connection error.")
-        api_err.__cause__ = ssl_err
-
-        mock_ogx_client_fail = mock.MagicMock()
-        mock_ogx_client_fail.models.list.side_effect = api_err
-        mock_ogx_client_ok = mock.MagicMock()
-        mock_ogx_client_ok.models.list.return_value = []
-
-        ogx_call_count = 0
-        ogx_kwargs_history = []
-
-        def fake_ogx_client(**kwargs):
-            nonlocal ogx_call_count
-            ogx_call_count += 1
-            ogx_kwargs_history.append(kwargs)
-            if ogx_call_count == 1:
-                return mock_ogx_client_fail
-            return mock_ogx_client_ok
-
-        mocks["ogx_client"].OgxClient.side_effect = fake_ogx_client
-
-        extracted_text_dir = tmp_path / "extracted"
-        extracted_text_dir.mkdir()
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(extracted_text_dir)
-
-        with mock.patch.dict(sys.modules, mocks):
-            documents_indexing.python_func(
-                embedding_model_id="granite-embedding",
-                extracted_text=extracted_text,
-                vector_io_provider_id="milvus",
-            )
-
-        assert ogx_call_count == 2, "OgxClient should be instantiated twice (initial + SSL retry)"
-        assert ogx_kwargs_history[0].get("http_client") is None
-        assert isinstance(ogx_kwargs_history[1].get("http_client"), mocks["httpx"].Client)
-        assert ogx_kwargs_history[1]["http_client"].kwargs.get("verify") is False
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_ogx_client_non_ssl_error_is_reraised(self, tmp_path):
-        """Non-SSL error from models.list() propagates without retry."""
-        mocks = _make_all_mocks()
-
-        mock_ogx_client = mock.MagicMock()
-        mock_ogx_client.models.list.side_effect = ConnectionRefusedError("Connection refused")
-        mocks["ogx_client"].OgxClient.return_value = mock_ogx_client
-
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(tmp_path)
-
-        with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(ConnectionRefusedError):
-                documents_indexing.python_func(
-                    embedding_model_id="granite-embedding",
-                    extracted_text=extracted_text,
-                    vector_io_provider_id="milvus",
-                )
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_ogx_client_api_connection_error_non_ssl_cause_is_reraised(self, tmp_path):
-        """OGXAPIConnectionError whose cause is NOT SSL propagates without retry."""
-        mocks = _make_all_mocks()
-
-        OGXAPIConnectionError = mocks["ogx_client"].APIConnectionError
-        err = OGXAPIConnectionError("Connection timeout")
-        err.__cause__ = TimeoutError("timed out")
-
-        mock_ogx_client = mock.MagicMock()
-        mock_ogx_client.models.list.side_effect = err
-        mocks["ogx_client"].OgxClient.return_value = mock_ogx_client
-
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(tmp_path)
-
-        with mock.patch.dict(sys.modules, mocks):
-            with pytest.raises(OGXAPIConnectionError):
-                documents_indexing.python_func(
-                    embedding_model_id="granite-embedding",
-                    extracted_text=extracted_text,
-                    vector_io_provider_id="milvus",
-                )
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_no_documents_returns_early(self, tmp_path):
-        """Component returns early and skips indexing when no .md files are found."""
-        mocks = _make_all_mocks()
-
-        mock_ogx_client = mock.MagicMock()
-        mock_ogx_client.models.list.return_value = []
-        mocks["ogx_client"].OgxClient.return_value = mock_ogx_client
-
-        extracted_text_dir = tmp_path / "extracted"
-        extracted_text_dir.mkdir()
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(extracted_text_dir)
-
-        with mock.patch.dict(sys.modules, mocks):
-            documents_indexing.python_func(
-                embedding_model_id="granite-embedding",
-                extracted_text=extracted_text,
-                vector_io_provider_id="milvus",
-            )
-
-        # OGXVectorStore.add_documents should never be called if no documents found
-        mocks["ai4rag.rag.vector_store.ogx"].OGXVectorStore.return_value.add_documents.assert_not_called()
-
-    @mock.patch.dict(
-        "os.environ",
-        {
-            "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
-            "OGX_CLIENT_API_KEY": "test-api-key",
-        },
-    )
-    def test_documents_are_indexed_in_batches(self, tmp_path):
-        """Documents are chunked and indexed; add_documents called once per batch."""
-        mocks = _make_all_mocks()
-
-        mock_ogx_client = mock.MagicMock()
-        mock_ogx_client.models.list.return_value = []
-        mocks["ogx_client"].OgxClient.return_value = mock_ogx_client
-
-        # Stub chunker to return one chunk per document
-        mock_chunker = mock.MagicMock()
-        mock_chunker.split_documents.side_effect = lambda docs: docs
-        mocks["ai4rag.rag.chunking"].LangChainChunker.return_value = mock_chunker
-
-        mock_vectorstore = mock.MagicMock()
-        mocks["ai4rag.rag.vector_store.ogx"].OGXVectorStore.return_value = mock_vectorstore
-
-        # Write 3 .md files; use batch_size=2 → 2 batches
-        extracted_text_dir = tmp_path / "extracted"
-        extracted_text_dir.mkdir()
-        for i in range(3):
-            (extracted_text_dir / f"doc{i}.md").write_text(f"content {i}", encoding="utf-8")
-
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(extracted_text_dir)
-
-        with mock.patch.dict(sys.modules, mocks):
-            documents_indexing.python_func(
-                embedding_model_id="granite-embedding",
-                extracted_text=extracted_text,
-                vector_io_provider_id="milvus",
-                batch_size=2,
-            )
-
-        assert mock_vectorstore.add_documents.call_count == 2, "Expected 2 batches for 3 docs with batch_size=2"

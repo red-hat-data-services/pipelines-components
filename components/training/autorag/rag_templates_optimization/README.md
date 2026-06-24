@@ -6,21 +6,22 @@
 
 RAG Templates Optimization component.
 
-Carries out the iterative RAG optimization process.
+Thin wrapper that delegates to ``ai4rag.components.optimization.rag_templates_optimization.run_rag_optimization``.
 
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `extracted_text` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to a folder containg extracted texts from input documents. |
-| `test_data` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to test data used for evaluating RAG pattern quality. |
-| `search_space_prep_report` | `dsl.InputPath(dsl.Artifact)` | `None` | A path pointing to a .yml file containig short report on the experiment's first phase (search space preparation). |
-| `rag_patterns` | `dsl.Output[dsl.Artifact]` | `None` | kfp-enforced argument specifying an output artifact. Provided by kfp backend automatically. |
-| `test_data_key` | `Optional[str]` | `None` | Path to the benchmark JSON file in object storage used by generated notebooks. |
-| `vector_io_provider_id` | `str` | `None` | Vector I/O provider identifier as registered in OGX. |
+| `extracted_text` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to extracted text documents. |
+| `test_data` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to benchmark test data JSON. |
+| `search_space_prep_report` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to the YAML search space report. |
+| `rag_patterns` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact for generated RAG patterns. |
+| `test_data_key` | `Optional[str]` | `None` | Path to benchmark JSON in object storage. |
+| `vector_io_provider_id` | `str` | `None` | Vector I/O provider identifier in OGX. |
+| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to html_artifact.path (single file). |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
-| `optimization_settings` | `Optional[dict]` | `None` | Additional settings customising the experiment. |
-| `input_data_key` | `Optional[str]` | `""` | A path to documents dir within a bucket used as an input to AI4RAG experiment. |
+| `optimization_settings` | `Optional[dict]` | `None` | Additional experiment settings. |
+| `input_data_key` | `Optional[str]` | `""` | Path to documents dir within bucket. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 
 ## Usage Examples 🧪
@@ -78,7 +79,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.6.4
+    - Name: ai4rag, Version: ~=0.8.0
     - Name: OGX API, Version: ~=1.1.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
@@ -97,9 +98,3 @@ def example_pipeline(
     - filip-komarzyniec
     - jakub-walaszczyk
     - MichalSteczko
-
-<!-- custom-content -->
-
-Generated indexing and inference notebooks are built from templates in
-``shared/notebook_templates/`` (installed with ``kfp_components`` on the AutoRAG
-runtime image), matching the AutoML training components pattern.

@@ -26,8 +26,6 @@ temporal** split on ``id_column`` / ``timestamp_column``: default **80/20** trai
 2. **Model generation + full refit** (``autogluon_timeseries_models_training``): Trains multiple AutoGluon TimeSeries models on the selection split, picks top ``top_n``, and refits each selected model on the full train portion (**selection + extra** splits). The component writes all refitted models
 to a single combined ``models_artifact``.
 
-3. **Leaderboard** (``leaderboard_evaluation``): Builds an HTML leaderboard from the combined refitted-model artifact using the training stage's evaluation metric.
-
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
@@ -77,8 +75,7 @@ Besides model and data artifacts below, each run publishes:
 | -------- | ------ | ---- | ------- |
 | `publish-component-stage-map` | `component_stage_map` | `component_stage_map.json` | Static component-to-stage-to-step catalog for the time series pipeline (published once at run start). |
 | `timeseries-data-loader` | `component_status` | `component_status.json` | Stage progress for data loading and splitting. |
-| `autogluon-timeseries-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, and evaluation. |
-| `leaderboard-evaluation` | `component_status` | `component_status.json` | Stage progress for leaderboard generation. |
+| `autogluon-timeseries-models-training` | `component_status` | `component_status.json` | Stage progress for training, refit, evaluation, and leaderboard generation. |
 
 Example artifact-store layout:
 
@@ -86,8 +83,7 @@ Example artifact-store layout:
 <pipeline_name>/<run_id>/
 ├── publish-component-stage-map/<task_id>/component_stage_map/component_stage_map.json
 ├── timeseries-data-loader/<task_id>/component_status/component_status.json
-├── autogluon-timeseries-models-training/<task_id>/component_status/component_status.json
-└── leaderboard-evaluation/<task_id>/component_status/component_status.json
+└── autogluon-timeseries-models-training/<task_id>/component_status/component_status.json
 ```
 
 See [AutoML training components README](../../../components/training/automl/README.md) for JSON field details.
@@ -119,11 +115,9 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
 ```text
 <pipeline_name>/
 └── <run_id>/
-    ├── leaderboard-evaluation/
-    │   └── <task_id>/
-    │       └── html_artifact                     # HTML leaderboard (model names + metrics)
     ├── autogluon-timeseries-models-training/
     │   └── <task_id>/
+    │       ├── html_artifact                    # HTML leaderboard (model names + metrics)
     │       └── models_artifact/
     │           └── <ModelName>_FULL/            # e.g. ETS_FULL (one per top-N model)
     │               ├── model.json               # Model metadata (name, location, metrics)
@@ -137,6 +131,5 @@ Pipeline outputs are written to the artifact store (S3-compatible storage config
             └── sampled_test_dataset/            # Test split (S3 artifact)
 ```
 
-- **leaderboard-evaluation**: Contains the HTML leaderboard artifact summarizing all refitted model results.
-- **autogluon-timeseries-models-training**: Writes a combined models artifact containing all `<ModelName>_FULL/` subdirectories (predictor, metrics, notebook, and `model.json` per model).
+- **autogluon-timeseries-models-training**: Writes the HTML leaderboard (`html_artifact`) and a combined models artifact containing all `<ModelName>_FULL/` subdirectories (predictor, metrics, notebook, and `model.json` per model).
 - **timeseries-data-loader**: Stores the test dataset S3 artifact used for evaluation; the training splits live on the PVC workspace instead.

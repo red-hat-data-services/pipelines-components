@@ -14,9 +14,6 @@ from kfp_components.components.data_processing.autorag.text_extraction import (
 from kfp_components.components.training.autorag.component_stage_map_publisher import (
     publish_component_stage_map,
 )
-from kfp_components.components.training.autorag.leaderboard_evaluation import (
-    leaderboard_evaluation,
-)
 from kfp_components.components.training.autorag.rag_templates_optimization.component import (
     rag_templates_optimization,
 )
@@ -66,8 +63,9 @@ def documents_rag_optimization_pipeline(
 
     The system integrates with OGX API for inference and vector database operations,
     producing optimized RAG patterns as artifacts that can be deployed and used for production
-    RAG applications. After optimization, request JSON bodies for OGX ``/v1/responses`` are
-    emitted per pattern (``prepare_responses_api_requests``).
+    RAG applications. Each optimized pattern contains a ``pattern.json`` with deployment
+    settings (including ``settings.responses_template`` for OGX ``/v1/responses``),
+    executable notebooks, and evaluation results.
 
     Args:
         test_data_secret_name: Name of the Kubernetes secret holding S3-compatible credentials for
@@ -154,6 +152,7 @@ def documents_rag_optimization_pipeline(
         extracted_text=text_extraction_task.outputs["extracted_text"],
         embedding_models=embedding_models,
         generation_models=generation_models,
+        metric=optimization_metric,
     )
 
     mps_task.set_caching_options(False)
@@ -190,12 +189,6 @@ def documents_rag_optimization_pipeline(
             "OGX_CLIENT_BASE_URL": "OGX_CLIENT_BASE_URL",
             "OGX_CLIENT_API_KEY": "OGX_CLIENT_API_KEY",
         },
-    )
-
-    leaderboard_evaluation_task = leaderboard_evaluation(rag_patterns=hpo_task.outputs["rag_patterns"])
-    leaderboard_evaluation_task.set_caching_options(False)
-    leaderboard_evaluation_task.set_cpu_request("1").set_memory_request("4Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
-        MAX_MEMORY
     )
 
 

@@ -26,6 +26,7 @@ mutates predictor state. All artifacts are written under a single output artifac
 | `run_id` | `str` | `None` | Pipeline run ID written into the generated notebook. |
 | `sample_row` | `str` | `None` | JSON array of row dicts for the notebook example input; label column is stripped. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Output Model artifact containing all refitted model subdirectories. |
+| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact containing the ranked leaderboard page. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_config` | `Optional[dict]` | `None` | Data sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Data split config stored in artifact metadata. |
@@ -38,7 +39,7 @@ mutates predictor state. All artifacts are written under a single output artifac
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| Output | `NamedTuple('outputs', eval_metric=str)` | NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``). |
+| Output | `NamedTuple('outputs', eval_metric=str, best_model_name=str)` | NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``) and ``best_model_name`` (name of the highest-ranked refitted model, e.g. ``"LightGBM_BAG_L1_FULL"``). |
 
 ## Metadata 🗂️
 

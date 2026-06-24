@@ -1,5 +1,6 @@
 """Tests for the autogluon_timeseries_training_pipeline pipeline."""
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -120,7 +121,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         finally:
             Path(tmp_path).unlink(missing_ok=True)
         assert "componentInputParameter: eval_metric" in content
-        assert "outputParameterKey: eval_metric" in content
+        assert "best_model_name:\n          parameterType: STRING" in content
         assert "componentInputParameter: preset" in content
 
     def test_compiled_pipeline_wires_preset_to_training_task(self):
@@ -138,3 +139,115 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
 
         assert "componentInputParameter: preset" in content
         assert "condition-branches-1" in content
+
+    def test_compiled_pipeline_declares_speed_and_balanced_resource_tiers(self):
+        """Speed and balanced preset branches request different training CPU/memory."""
+        from kfp_components.utils.pipeline_task_resources import (
+            assert_executor_resources,
+            compile_executor_resources,
+        )
+
+        from .pipeline_resource_expectations import AUTOML_TIMESERIES_EXECUTOR_RESOURCES
+
+        actual = compile_executor_resources(autogluon_timeseries_training_pipeline)
+        assert_executor_resources(
+            actual,
+            {
+                "autogluon-timeseries-models-training": AUTOML_TIMESERIES_EXECUTOR_RESOURCES[
+                    "autogluon-timeseries-models-training"
+                ],
+                "autogluon-timeseries-models-training-2": AUTOML_TIMESERIES_EXECUTOR_RESOURCES[
+                    "autogluon-timeseries-models-training-2"
+                ],
+            },
+            pipeline_name="autogluon_timeseries_training_pipeline (training tiers only)",
+            allow_extra=True,
+        )
+
+
+class TestTimeseriesTestConfigs:
+    """Unit tests for test_configs.json loading (integration configs live in autox-ci)."""
+
+    def test_load_configs_rejects_blank_eval_metric(self, tmp_path):
+        """Blank eval_metric values fail at config load time."""
+        from . import test_configs
+
+        bad = tmp_path / "configs.json"
+        bad.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "cfg-1",
+                        "dataset_path": "data/timeseries_sales.csv",
+                        "target": "target",
+                        "id_column": "item_id",
+                        "timestamp_column": "timestamp",
+                        "known_covariates_names": ["promo"],
+                        "prediction_length": 2,
+                        "top_n": 2,
+                        "tags": [],
+                        "eval_metric": "   ",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match=r"test_configs\.json\[0\] 'eval_metric'"):
+            test_configs._load_configs(bad)
+
+    def test_load_configs_rejects_non_string_eval_metric(self, tmp_path):
+        """Non-string eval_metric values fail at config load time."""
+        from . import test_configs
+
+        bad = tmp_path / "configs.json"
+        bad.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "cfg-1",
+                        "dataset_path": "data/timeseries_sales.csv",
+                        "target": "target",
+                        "id_column": "item_id",
+                        "timestamp_column": "timestamp",
+                        "known_covariates_names": ["promo"],
+                        "prediction_length": 2,
+                        "top_n": 2,
+                        "tags": [],
+                        "eval_metric": 123,
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match=r"test_configs\.json\[0\] 'eval_metric'"):
+            test_configs._load_configs(bad)
+
+    def test_load_configs_accepts_valid_eval_metric(self, tmp_path):
+        """Valid eval_metric is stripped and forwarded through pipeline arguments."""
+        from . import test_configs
+
+        path = tmp_path / "configs.json"
+        path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "cfg-1",
+                        "dataset_path": "data/timeseries_sales.csv",
+                        "target": "target",
+                        "id_column": "item_id",
+                        "timestamp_column": "timestamp",
+                        "known_covariates_names": ["promo"],
+                        "prediction_length": 2,
+                        "top_n": 2,
+                        "tags": [],
+                        "eval_metric": " WQL ",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        loaded = test_configs._load_configs(path)
+        assert len(loaded) == 1
+        assert loaded[0].eval_metric == "WQL"
+        args = loaded[0].get_pipeline_arguments("bucket", "key", "secret")
+        assert args["eval_metric"] == "WQL"

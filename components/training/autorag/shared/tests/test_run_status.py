@@ -5,15 +5,7 @@ from kfp_components.components.training.autorag.shared.run_status import (
     PIPELINE_DOCUMENTS_RAG_OPTIMIZATION,
     load_pipeline_run_status_manifest,
     pipeline_component_ids,
-    shared_autorag_dir,
 )
-
-
-def test_notebook_templates_packaged_in_shared():
-    """Indexing and inference notebook templates ship with autorag.shared."""
-    templates_dir = shared_autorag_dir() / "notebook_templates"
-    assert (templates_dir / "ogx_indexing_template.ipynb").is_file()
-    assert (templates_dir / "ogx_inference_template.ipynb").is_file()
 
 
 def test_load_documents_rag_optimization_manifest():
@@ -27,7 +19,6 @@ def test_load_documents_rag_optimization_manifest():
         "text_extraction",
         "search_space_preparation",
         "rag_templates_optimization",
-        "leaderboard_evaluation",
     ]
 
 
@@ -40,7 +31,6 @@ def test_pipeline_component_ids():
         "text_extraction",
         "search_space_preparation",
         "rag_templates_optimization",
-        "leaderboard_evaluation",
     ]
 
 

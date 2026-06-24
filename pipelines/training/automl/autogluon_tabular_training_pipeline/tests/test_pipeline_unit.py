@@ -141,7 +141,7 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
         assert "positive_class" in content
 
     def test_compiled_pipeline_wires_eval_metric_to_training_task(self):
-        """eval_metric pipeline input is forwarded into the training task and its output wired to the leaderboard."""
+        """eval_metric pipeline input is forwarded into the training task."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
             tmp_path = tmp_file.name
         try:
@@ -154,7 +154,7 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             Path(tmp_path).unlink(missing_ok=True)
 
         assert "componentInputParameter: eval_metric" in content
-        assert "outputParameterKey: eval_metric" in content
+        assert "best_model_name:\n          parameterType: STRING" in content
 
     def test_compiled_pipeline_wires_preset_to_training_task(self):
         """Preset pipeline input is forwarded into the training task; good_quality branch has higher resources."""
@@ -171,6 +171,26 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
 
         assert "componentInputParameter: preset" in content
         assert "condition-branches-1" in content
+
+    def test_compiled_pipeline_declares_speed_and_balanced_resource_tiers(self):
+        """Speed and balanced preset branches request different training CPU/memory."""
+        from kfp_components.utils.pipeline_task_resources import (
+            assert_executor_resources,
+            compile_executor_resources,
+        )
+
+        from .pipeline_resource_expectations import AUTOML_TABULAR_EXECUTOR_RESOURCES
+
+        actual = compile_executor_resources(autogluon_tabular_training_pipeline)
+        assert_executor_resources(
+            actual,
+            {
+                "autogluon-models-training": AUTOML_TABULAR_EXECUTOR_RESOURCES["autogluon-models-training"],
+                "autogluon-models-training-2": AUTOML_TABULAR_EXECUTOR_RESOURCES["autogluon-models-training-2"],
+            },
+            pipeline_name="autogluon_tabular_training_pipeline (training tiers only)",
+            allow_extra=True,
+        )
 
     def test_compiled_pipeline_data_loader_declares_task_type_and_label(self):
         """Tabular data loader component exposes task_type and label_column inputs."""

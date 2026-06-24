@@ -18,6 +18,7 @@ def autogluon_models_training(
     run_id: str,
     sample_row: str,
     models_artifact: dsl.Output[dsl.Model],
+    html_artifact: dsl.Output[dsl.HTML],
     component_status: dsl.Output[dsl.Artifact],
     sampling_config: Optional[dict] = None,
     split_config: Optional[dict] = None,
@@ -25,7 +26,7 @@ def autogluon_models_training(
     positive_class: str = "",
     preset: str = "speed",
     eval_metric: str = "",
-) -> NamedTuple("outputs", eval_metric=str):
+) -> NamedTuple("outputs", eval_metric=str, best_model_name=str):
     """Train AutoGluon models, select the top N, and refit each on the full dataset.
 
     Expects pre-cleaned CSV data from the tabular data loader (infinite values replaced,
@@ -55,6 +56,7 @@ def autogluon_models_training(
         run_id: Pipeline run ID written into the generated notebook.
         sample_row: JSON array of row dicts for the notebook example input; label column is stripped.
         models_artifact: Output Model artifact containing all refitted model subdirectories.
+        html_artifact: Output HTML artifact containing the ranked leaderboard page.
         component_status: Output artifact containing stage-level progress tracking for this component.
         sampling_config: Data sampling config stored in artifact metadata.
         split_config: Data split config stored in artifact metadata.
@@ -69,7 +71,8 @@ def autogluon_models_training(
             to ``"r2"`` for regression and ``"accuracy"`` otherwise.
 
     Returns:
-        NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``).
+        NamedTuple with ``eval_metric`` (the metric used for ranking, e.g. ``"r2"`` or ``"accuracy"``)
+        and ``best_model_name`` (name of the highest-ranked refitted model, e.g. ``"LightGBM_BAG_L1_FULL"``).
 
     Raises:
         TypeError: If any required string parameter is empty or configs have wrong types.
@@ -645,6 +648,81 @@ def autogluon_models_training(
             with (Path(models_artifact.path) / model_name_full / "model.json").open("w", encoding="utf-8") as f:
                 json.dump(model_metadata, f, indent=2)
 
+        status.record(
+            "refit_and_evaluate",
+            "completed",
+            model_count=len(model_names_full),
+            eval_metric=str(predictor.eval_metric),
+        )
+
+        # Phase C: leaderboard generation - uses eval_results_by_model already in memory
+        status.record("build_leaderboard", "started")
+
+        import importlib.resources
+
+        from kfp_components.components.training.automl.shared.leaderboard_utils import (
+            _build_leaderboard_html,
+            _build_leaderboard_table,
+        )
+
+        base_uri = models_artifact.uri.rstrip("/")
+        leaderboard_rows = []
+        for model_name_full in model_names_full:
+            model_uri = f"{base_uri}/{model_name_full}"
+            leaderboard_rows.append(
+                {
+                    "model": model_name_full,
+                    **eval_results_by_model[model_name_full],
+                    "notebook": f"{model_uri}/notebooks/automl_predictor_notebook.ipynb",
+                    "predictor": f"{model_uri}/predictor",
+                }
+            )
+
+        # AutoGluon evaluate_predictions() uses higher-is-better sign convention for all metrics;
+        # error metrics (RMSE, MAE, log_loss) are returned negated, so descending sort is always correct.
+        # Sort on raw (unrounded) values so close scores cannot flip rank after rounding.
+        if not leaderboard_rows:
+            raise RuntimeError("Leaderboard rows are empty; no models available for ranking.")
+        leaderboard_df = pd.DataFrame(leaderboard_rows)
+        if eval_metric in leaderboard_rows[0]:
+            leaderboard_df = leaderboard_df.sort_values(by=eval_metric, ascending=False, na_position="last")
+        else:
+            logger.warning(
+                "eval_metric '%s' not found in row keys %s; preserving refit order.",
+                eval_metric,
+                list(leaderboard_rows[0].keys()),
+            )
+        n = len(leaderboard_df)
+        best_model_name = str(leaderboard_df.iloc[0]["model"])
+        leaderboard_df.index = pd.RangeIndex(start=1, stop=n + 1, name="rank")
+        _metric_cols = [c for c in leaderboard_df.columns if c not in ("model", "notebook", "predictor")]
+        leaderboard_df[_metric_cols] = leaderboard_df[_metric_cols].round(4)
+        html_table = _build_leaderboard_table(leaderboard_df)
+
+        _template_ref = (
+            importlib.resources.files("kfp_components.components.training.automl.shared")
+            / "leaderboard_html_template.html"
+        )
+        with importlib.resources.as_file(_template_ref) as template_path:
+            html_content = _build_leaderboard_html(
+                template_path=template_path,
+                table_html=html_table,
+                eval_metric=eval_metric,
+                best_model_name=best_model_name,
+                num_models=n,
+            )
+        with open(html_artifact.path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        html_artifact.metadata["data"] = leaderboard_df.to_json(orient="records")
+        html_artifact.metadata["display_name"] = "automl_leaderboard"
+        status.record(
+            "build_leaderboard",
+            "completed",
+            best_model=best_model_name,
+            model_count=n,
+        )
+
         # Serialize as a JSON string and parse back in downstream components.
         models_artifact.metadata["model_names"] = json.dumps(model_names_full)
         models_artifact.metadata["context"] = {
@@ -655,17 +733,14 @@ def autogluon_models_training(
             "task_type": problem_type,
             "label_column": predictor.label,
             "model_config": model_config,
+            "best_model_name": best_model_name,
             "models": models_metadata,
         }
 
-        status.record(
-            "refit_and_evaluate",
-            "completed",
-            model_count=len(model_names_full),
-            eval_metric=str(predictor.eval_metric),
-        )
-
-    return NamedTuple("outputs", eval_metric=str)(eval_metric=eval_metric)
+    return NamedTuple("outputs", eval_metric=str, best_model_name=str)(
+        eval_metric=eval_metric,
+        best_model_name=best_model_name,
+    )
 
 
 if __name__ == "__main__":

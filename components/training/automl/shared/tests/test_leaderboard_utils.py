@@ -8,56 +8,13 @@ import pytest
 # Importable via the sys.path insertion in components/training/automl/conftest.py,
 # which replicates what KFP does at container runtime (adding the embedded
 # artifact directory to sys.path).
-from ..leaderboard_utils import _build_leaderboard_html, _build_leaderboard_table, _round_metrics
+from ..leaderboard_utils import _build_leaderboard_html, _build_leaderboard_table
 
 
 @pytest.fixture()
 def template_path():
     """Path to the shared leaderboard HTML template."""
     return Path(__file__).resolve().parent.parent / "leaderboard_html_template.html"
-
-
-class TestRoundMetrics:
-    """Tests for _round_metrics."""
-
-    def test_rounds_to_4_decimal_places(self):
-        """Numeric values are rounded to 4 decimal places by default."""
-        metrics = {"rmse": 0.123456789, "accuracy": 0.987654321}
-        result = _round_metrics(metrics)
-        assert result["rmse"] == 0.1235
-        assert result["accuracy"] == 0.9877
-
-    def test_preserves_non_numeric(self):
-        """Non-numeric values (strings, None) pass through unchanged."""
-        metrics = {"rmse": 0.123456789, "description": "some_text", "label": None}
-        result = _round_metrics(metrics)
-        assert result["rmse"] == 0.1235
-        assert result["description"] == "some_text"
-        assert result["label"] is None
-
-    def test_handles_integers(self):
-        """Integer values are preserved as integers after rounding."""
-        metrics = {"count": 42, "score": 0.123456789}
-        result = _round_metrics(metrics)
-        assert result["count"] == 42
-        assert result["score"] == 0.1235
-
-    def test_empty_dict(self):
-        """Empty metrics dict returns empty dict."""
-        assert _round_metrics({}) == {}
-
-    def test_custom_decimals(self):
-        """Custom decimals argument controls rounding precision."""
-        metrics = {"rmse": 0.123456789}
-        assert _round_metrics(metrics, decimals=2)["rmse"] == 0.12
-        assert _round_metrics(metrics, decimals=6)["rmse"] == 0.123457
-
-    def test_negative_values(self):
-        """Negative values (e.g. AutoGluon negated metrics) are rounded correctly."""
-        metrics = {"MASE": -0.123456789, "WAPE": -0.987654321}
-        result = _round_metrics(metrics)
-        assert result["MASE"] == -0.1235
-        assert result["WAPE"] == -0.9877
 
 
 class TestBuildLeaderboardTable:

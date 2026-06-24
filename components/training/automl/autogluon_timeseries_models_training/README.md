@@ -9,7 +9,7 @@ Train, select, and full-refit top N AutoGluon timeseries models.
 This component combines model generation and full-refit into one step to avoid pipeline-level ``ParallelFor``. It trains multiple AutoGluon TimeSeries models on the selection training data, ranks them on the test set, then sequentially refits the top N models on full train data (selection split +
 extra split).
 
-Refit outputs for all selected models are written under one ``models_artifact`` in a layout compatible with ``autogluon_leaderboard_evaluation``.
+Refit outputs for all selected models are written under one ``models_artifact``, and a ranked HTML leaderboard is written to ``html_artifact``.
 
 ## Inputs 📥
 
@@ -26,6 +26,7 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 | `run_id` | `str` | `None` | Pipeline run id used in generated notebook placeholders. |
 | `models_artifact` | `dsl.Output[dsl.Model]` | `None` | Combined output artifact containing all refitted models. |
 | `extra_train_data_path` | `str` | `None` | Path to extra train split for full refit. |
+| `html_artifact` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact containing the ranked leaderboard page. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sample_rows` | `str` | `[]` | Sample rows JSON string used in generated notebook placeholders. |
 | `sampling_config` | `Optional[dict]` | `None` | Optional sampling config stored in artifact metadata. |
@@ -39,7 +40,7 @@ Refit outputs for all selected models are written under one ``models_artifact`` 
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| Output | `NamedTuple('outputs', top_models=List[str], predictor_path=str, eval_metric=str, model_config=dict)` | top_models list, predictor_path, eval_metric, model_config. |
+| Output | `NamedTuple('outputs', top_models=List[str], predictor_path=str, eval_metric=str, model_config=dict, best_model_name=str)` | top_models list, predictor_path, eval_metric, model_config. |
 
 ## Usage Examples 🧪
 
