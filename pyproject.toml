@@ -97,7 +97,6 @@ packages = [
     "kfp_components.components.training.autorag",
     "kfp_components.components.training.autorag.component_stage_map_publisher",
     "kfp_components.components.training.autorag.shared",
-    "kfp_components.components.training.autorag.leaderboard_evaluation",
     "kfp_components.components.training.autorag.rag_templates_optimization",
     "kfp_components.components.training.autorag.search_space_preparation",
     "kfp_components.components.training.finetuning",
@@ -151,8 +150,6 @@ packages = [
 ]
 "kfp_components.components.training.autorag.shared" = [
     "run_status_templates/pipelines/*.json",
-    "notebook_templates/*.ipynb",
-    "**/*.templ",
 ]
 
 [tool.ruff]

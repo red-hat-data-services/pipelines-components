@@ -6,7 +6,7 @@
 
 Download test data JSON from S3 and sample it for benchmarking.
 
-The component reads S3-compatible credentials from environment variables (injected by the pipeline from a Kubernetes secret), downloads a JSON test data file, and randomly samples up to ``benchmark_sample_size`` records to limit evaluation cost in downstream components.
+Thin wrapper that delegates to ``ai4rag.components.data.test_data_loader.load_test_data``.
 
 ## Inputs 📥
 
