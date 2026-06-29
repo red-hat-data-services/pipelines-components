@@ -32,5 +32,15 @@
     "top_n": 2,
     "eval_metric": "WQL",
     "tags": ["timeseries", "eval_metric"]
+  },
+  {
+    "id": "timeseries_no_known_covariates",
+    "dataset_path": "data/timeseries_sales.csv",
+    "target": "target",
+    "id_column": "item_id",
+    "timestamp_column": "timestamp",
+    "prediction_length": 2,
+    "top_n": 2,
+    "tags": ["smoke", "timeseries"]
   }
 ]
