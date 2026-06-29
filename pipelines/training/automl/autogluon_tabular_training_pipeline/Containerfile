@@ -7,7 +7,8 @@ COPY pyproject.toml __init__.py /tmp/kfp-src/
 COPY components/ /tmp/kfp-src/components/
 COPY pipelines/ /tmp/kfp-src/pipelines/
 COPY utils/ /tmp/kfp-src/utils/
-RUN pip install --no-cache-dir setuptools==80.10.2 && \             # Using default RH index from the BASE_IMAGE
+# Using default RH index from the BASE_IMAGE
+RUN pip install --no-cache-dir setuptools==80.10.2 && \
     pip wheel --no-deps --no-build-isolation -w /tmp/dist /tmp/kfp-src/
 
 FROM ${BASE_IMAGE}
