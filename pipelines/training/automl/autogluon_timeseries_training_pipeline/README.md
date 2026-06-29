@@ -36,7 +36,7 @@ to a single combined ``models_artifact``.
 | `target` | `str` | `None` | Name of the column containing the numeric values to forecast. Corresponds to :attr:`~autogluon.timeseries.TimeSeriesDataFrame` target column. |
 | `id_column` | `str` | `None` | Name of the column that identifies each time series (e.g. product_id, store_id). Passed as ``id_column`` when constructing TimeSeriesDataFrame; result uses ``item_id``. |
 | `timestamp_column` | `str` | `None` | Name of the column containing the timestamp/datetime for each observation. Passed as ``timestamp_column`` when constructing TimeSeriesDataFrame; result uses ``timestamp`` as the second index level. |
-| `known_covariates_names` | `Optional[List[str]]` | `None` | Optional list of column names known in advance for the forecast horizon (e.g. holidays, promotions). See :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`. |
+| `known_covariates_names` | `List[str]` | `[]` | Column names known in advance for the forecast horizon (e.g. holidays, promotions). Defaults to ``[]`` (no known covariates). See :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`. |
 | `prediction_length` | `int` | `1` | Number of time steps to forecast (horizon length). Positive integer (default: 1). |
 | `top_n` | `int` | `3` | Number of top models to select for the leaderboard and output (default: 3). |
 | `eval_metric` | `str` | `MASE` | Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or snake_case form. Defaults to ``"MASE"``. |
@@ -56,7 +56,7 @@ to a single combined ``models_artifact``.
   - pipeline
   - automl
   - autogluon-timeseries-training-pipeline
-- **Last Verified**: 2026-06-10 12:00:00+00:00
+- **Last Verified**: 2026-06-25 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from kfp import dsl
 from kfp_components.components.data_processing.automl.timeseries_data_loader import timeseries_data_loader
@@ -40,7 +40,7 @@ def autogluon_timeseries_training_pipeline(
     target: str,
     id_column: str,
     timestamp_column: str,
-    known_covariates_names: Optional[List[str]] = None,
+    known_covariates_names: List[str] = [],
     prediction_length: int = 1,
     top_n: int = 3,
     eval_metric: str = "MASE",
@@ -94,8 +94,8 @@ def autogluon_timeseries_training_pipeline(
         timestamp_column: Name of the column containing the timestamp/datetime for each observation.
             Passed as ``timestamp_column`` when constructing TimeSeriesDataFrame; result uses
             ``timestamp`` as the second index level.
-        known_covariates_names: Optional list of column names known in advance for the forecast
-            horizon (e.g. holidays, promotions). See
+        known_covariates_names: Column names known in advance for the forecast horizon
+            (e.g. holidays, promotions). Defaults to ``[]`` (no known covariates). See
             :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`.
         prediction_length: Number of time steps to forecast (horizon length). Positive integer
             (default: 1).

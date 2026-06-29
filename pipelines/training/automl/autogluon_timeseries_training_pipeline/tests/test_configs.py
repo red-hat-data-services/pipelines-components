@@ -26,7 +26,7 @@ class TestConfig:
     target: str
     id_column: str
     timestamp_column: str
-    known_covariates_names: list[str]
+    known_covariates_names: list[str] | None  # None = absent in config; pipeline default ([] ) is used
     prediction_length: int
     top_n: int
     tags: list[str]
@@ -46,10 +46,11 @@ class TestConfig:
             "target": self.target,
             "id_column": self.id_column,
             "timestamp_column": self.timestamp_column,
-            "known_covariates_names": self.known_covariates_names,
             "prediction_length": self.prediction_length,
             "top_n": self.top_n,
         }
+        if self.known_covariates_names is not None:
+            args["known_covariates_names"] = self.known_covariates_names
         if self.eval_metric is not None:
             args["eval_metric"] = self.eval_metric
         return args
@@ -79,11 +80,15 @@ def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
                 tags = [str(t) for t in raw_tags]
             else:
                 raise ValueError(f"test_configs.json[{i}] 'tags' must be a list; got {type(raw_tags).__name__}")
-            known_covariates_names = item.get("known_covariates_names") or []
-            if not isinstance(known_covariates_names, list):
-                raise ValueError(
-                    f"test_configs.json[{i}] 'known_covariates_names' must be a list; got {type(known_covariates_names).__name__}"  # noqa: E501
-                )
+            if "known_covariates_names" not in item:
+                known_covariates_names = None
+            else:
+                raw_kcn = item["known_covariates_names"]
+                if not isinstance(raw_kcn, list):
+                    raise ValueError(
+                        f"test_configs.json[{i}] 'known_covariates_names' must be a list; got {type(raw_kcn).__name__}"  # noqa: E501
+                    )
+                known_covariates_names = [str(x) for x in raw_kcn]
             eval_metric = item.get("eval_metric")
             if eval_metric is not None:
                 if not isinstance(eval_metric, str) or not eval_metric.strip():
@@ -99,7 +104,7 @@ def _load_configs(config_path: Path | None = None) -> list[TestConfig]:
                     target=item["target"],
                     id_column=item["id_column"],
                     timestamp_column=item["timestamp_column"],
-                    known_covariates_names=[str(x) for x in known_covariates_names],
+                    known_covariates_names=known_covariates_names,
                     prediction_length=int(item.get("prediction_length", 1)),
                     top_n=int(item.get("top_n", 3)),
                     tags=tags,

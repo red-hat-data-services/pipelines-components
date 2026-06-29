@@ -62,7 +62,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert params == expected_params, f"Pipeline params {params} != expected {expected_params}"
         assert inputs["prediction_length"].default == 1
         assert inputs["top_n"].default == 3
-        assert inputs["known_covariates_names"].default is None
+        assert inputs["known_covariates_names"].default == []
         assert inputs["preset"].default == "speed"
         assert inputs["eval_metric"].default == "MASE"
 
@@ -251,3 +251,61 @@ class TestTimeseriesTestConfigs:
         assert loaded[0].eval_metric == "WQL"
         args = loaded[0].get_pipeline_arguments("bucket", "key", "secret")
         assert args["eval_metric"] == "WQL"
+
+    def test_load_configs_absent_known_covariates_uses_pipeline_default(self, tmp_path):
+        """When known_covariates_names is absent from JSON, pipeline arguments omit the key so the
+        pipeline default ([]) applies — this exercises the bug path fixed in RHOAIENG-71419.
+        """  # noqa: D205
+        from . import test_configs
+
+        path = tmp_path / "configs.json"
+        path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "cfg-no-covariates",
+                        "dataset_path": "data/timeseries_sales.csv",
+                        "target": "target",
+                        "id_column": "item_id",
+                        "timestamp_column": "timestamp",
+                        "prediction_length": 2,
+                        "top_n": 2,
+                        "tags": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        loaded = test_configs._load_configs(path)
+        assert len(loaded) == 1
+        assert loaded[0].known_covariates_names is None
+        args = loaded[0].get_pipeline_arguments("bucket", "key", "secret")
+        assert "known_covariates_names" not in args
+
+    def test_load_configs_explicit_known_covariates_included_in_args(self, tmp_path):
+        """When known_covariates_names is provided in JSON, it is forwarded into pipeline arguments."""
+        from . import test_configs
+
+        path = tmp_path / "configs.json"
+        path.write_text(
+            json.dumps(
+                [
+                    {
+                        "id": "cfg-with-covariates",
+                        "dataset_path": "data/timeseries_sales.csv",
+                        "target": "target",
+                        "id_column": "item_id",
+                        "timestamp_column": "timestamp",
+                        "known_covariates_names": ["promo", "holiday"],
+                        "prediction_length": 2,
+                        "top_n": 2,
+                        "tags": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        loaded = test_configs._load_configs(path)
+        assert loaded[0].known_covariates_names == ["promo", "holiday"]
+        args = loaded[0].get_pipeline_arguments("bucket", "key", "secret")
+        assert args["known_covariates_names"] == ["promo", "holiday"]
