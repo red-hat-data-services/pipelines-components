@@ -15,6 +15,21 @@ import types
 _DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}")
 
 
+class _MockDatetimeAccessor:
+    """Mock for the ``.dt`` accessor on ``MockSeries``."""
+
+    def __init__(self, series):
+        self._series = series
+
+    def tz_localize(self, tz):
+        """No-op: mock timestamps are already tz-naive strings."""
+        return self._series
+
+    def tz_convert(self, tz):
+        """No-op: mock timestamps are already tz-naive strings."""
+        return self._series
+
+
 class MockSeries:
     """Column vector with ``map``, ``isna``, boolean ``~``, and ``sum`` (count of True)."""
 
@@ -84,6 +99,11 @@ class MockSeries:
     def round(self):
         """Round numeric values."""
         return MockSeries([round(v) if isinstance(v, (int, float)) and not _cell_is_na(v) else v for v in self._values])
+
+    @property
+    def dt(self):
+        """Datetime accessor — returns a no-op accessor (mock timestamps are tz-naive strings)."""
+        return _MockDatetimeAccessor(self)
 
 
 def _parse_csv_cell(cell):

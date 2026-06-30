@@ -250,10 +250,14 @@ def timeseries_data_loader(
                         )
                 else:
                     # All nulls, let pd.to_datetime handle it
-                    out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce", utc=False)
+                    out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce", utc=True).dt.tz_localize(None)
             else:
-                # Not all numeric - use standard datetime parsing
-                out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce", utc=False)
+                # Not all numeric - use standard datetime parsing.
+                # utc=True normalizes tz-aware strings (e.g. ISO 8601 with Z suffix) to UTC
+                # before tz_localize(None) strips timezone info, producing tz-naive datetime64[ns].
+                # This prevents pandas from writing tz-aware strings to CSV that AutoGluon
+                # cannot read back as datetime64 via TimeSeriesDataFrame.from_data_frame().
+                out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce", utc=True).dt.tz_localize(None)
 
             if out[id_col].isna().any():
                 raise ValueError(
