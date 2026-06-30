@@ -158,6 +158,12 @@ def autogluon_timeseries_models_training(
         train_df = pd.read_csv(train_data_path)
         test_df = pd.read_csv(test_data.path)
         logger.info("Loaded train=%s test=%s rows", len(train_df), len(test_df))
+        # pd.read_csv returns the timestamp column as object (string) dtype.
+        # TimeSeriesDataFrame.from_data_frame requires datetime64; convert explicitly.
+        # utc=True handles both tz-naive and tz-aware (e.g. ISO 8601 with Z suffix) strings;
+        # tz_localize(None) then strips tz info to produce tz-naive datetime64[ns].
+        train_df[timestamp_column] = pd.to_datetime(train_df[timestamp_column], utc=True).dt.tz_localize(None)
+        test_df[timestamp_column] = pd.to_datetime(test_df[timestamp_column], utc=True).dt.tz_localize(None)
 
         train_ts = TimeSeriesDataFrame.from_data_frame(
             train_df,
