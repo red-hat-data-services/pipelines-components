@@ -10,14 +10,10 @@ FROM ${DOCLING_MODELS_MODELCAR} AS docling-models-modelcar
 FROM ${BASE_IMAGE}
 
 COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi.txt \
-     pipelines/training/autorag/documents_rag_optimization_pipeline/requirements-pypi-whl.txt \
      /tmp/
 
 ## TODO: Ensure build isolation
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
-RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
-RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi-whl.txt
 
 # Docling models for offline text extraction (RHAI modelcar images; /models/ -> docling-project--* layout).
 ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-artifacts/models
