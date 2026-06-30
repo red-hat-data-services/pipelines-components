@@ -16,7 +16,7 @@ COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements
      /tmp/
 
 ## TODO: Ensure build isolation
-RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple/ --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi-whl.txt
 
