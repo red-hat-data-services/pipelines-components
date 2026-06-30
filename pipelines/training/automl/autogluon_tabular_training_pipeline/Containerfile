@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.5.0-ea.2"
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.5.0"
 
 ## Build stage: build a kfp-components wheel from the local source tree
 FROM ${BASE_IMAGE} AS builder
@@ -7,7 +7,7 @@ COPY pyproject.toml __init__.py /tmp/kfp-src/
 COPY components/ /tmp/kfp-src/components/
 COPY pipelines/ /tmp/kfp-src/pipelines/
 COPY utils/ /tmp/kfp-src/utils/
-RUN pip install --no-cache-dir --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple setuptools==80.10.2 && \
+RUN pip install --no-cache-dir --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple setuptools==80.10.2 && \
     pip wheel --no-deps --no-build-isolation -w /tmp/dist /tmp/kfp-src/
 
 FROM ${BASE_IMAGE}
