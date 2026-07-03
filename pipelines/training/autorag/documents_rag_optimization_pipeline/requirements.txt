@@ -1,4 +1,4 @@
---index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9-test/simple
 
 accelerate==1.13.0
 ai4rag==0.8.1
