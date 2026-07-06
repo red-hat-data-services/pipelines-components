@@ -31,7 +31,7 @@ def search_space_preparation(
     Args:
         test_data: Input artifact with benchmark questions and expected answers.
         extracted_text: Input artifact with extracted text documents.
-        search_space_prep_report: Output artifact for the YAML search space report.
+        search_space_prep_report: Output artifact for the JSON search space report.
         component_status: Output artifact containing stage-level progress tracking.
         embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
         embedding_models: List of embedding model identifiers to try.
@@ -91,7 +91,7 @@ def search_space_preparation(
                 metric=metric if metric is not None else "faithfulness",
             )
 
-            report.save_yaml(search_space_prep_report.path)
+            report.save_json(search_space_prep_report.path)
 
 
 if __name__ == "__main__":
