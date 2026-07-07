@@ -99,7 +99,7 @@ class TestSearchSpacePreparationUnitTests:
             generation_models=["gen-1"],
             metric="answer_correctness",
         )
-        mock_report.save_yaml.assert_called_once_with(str(tmp_path / "report.yml"))
+        mock_report.save_json.assert_called_once_with(str(tmp_path / "report.yml"))
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
     def test_default_metric_is_faithfulness(self, tmp_path):

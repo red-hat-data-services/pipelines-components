@@ -14,7 +14,7 @@ Thin wrapper that delegates to ``ai4rag.components.optimization.search_space_pre
 | --------- | ---- | ------- | ----------- |
 | `test_data` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact with benchmark questions and expected answers. |
 | `extracted_text` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact with extracted text documents. |
-| `search_space_prep_report` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact for the YAML search space report. |
+| `search_space_prep_report` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact for the JSON search space report. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 | `embedding_models` | `Optional[List]` | `None` | List of embedding model identifiers to try. |
 | `generation_models` | `Optional[List]` | `None` | List of generation model identifiers to try. |
@@ -63,7 +63,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.8.1
+    - Name: ai4rag, Version: ~=0.9.1
     - Name: pyYaml, Version: >=6.0.0
     - Name: pandas, Version: >=2.0.0
 - **Tags**:
