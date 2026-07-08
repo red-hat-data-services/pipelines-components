@@ -7,6 +7,8 @@ COPY pyproject.toml __init__.py /tmp/kfp-src/
 COPY components/ /tmp/kfp-src/components/
 COPY pipelines/ /tmp/kfp-src/pipelines/
 COPY utils/ /tmp/kfp-src/utils/
+## CVE-2026-8643: upgrade pip before use so the fixed version processes all wheels
+RUN pip install --no-cache-dir --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ "pip>=26.1.2"
 RUN pip install --no-cache-dir setuptools && \
     pip wheel --no-deps --no-build-isolation --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple -w /tmp/dist /tmp/kfp-src/
 
@@ -16,6 +18,10 @@ COPY --from=builder /tmp/dist/kfp_components-*.whl /tmp/
 RUN pip install --no-cache-dir --no-deps /tmp/kfp_components-*.whl
 
 COPY pipelines/training/automl/autogluon_tabular_training_pipeline/requirements.txt /tmp/
+
+## CVE-2026-8643: upgrade pip before installing requirements so the fixed version
+## is used during wheel installation (path traversal via malicious entry point names)
+RUN pip install --no-cache-dir --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ "pip>=26.1.2"
 
 ## Ensure build isolation
 RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple/ --no-cache-dir -r /tmp/requirements.txt
