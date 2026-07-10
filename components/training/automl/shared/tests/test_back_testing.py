@@ -147,8 +147,8 @@ class TestHoldoutHelpers:
             index=targets.index,
         )
         metrics = _item_window_metrics(predictions, targets, "A", "target", prediction_length=2)
-        assert "MAPE" in metrics
-        assert metrics["MAPE"] == pytest.approx(10.0)
+        assert "mean_absolute_percentage_error" in metrics
+        assert metrics["mean_absolute_percentage_error"] == pytest.approx(10.0)
 
     def test_forecast_data_includes_actual_and_predicted(self):
         """Forecast rows include actual, predicted, and optional quantile bounds."""
@@ -255,25 +255,37 @@ class TestSeriesRanking:
 
     def test_series_ranking_metric_uses_eval_metric_when_available(self):
         """Uses eval_metric when it's a point metric and available."""
-        series_averages = {"A": {"MAPE": 5.0, "RMSE": 10.0}, "B": {"MAPE": 8.0, "RMSE": 12.0}}
-        assert _series_ranking_metric("MAPE", series_averages) == "MAPE"
-        assert _series_ranking_metric("RMSE", series_averages) == "RMSE"
+        series_averages = {
+            "A": {"mean_absolute_percentage_error": 5.0, "root_mean_squared_error": 10.0},
+            "B": {"mean_absolute_percentage_error": 8.0, "root_mean_squared_error": 12.0},
+        }
+        assert (
+            _series_ranking_metric("mean_absolute_percentage_error", series_averages)
+            == "mean_absolute_percentage_error"
+        )
+        assert _series_ranking_metric("root_mean_squared_error", series_averages) == "root_mean_squared_error"
 
     def test_series_ranking_metric_falls_back_when_mape_unavailable(self):
-        """Falls back to RMSE when MAPE can't be computed (zero denominators)."""
-        # MAPE missing due to zero denominators
-        series_averages = {"A": {"RMSE": 10.0, "MAE": 5.0}, "B": {"RMSE": 12.0, "MAE": 6.0}}
-        assert _series_ranking_metric("MAPE", series_averages) == "RMSE"
+        """Falls back to root_mean_squared_error when mean_absolute_percentage_error can't be computed (zero denominators)."""  # noqa: E501
+        # mean_absolute_percentage_error missing due to zero denominators
+        series_averages = {
+            "A": {"root_mean_squared_error": 10.0, "mean_absolute_error": 5.0},
+            "B": {"root_mean_squared_error": 12.0, "mean_absolute_error": 6.0},
+        }
+        assert _series_ranking_metric("mean_absolute_percentage_error", series_averages) == "root_mean_squared_error"
 
     def test_series_ranking_metric_uses_mae_as_last_resort(self):
-        """Uses MAE when both MAPE and RMSE unavailable."""
-        series_averages = {"A": {"MAE": 5.0}, "B": {"MAE": 6.0}}
-        assert _series_ranking_metric("MAPE", series_averages) == "MAE"
+        """Uses mean_absolute_error when both mean_absolute_percentage_error and root_mean_squared_error unavailable."""
+        series_averages = {"A": {"mean_absolute_error": 5.0}, "B": {"mean_absolute_error": 6.0}}
+        assert _series_ranking_metric("mean_absolute_percentage_error", series_averages) == "mean_absolute_error"
 
     def test_series_ranking_metric_defaults_to_mape_for_non_point_metrics(self):
-        """For non-point metrics (MASE, WQL), falls back to MAPE if available."""
-        series_averages = {"A": {"MAPE": 5.0, "MASE": 0.5}, "B": {"MAPE": 8.0, "MASE": 0.7}}
-        assert _series_ranking_metric("MASE", series_averages) == "MAPE"
+        """For non-point metrics (mean_absolute_scaled_error, weighted_quantile_loss), falls back to mean_absolute_percentage_error if available."""  # noqa: E501
+        series_averages = {
+            "A": {"mean_absolute_percentage_error": 5.0},
+            "B": {"mean_absolute_percentage_error": 8.0},
+        }
+        assert _series_ranking_metric("mean_absolute_scaled_error", series_averages) == "mean_absolute_percentage_error"
 
 
 class TestSeriesAnalysis:
@@ -292,17 +304,17 @@ class TestSeriesAnalysis:
         targets = _make_panel(["A"], timestamps, [100.0, float("nan")])
         predictions = pd.DataFrame({"mean": [105.0, 180.0]}, index=targets.index)
         metrics = _item_window_metrics(predictions, targets, "A", "target", prediction_length=2)
-        # Should compute MAPE on the 1 valid point (100 → 105), not silently return {}
-        assert "MAPE" in metrics
-        assert metrics["MAPE"] == pytest.approx(5.0)
+        # Should compute mean_absolute_percentage_error on the 1 valid point (100 → 105), not silently return {}
+        assert "mean_absolute_percentage_error" in metrics
+        assert metrics["mean_absolute_percentage_error"] == pytest.approx(5.0)
 
     def test_select_best_worst_missing_value_ranks_as_worst(self):
         """A series with no metric value is ranked worst regardless of metric direction."""
         from ..back_testing import _select_best_worst
 
-        # Test with lower-is-better metric (MAPE)
-        series_averages_lower = {"A": {"MAPE": 5.0}, "B": {}}  # B has no MAPE
-        best, worst = _select_best_worst(series_averages_lower, "MAPE")
+        # Test with lower-is-better metric (mean_absolute_percentage_error)
+        series_averages_lower = {"A": {"mean_absolute_percentage_error": 5.0}, "B": {}}
+        best, worst = _select_best_worst(series_averages_lower, "mean_absolute_percentage_error")
         assert best == "A"
         assert worst == "B"
 
@@ -313,8 +325,11 @@ class TestSeriesAnalysis:
         assert worst == "B"
 
         # Missing lower-is-better metric still ranks as worst
-        series_averages_empty = {"A": {"MAPE": 5.0, "RMSE": 10.0}, "B": {"MAPE": 8.0}}
-        best, worst = _select_best_worst(series_averages_empty, "RMSE")
+        series_averages_empty = {
+            "A": {"mean_absolute_percentage_error": 5.0, "root_mean_squared_error": 10.0},
+            "B": {"mean_absolute_percentage_error": 8.0},
+        }
+        best, worst = _select_best_worst(series_averages_empty, "root_mean_squared_error")
         assert best == "A"
         assert worst == "B"
 
@@ -339,7 +354,7 @@ class TestSeriesAnalysis:
                 [window_targets],
                 target="target",
                 prediction_length=2,
-                eval_metric="MAPE",
+                eval_metric="mean_absolute_percentage_error",
             )
 
             # _forecast_data_for_item should be called exactly once per (item, window) pair
@@ -482,7 +497,7 @@ class TestBuildBackTestingJson:
             model_name="DeepAR",
             model_name_full="DeepAR_FULL",
             train_data=train_data,
-            eval_metric="RMSE",
+            eval_metric="root_mean_squared_error",
             target="target",
             id_column="item_id",
             timestamp_column="timestamp",

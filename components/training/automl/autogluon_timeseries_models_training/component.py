@@ -27,7 +27,7 @@ def autogluon_timeseries_models_training(
     prediction_length: int = 1,
     known_covariates_names: Optional[List[str]] = None,
     preset: str = "speed",
-    eval_metric: str = "MASE",
+    eval_metric: str = "mean_absolute_scaled_error",
 ) -> NamedTuple(
     "outputs",
     top_models=List[str],
@@ -67,7 +67,9 @@ def autogluon_timeseries_models_training(
         component_status: Output artifact containing stage-level progress tracking for this component.
         preset: Training quality tier. ``"speed"`` (default) or ``"balanced"``
             (may run more than 2x longer).
-        eval_metric: Metric for model ranking (e.g. ``"MASE"``, ``"WQL"``). Defaults to ``"MASE"``.
+        eval_metric: Metric for model ranking (e.g. ``"mean_absolute_scaled_error"``,
+            ``"weighted_quantile_loss"``). Defaults to ``"mean_absolute_scaled_error"``.
+            Legacy uppercase acronyms (e.g. ``"MASE"``) are accepted and normalized to snake_case.
 
     Returns:
         NamedTuple: top_models list, predictor_path, eval_metric, model_config.
@@ -79,7 +81,7 @@ def autogluon_timeseries_models_training(
 
     import pandas as pd
     from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
-    from autogluon.timeseries.metrics import AVAILABLE_METRICS
+    from autogluon.timeseries.metrics import AVAILABLE_METRICS, METRIC_ALIASES
     from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
     from kfp_components.components.training.automl.shared.run_status import shared_automl_dir
 
@@ -103,6 +105,10 @@ def autogluon_timeseries_models_training(
         PRESET_AG_NAMES = {"speed": "fast_training", "balanced": "medium_quality"}
         PRESET_TIME_LIMITS = {"speed": 10 * 60, "balanced": 60 * 60}
 
+        # Normalize eval_metric to snake_case; accept legacy uppercase acronyms (e.g. "MASE") for back-compat.
+        _acronym_to_snake = {acronym: snake for snake, acronym in METRIC_ALIASES.items()}
+        eval_metric = _acronym_to_snake.get(eval_metric, eval_metric)
+
         # Input validation
         if preset not in VALID_PRESETS:
             raise ValueError(f"preset must be one of {VALID_PRESETS}; got {preset!r}.")
@@ -116,8 +122,8 @@ def autogluon_timeseries_models_training(
         ):
             if not isinstance(value, str) or not value.strip():
                 raise TypeError(f"{param} must be a non-empty string.")
-        if eval_metric not in AVAILABLE_METRICS:
-            raise ValueError(f"eval_metric must be one of {sorted(AVAILABLE_METRICS)}; got {eval_metric!r}.")
+        if eval_metric not in METRIC_ALIASES:
+            raise ValueError(f"eval_metric must be one of {sorted(METRIC_ALIASES)}; got {eval_metric!r}.")
         if not isinstance(top_n, int):
             raise TypeError("top_n must be an integer.")
         if top_n <= 0 or top_n > TOP_N_MAX:
@@ -261,7 +267,6 @@ def autogluon_timeseries_models_training(
         }
 
         # Stage 2: Full refit of selected models on full train data (selection + extra).
-        from autogluon.timeseries.metrics import AVAILABLE_METRICS
         from autogluon.timeseries.models.ensemble import AbstractTimeSeriesEnsembleModel
 
         selection_ts_df = train_ts
@@ -339,12 +344,18 @@ def autogluon_timeseries_models_training(
                 # Keep raw AutoGluon evaluate() signs for metrics.json (higher-is-better / negated errors)
                 # so Phase C leaderboard sorting (ascending=False) stays correct.
                 # back_testing.json normalizes separately.
+                # Remap uppercase acronym keys (e.g. "MASE") to snake_case (e.g. "mean_absolute_scaled_error").
                 metrics_dict = {}
                 for k, v in metrics.items():
                     if hasattr(v, "item"):
                         v = float(v)
                     if isinstance(v, (int, float)) and math.isfinite(v):
-                        metrics_dict[k] = v
+                        normalized_key = _acronym_to_snake.get(k)
+                        if normalized_key is None:
+                            if k not in AVAILABLE_METRICS:
+                                logger.warning("Unrecognized metric key %r from evaluate(); storing as-is.", k)
+                            normalized_key = k
+                        metrics_dict[normalized_key] = v
 
                 if eval_metric not in metrics_dict:
                     raise ValueError(
@@ -473,7 +484,8 @@ def autogluon_timeseries_models_training(
                 }
             )
 
-        # AutoGluon negates error metrics (e.g. MASE -> -MASE) so descending = best model first.
+        # AutoGluon negates error metrics (e.g. mean_absolute_scaled_error -> negative)
+        # so descending = best model first.
         # Sort on raw (unrounded) values so close scores cannot flip rank after rounding.
         if not leaderboard_rows:
             raise RuntimeError("Leaderboard rows are empty; no models available for ranking.")
