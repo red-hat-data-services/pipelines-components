@@ -52,6 +52,7 @@ def documents_rag_optimization_pipeline(
     generation_models: Optional[List] = None,
     optimization_metric: str = "faithfulness",
     optimization_max_rag_patterns: int = 8,
+    preset: str = "speed",
 ):
     """Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications.
 
@@ -90,6 +91,10 @@ def documents_rag_optimization_pipeline(
             "faithfulness", "answer_correctness", "context_correctness".
         optimization_max_rag_patterns: Maximum number of RAG patterns to generate. Passed to ai4rag
             (max_number_of_rag_patterns). Defaults to 8.
+        preset: Pipeline quality tier. "speed" (default) uses recursive chunking,
+            no table structure parsing, and no contextual enrichment. "balanced"
+            enables Docling table layout parsing, hybrid chunking, and LLM
+            contextual enrichment. Both presets use the same resource tier.
     """
     component_stage_map_task = publish_component_stage_map(
         pipeline_id=PIPELINE_NAME,
@@ -124,10 +129,11 @@ def documents_rag_optimization_pipeline(
 
     text_extraction_task = text_extraction(
         documents_descriptor=documents_discovery_task.outputs["discovered_documents"],
+        preset=preset,
     )
 
     text_extraction_task.set_caching_options(False)
-    text_extraction_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
+    text_extraction_task.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
         MAX_MEMORY
     )
 
@@ -153,6 +159,7 @@ def documents_rag_optimization_pipeline(
         embedding_models=embedding_models,
         generation_models=generation_models,
         metric=optimization_metric,
+        preset=preset,
     )
 
     mps_task.set_caching_options(False)
@@ -169,10 +176,11 @@ def documents_rag_optimization_pipeline(
         },
         test_data_key=test_data_key,
         input_data_key=input_data_key,
+        preset=preset,
     )
 
     hpo_task.set_caching_options(False)
-    hpo_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
+    hpo_task.set_cpu_request("4").set_memory_request("16Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
     use_secret_as_env(
         mps_task,
