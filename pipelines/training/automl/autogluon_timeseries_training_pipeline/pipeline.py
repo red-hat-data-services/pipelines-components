@@ -43,7 +43,7 @@ def autogluon_timeseries_training_pipeline(
     known_covariates_names: List[str] = [],
     prediction_length: int = 1,
     top_n: int = 3,
-    eval_metric: str = "MASE",
+    eval_metric: str = "mean_absolute_scaled_error",
     preset: str = "speed",
 ):
     """AutoGluon time series training pipeline.
@@ -100,8 +100,9 @@ def autogluon_timeseries_training_pipeline(
         prediction_length: Number of time steps to forecast (horizon length). Positive integer
             (default: 1).
         top_n: Number of top models to select for the leaderboard and output (default: 3).
-        eval_metric: Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or
-            snake_case form. Defaults to ``"MASE"``.
+        eval_metric: Metric for model ranking in snake_case (e.g. ``"mean_absolute_scaled_error"``,
+            ``"weighted_quantile_loss"``) or legacy uppercase acronym form. Defaults to
+            ``"mean_absolute_scaled_error"``.
         preset: Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or
             ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB).
 

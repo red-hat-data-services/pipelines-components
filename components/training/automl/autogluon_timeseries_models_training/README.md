@@ -34,7 +34,7 @@ Refit outputs for all selected models are written under one ``models_artifact``,
 | `prediction_length` | `int` | `1` | Forecast horizon (number of timesteps). |
 | `known_covariates_names` | `Optional[List[str]]` | `None` | Optional list of known covariate column names. |
 | `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default) or ``"balanced"`` (may run more than 2x longer). |
-| `eval_metric` | `str` | `MASE` | Metric for model ranking (e.g. ``"MASE"``, ``"WQL"``). Defaults to ``"MASE"``. |
+| `eval_metric` | `str` | `mean_absolute_scaled_error` | Metric for model ranking (e.g. ``"mean_absolute_scaled_error"``, ``"weighted_quantile_loss"``). Defaults to ``"mean_absolute_scaled_error"``. Legacy uppercase acronyms (e.g. ``"MASE"``) are accepted and normalized to snake_case. |
 
 ## Outputs 📤
 
@@ -112,7 +112,7 @@ def example_pipeline(
   - timeseries
   - automl
   - model-selection
-- **Last Verified**: 2026-06-10 12:00:00+00:00
+- **Last Verified**: 2026-07-08 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
@@ -137,7 +137,7 @@ Inference notebooks are loaded from ``shared/notebook_templates/timeseries_noteb
 
 Under each ``{model_name}_FULL/metrics/`` directory:
 
-- **`metrics.json`**: Holdout test metrics from ``TimeSeriesPredictor.evaluate`` (finite values only). Uses AutoGluon's raw **higher-is-better** sign convention (error metrics such as MASE are negated) so the HTML leaderboard ranks models correctly.
+- **`metrics.json`**: Holdout test metrics from ``TimeSeriesPredictor.evaluate`` (finite values only). Uses AutoGluon's raw **higher-is-better** sign convention (error metrics such as ``mean_absolute_scaled_error`` are negated) so the HTML leaderboard ranks models correctly.
 - **`back_testing.json`**: Multi-window backtest with ``per_window_metrics`` and ``series_analysis``
   (best/worst forecast timelines). Window error metrics use **natural positive** signs via
   ``filter_finite_metrics``. Best-effort after refit; omitted if backtest APIs or history are

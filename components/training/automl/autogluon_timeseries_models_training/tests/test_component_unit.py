@@ -28,7 +28,24 @@ def isolated_sys_modules():
         # Mock additional autogluon submodules
         _metrics = mock.MagicMock()
         _metrics.AVAILABLE_METRICS = {
-            k: mock.MagicMock() for k in ("MASE", "MSE", "WQL", "RMSSE", "MAE", "RMSE", "SQL")
+            k: mock.MagicMock()
+            for k in (
+                "mean_absolute_scaled_error",
+                "mean_squared_error",
+                "weighted_quantile_loss",
+                "root_mean_squared_scaled_error",
+                "mean_absolute_error",
+                "root_mean_squared_error",
+                "sql",
+            )
+        }
+        _metrics.METRIC_ALIASES = {
+            "mean_absolute_scaled_error": "MASE",
+            "root_mean_squared_error": "RMSE",
+            "weighted_quantile_loss": "WQL",
+            "mean_squared_error": "MSE",
+            "mean_absolute_error": "MAE",
+            "root_mean_squared_scaled_error": "RMSSE",
         }
         _metrics.__spec__ = None
         mocked_modules["autogluon.timeseries.metrics"] = _metrics
@@ -135,6 +152,8 @@ class TestTimeseriesModelsTrainingUnitTests:
 
         # Mock refit predictor
         mock_refit_predictor = mock.MagicMock()
+        # AutoGluon returns uppercase acronym keys from evaluate() regardless of the
+        # metric names passed in; the component normalizes these via _acronym_to_snake.
         mock_refit_predictor.evaluate.return_value = {"MASE": 0.5, "MSE": 1.0}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor, mock_refit_predictor]
@@ -185,7 +204,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert concat_frames[1] is extra_ts
 
         assert result.top_models == ["DeepAR", "TFT"]
-        assert result.eval_metric == "MASE"
+        assert result.eval_metric == "mean_absolute_scaled_error"
         assert result.predictor_path == "/tmp/workspace/timeseries_predictor"
         assert result.model_config["prediction_length"] == 24
         assert result.model_config["presets"] == "speed"
@@ -737,7 +756,7 @@ class TestTimeseriesModelsTrainingUnitTests:
             )
 
     def test_unsupported_eval_metric_raises(self, mock_artifacts):  # noqa: F811
-        """eval_metric not in AVAILABLE_METRICS raises ValueError before training."""
+        """eval_metric not in METRIC_ALIASES raises ValueError before training."""
         models_artifact, extra_train_path, html_artifact = mock_artifacts
         test_data = mock.MagicMock()
         test_data.path = "/tmp/test.csv"
@@ -758,6 +777,86 @@ class TestTimeseriesModelsTrainingUnitTests:
                 html_artifact=html_artifact,
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
+
+    def test_sql_metric_not_in_metric_aliases_raises(self, mock_artifacts):  # noqa: F811
+        """'sql' is in AVAILABLE_METRICS but not METRIC_ALIASES; passes through normalization and fails validation."""
+        models_artifact, extra_train_path, html_artifact = mock_artifacts
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+        with pytest.raises(ValueError, match="eval_metric must be one of"):
+            autogluon_timeseries_models_training.python_func(
+                target="sales",
+                id_column="item_id",
+                timestamp_column="timestamp",
+                train_data_path="/tmp/train.csv",
+                test_data=test_data,
+                top_n=1,
+                workspace_path="/tmp/workspace",
+                pipeline_name="ts-pipeline-123",
+                run_id="run-123",
+                models_artifact=models_artifact,
+                extra_train_data_path=extra_train_path,
+                eval_metric="sql",
+                html_artifact=html_artifact,
+                component_status=_DEFAULT_COMPONENT_STATUS,
+            )
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_legacy_acronym_mase_normalized_to_snake_case(
+        self,
+        mock_predictor_cls,
+        mock_ts_df_cls,
+        mock_concat,
+        mock_read_csv,
+        mock_artifacts,  # noqa: F811
+    ):
+        """MASE (old default) is silently normalized to mean_absolute_scaled_error."""
+        models_artifact, extra_train_path, html_artifact = mock_artifacts
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+
+        mock_refit_predictor = mock.MagicMock()
+        # AutoGluon returns uppercase acronym keys from evaluate() regardless of the
+        # metric names passed in; the component normalizes these via _acronym_to_snake.
+        mock_refit_predictor.evaluate.return_value = {"MASE": 0.5, "MSE": 1.0}
+
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        result = autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="item_id",
+            timestamp_column="timestamp",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            eval_metric="MASE",
+            html_artifact=html_artifact,
+            component_status=_DEFAULT_COMPONENT_STATUS,
+        )
+
+        assert result.eval_metric == "mean_absolute_scaled_error"
+        assert result.model_config["eval_metric"] == "mean_absolute_scaled_error"
+        assert models_artifact.metadata["context"]["model_config"]["eval_metric"] == "mean_absolute_scaled_error"
+        for call in mock_predictor_cls.call_args_list:
+            assert call.kwargs["eval_metric"] == "mean_absolute_scaled_error"
 
     @mock.patch("pandas.read_csv")
     @mock.patch("pandas.concat")
@@ -780,6 +879,8 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
 
         mock_refit_predictor = mock.MagicMock()
+        # AutoGluon returns uppercase acronym keys from evaluate() regardless of the
+        # metric names passed in; the component normalizes these via _acronym_to_snake.
         mock_refit_predictor.evaluate.return_value = {"WQL": 0.3, "MASE": 0.5}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
@@ -810,11 +911,11 @@ class TestTimeseriesModelsTrainingUnitTests:
         )
 
         for call in mock_predictor_cls.call_args_list:
-            assert call.kwargs["eval_metric"] == "WQL"
+            assert call.kwargs["eval_metric"] == "weighted_quantile_loss"
 
-        assert result.eval_metric == "WQL"
-        assert result.model_config["eval_metric"] == "WQL"
-        assert models_artifact.metadata["context"]["model_config"]["eval_metric"] == "WQL"
+        assert result.eval_metric == "weighted_quantile_loss"
+        assert result.model_config["eval_metric"] == "weighted_quantile_loss"
+        assert models_artifact.metadata["context"]["model_config"]["eval_metric"] == "weighted_quantile_loss"
 
 
 class TestMetricsJsonSignConvention:
@@ -844,6 +945,8 @@ class TestMetricsJsonSignConvention:
         mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
 
         mock_refit_predictor = mock.MagicMock()
+        # AutoGluon returns uppercase acronym keys from evaluate() regardless of the
+        # metric names passed in; the component normalizes these via _acronym_to_snake.
         mock_refit_predictor.evaluate.return_value = {"MASE": -0.42, "MSE": -1.0}
 
         mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
@@ -875,8 +978,8 @@ class TestMetricsJsonSignConvention:
         metrics_path = Path(models_artifact.path) / "DeepAR_FULL" / "metrics" / "metrics.json"
         with metrics_path.open(encoding="utf-8") as f:
             metrics = json.load(f)
-        assert metrics["MASE"] == -0.42
-        assert metrics["MSE"] == -1.0
+        assert metrics["mean_absolute_scaled_error"] == -0.42
+        assert metrics["mean_squared_error"] == -1.0
 
 
 class TestBackTestingArtifactFailure:
@@ -1017,7 +1120,7 @@ class TestLeaderboardPhase:
         # HTML file written to disk
         assert Path(html_artifact.path).exists()
         html_text = Path(html_artifact.path).read_text(encoding="utf-8")
-        assert "MASE" in html_text
+        assert "mean_absolute_scaled_error" in html_text
         assert "DeepAR_FULL" in html_text
 
         # best_model_name is the top-ranked model

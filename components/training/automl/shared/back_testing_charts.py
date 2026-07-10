@@ -26,6 +26,13 @@ def _matplotlib():
     return plt, mdates
 
 
+def _metric_display_name(metric: str) -> str:
+    """Return a short label for plot titles (abbreviates snake_case to initials)."""
+    if "_" not in metric:
+        return metric
+    return "".join(w[0] for w in metric.split("_") if w).upper()
+
+
 def _normalize_metric(metric: str) -> str:
     return (metric or "").strip().lstrip("-").upper()
 
@@ -359,7 +366,7 @@ def _draw_forecast(
 
 def render_back_testing_metrics(back_testing: dict[str, Any]) -> None:
     """Print per-window backtest scores and summary table (no plots)."""
-    eval_metric = back_testing.get("eval_metric", "MASE")
+    eval_metric = back_testing.get("eval_metric", "mean_absolute_scaled_error")
     per_window = back_testing.get("per_window_metrics") or []
     series_analysis = back_testing.get("series_analysis") or {}
     num_series = series_analysis.get("num_series_evaluated")
@@ -372,7 +379,7 @@ def render_back_testing_metrics(back_testing: dict[str, Any]) -> None:
 
 def render_back_testing_forecast_charts(back_testing: dict[str, Any]) -> None:
     """Render best/worst holdout forecast matplotlib panels."""
-    eval_metric = back_testing.get("eval_metric", "MASE")
+    eval_metric = back_testing.get("eval_metric", "mean_absolute_scaled_error")
     target = back_testing.get("target", "target")
     per_window = back_testing.get("per_window_metrics") or []
     series_analysis = back_testing.get("series_analysis") or {}
@@ -403,7 +410,8 @@ def render_back_testing_forecast_charts(back_testing: dict[str, Any]) -> None:
             axis = axes[0, index]
             window_id = window.get("window_id", index)
             metric_value = pick_window_metric(window.get("metrics") or {}, eval_metric)
-            metric_text = f"{eval_metric}={metric_value:.3g}" if metric_value is not None else eval_metric
+            metric_label = _metric_display_name(eval_metric)
+            metric_text = f"{metric_label}={metric_value:.3g}" if metric_value is not None else metric_label
             try:
                 _draw_forecast(
                     axis,

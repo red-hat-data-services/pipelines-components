@@ -64,7 +64,7 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert inputs["top_n"].default == 3
         assert inputs["known_covariates_names"].default == []
         assert inputs["preset"].default == "speed"
-        assert inputs["eval_metric"].default == "MASE"
+        assert inputs["eval_metric"].default == "mean_absolute_scaled_error"
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that compiled pipeline YAML contains expected pipeline input names."""

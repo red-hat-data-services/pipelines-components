@@ -19,22 +19,34 @@ DEFAULT_NUM_VAL_WINDOWS = 3
 # This prevents multi-MB JSON files that would slow down KFP artifact rendering.
 MAX_FORECAST_POINTS_PER_WINDOW = 500
 # Point-forecast metrics computed per series; used internally for best/worst selection.
-_SERIES_POINT_METRICS = frozenset({"MAPE", "RMSE", "MAE"})
-_DEFAULT_SERIES_RANKING_METRIC = "MAPE"
+_SERIES_POINT_METRICS = frozenset({"mean_absolute_percentage_error", "root_mean_squared_error", "mean_absolute_error"})
+_DEFAULT_SERIES_RANKING_METRIC = "mean_absolute_percentage_error"
 
 # Metrics where lower values indicate better performance (AutoGluon time series defaults).
+# Includes both uppercase acronyms (AutoGluon evaluate() output) and snake_case names
+# (component-normalized keys used in series_analysis metrics).
 _LOWER_IS_BETTER = frozenset(
     {
         "MASE",
+        "mean_absolute_scaled_error",
         "MAPE",
+        "mean_absolute_percentage_error",
         "SMAPE",
+        "symmetric_mean_absolute_percentage_error",
         "MSE",
+        "mean_squared_error",
         "RMSE",
+        "root_mean_squared_error",
         "MAE",
+        "mean_absolute_error",
         "WQL",
+        "weighted_quantile_loss",
         "SQL",
+        "symmetric_quantile_loss",
         "RMSSE",
+        "root_mean_squared_scaled_error",
         "WAPE",
+        "weighted_absolute_percentage_error",
     }
 )
 
@@ -116,7 +128,8 @@ def _is_higher_better(eval_metric: str) -> bool:
     original = (eval_metric or "").strip()
     if original.startswith("-"):
         return True
-    return _normalize_metric_name(original) not in _LOWER_IS_BETTER
+    # Check raw name first (handles snake_case), then normalized uppercase (handles acronyms).
+    return original not in _LOWER_IS_BETTER and _normalize_metric_name(original) not in _LOWER_IS_BETTER
 
 
 def _mean_prediction_column(predictions: pd.DataFrame) -> str:
@@ -132,7 +145,7 @@ def _mean_prediction_column(predictions: pd.DataFrame) -> str:
         col = str(numeric_cols[0])
         logger.warning(
             "No 'mean' column found in predictions; using quantile column %r as point forecast. "
-            "Computed MAPE/RMSE/MAE may be biased.",
+            "Computed mean_absolute_percentage_error/root_mean_squared_error/mean_absolute_error may be biased.",
             col,
         )
         return col
@@ -253,7 +266,7 @@ def _forecast_data_for_item(
 def _point_errors(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | None]:
     mask = np.isfinite(actual) & np.isfinite(predicted)
     if not mask.any():
-        return {"MAPE": None, "RMSE": None, "MAE": None}
+        return {"mean_absolute_percentage_error": None, "root_mean_squared_error": None, "mean_absolute_error": None}
     actual_f = actual[mask]
     predicted_f = predicted[mask]
     mae = float(np.mean(np.abs(actual_f - predicted_f)))
@@ -264,7 +277,7 @@ def _point_errors(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float 
         mape = float(np.mean(np.abs((actual_f[mape_mask] - predicted_f[mape_mask]) / actual_f[mape_mask]) * 100))
     else:
         mape = None
-    return {"MAPE": mape, "RMSE": rmse, "MAE": mae}
+    return {"mean_absolute_percentage_error": mape, "root_mean_squared_error": rmse, "mean_absolute_error": mae}
 
 
 def _compute_metrics_from_forecast_data(forecast_rows: list[dict[str, Any]]) -> dict[str, float]:
@@ -274,8 +287,8 @@ def _compute_metrics_from_forecast_data(forecast_rows: list[dict[str, Any]]) -> 
         forecast_rows: List of forecast dicts with "actual" and "predicted" keys
 
     Returns:
-        Dict of computed metrics (MAPE, RMSE, MAE) with None values filtered out
-    """
+        Dict of computed metrics (mean_absolute_percentage_error, root_mean_squared_error, mean_absolute_error) with None values filtered out
+    """  # noqa: E501
     paired = [r for r in forecast_rows if "actual" in r]
     if not paired:
         return {}
@@ -320,26 +333,25 @@ def _series_ranking_metric(eval_metric: str, series_averages: dict[Any, dict[str
         series_averages: Per-series averaged metrics (used to check availability)
 
     Returns:
-        Metric name to use for ranking (MAPE, RMSE, or MAE)
+        Metric name to use for ranking (mean_absolute_percentage_error, root_mean_squared_error, or mean_absolute_error)
 
-    Falls back through: eval_metric → MAPE → RMSE → MAE if metrics can't be computed.
-    This handles cases where MAPE fails due to zero denominators.
-    """
+    Falls back through: eval_metric → mean_absolute_percentage_error → root_mean_squared_error → mean_absolute_error
+    if metrics can't be computed. This handles cases where mean_absolute_percentage_error fails due to zero denominators.
+    """  # noqa: E501
     # Collect all available metrics across all series
     available_metrics: set[str] = set()
     for metrics in series_averages.values():
         available_metrics.update(metrics.keys())
 
-    normalized = _normalize_metric_name(eval_metric)
-    if normalized in _SERIES_POINT_METRICS and normalized in available_metrics:
-        return normalized
+    if eval_metric in _SERIES_POINT_METRICS and eval_metric in available_metrics:
+        return eval_metric
 
-    # Fallback chain: MAPE → RMSE → MAE
-    for fallback in ["MAPE", "RMSE", "MAE"]:
+    # Fallback chain: mean_absolute_percentage_error → root_mean_squared_error → mean_absolute_error
+    for fallback in ["mean_absolute_percentage_error", "root_mean_squared_error", "mean_absolute_error"]:
         if fallback in available_metrics:
             return fallback
 
-    # Last resort: return MAPE even if not available (will sort to infinity)
+    # Last resort: return mean_absolute_percentage_error even if not available (will sort to infinity)
     return _DEFAULT_SERIES_RANKING_METRIC
 
 

@@ -39,7 +39,7 @@ to a single combined ``models_artifact``.
 | `known_covariates_names` | `List[str]` | `[]` | Column names known in advance for the forecast horizon (e.g. holidays, promotions). Defaults to ``[]`` (no known covariates). See :attr:`~autogluon.timeseries.TimeSeriesPredictor.known_covariates_names`. |
 | `prediction_length` | `int` | `1` | Number of time steps to forecast (horizon length). Positive integer (default: 1). |
 | `top_n` | `int` | `3` | Number of top models to select for the leaderboard and output (default: 3). |
-| `eval_metric` | `str` | `MASE` | Metric for model ranking in acronym (e.g. ``"MASE"``, ``"WQL"``) or snake_case form. Defaults to ``"MASE"``. |
+| `eval_metric` | `str` | `mean_absolute_scaled_error` | Metric for model ranking in snake_case (e.g. ``"mean_absolute_scaled_error"``, ``"weighted_quantile_loss"``) or legacy uppercase acronym form. Defaults to ``"mean_absolute_scaled_error"``. |
 | `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB). |
 
 ## Metadata 🗂️
@@ -56,7 +56,7 @@ to a single combined ``models_artifact``.
   - pipeline
   - automl
   - autogluon-timeseries-training-pipeline
-- **Last Verified**: 2026-06-25 12:00:00+00:00
+- **Last Verified**: 2026-07-08 12:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

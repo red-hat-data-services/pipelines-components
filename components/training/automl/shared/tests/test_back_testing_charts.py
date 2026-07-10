@@ -241,7 +241,7 @@ class TestBackTestingCharts:
                     "windows": [
                         {
                             "window_id": 0,
-                            "metrics": {"MAPE": 5.0},
+                            "metrics": {"mean_absolute_percentage_error": 5.0},
                             "forecast_data": self._sample_forecast_rows(),
                         },
                     ],
@@ -285,12 +285,12 @@ class TestBackTestingCharts:
                     "windows": [
                         {
                             "window_id": 0,
-                            "metrics": {"MAPE": 5.0},
+                            "metrics": {"mean_absolute_percentage_error": 5.0},
                             "forecast_data": self._sample_forecast_rows(),
                         },
                         {
                             "window_id": 1,
-                            "metrics": {"MAPE": 6.0},
+                            "metrics": {"mean_absolute_percentage_error": 6.0},
                             "forecast_data": self._sample_forecast_rows(),
                         },
                     ],
