@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9@sha256:e42e1d0b52b4f2d2906b302f75987d353248279fa69eead69f907f6fff8d708c"
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu@sha256:1459233907bdcfe4fdb4f9a8d39de861bacd868d7a1e5cee083ddd46f93c306d"
 
 ## Build stage: build a kfp-components wheel from the local source tree
 FROM ${BASE_IMAGE} AS builder
