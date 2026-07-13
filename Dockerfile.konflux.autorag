@@ -24,6 +24,7 @@ RUN HERMETO_GENERIC_DEPS="${HERMETO_GENERIC_DEPS}" bash /tmp/install_sqlite_from
 USER default
 
 ## TODO: Ensure build isolation
+RUN pip install pip>=26.1.2
 RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/ --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi-whl.txt
@@ -32,17 +33,17 @@ RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requi
 # and mount output at ${HERMETO_GENERIC_DEPS}; https://github.com/hermetoproject/hermeto/blob/main/docs/generic.md
 ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-artifacts/models
 RUN if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS}" 2>/dev/null)" ]; then \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
-    else \
-      python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --download; \
-    fi
+     python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --hermeto-dir "${HERMETO_GENERIC_DEPS}"; \
+     else \
+     python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --download; \
+     fi
 
 LABEL com.redhat.component="odh-autorag-container" \
-      name="managed-open-data-hub/odh-autorag-rhel9" \
-      description="odh-autorag" \
-      summary="odh-autorag" \
-      maintainer="['managed-open-data-hub@redhat.com']" \
-      io.openshift.expose-services="" \
-      io.k8s.display-name="odh-autorag" \
-      io.k8s.description="odh-autorag" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+     name="managed-open-data-hub/odh-autorag-rhel9" \
+     description="odh-autorag" \
+     summary="odh-autorag" \
+     maintainer="['managed-open-data-hub@redhat.com']" \
+     io.openshift.expose-services="" \
+     io.k8s.display-name="odh-autorag" \
+     io.k8s.description="odh-autorag" \
+     com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
