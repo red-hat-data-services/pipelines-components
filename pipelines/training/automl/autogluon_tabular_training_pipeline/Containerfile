@@ -7,5 +7,7 @@ COPY pipelines/training/automl/autogluon_tabular_training_pipeline/requirements.
      /tmp/
 
 ## Ensure build isolation
+# Fix CVE-2026-8643 by upgrading pip to 26.1.2
+RUN pip install pip>=26.1.2  
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
