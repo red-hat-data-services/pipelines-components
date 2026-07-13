@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="registry.redhat.io/rhai/base-image-cpu-rhel9@sha256:e42e1d0b52b4f2d2906b302f75987d353248279fa69eead69f907f6fff8d708c"
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu@sha256:440ee91f10080c1bb851152c6c4680d66fa12b1eca34384b03a92bf7c4010404"
 
 FROM ${BASE_IMAGE}
 
