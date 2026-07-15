@@ -36,6 +36,7 @@ Agents typically interact with this repository in three modes. Use the mode to d
   - `make pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
   - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
   - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
+  - `make pipeline-requirements [PIPELINE=path] [RUNTIME=podman|docker] [NO_UPGRADE=true] [DRY_RUN=true] [QUIET=true]` — refresh Hermeto-compatible `requirements.txt` for RHOAI pipelines (requires Podman or Docker; see [`scripts/refresh_pipeline_requirements/README.md`](scripts/refresh_pipeline_requirements/README.md))
 - **Validate like CI**: follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality) and
   reference the workflows under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml)).
 - **New assets require approval**: for initial contributions (introducing a new component/pipeline to the catalog),
@@ -73,6 +74,7 @@ Process (expected for agents):
 | Subcategory asset | Add `SUBCATEGORY=<sub>`; add `CREATE_SHARED=true` for shared utils | Subcategory OWNERS/README auto-created |
 | Generate tests | `make tests TYPE=component\|pipeline CATEGORY=<cat> NAME=<name>` | Unit tests + LocalRunner tests |
 | Generate README | `make readme TYPE=component\|pipeline CATEGORY=<cat> NAME=<name>` | Keeps README in sync |
+| Refresh pipeline requirements | `make pipeline-requirements [PIPELINE=path] [RUNTIME=podman\|docker] ...` | [`scripts/refresh_pipeline_requirements/`](scripts/refresh_pipeline_requirements/) |
 | Update existing | Minimal change, regenerate README if interface changed, keep `lastVerified` fresh | Same component dir |
 
 ## Mode 2: End user building pipelines from these components
