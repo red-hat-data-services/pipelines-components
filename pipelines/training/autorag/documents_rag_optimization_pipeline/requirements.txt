@@ -26,7 +26,7 @@ jsonlines==4.0.0
 jsonref==1.1.0
 jsonschema==4.26.0
 langchain-chroma==1.1.0
-chromadb==1.5.5
+chromadb==1.5.9
 langchain-core==1.4.6
 jsonpatch==1.33
 langsmith==0.7.22
