@@ -27,7 +27,7 @@ jsonref==1.1.0
 jsonschema==4.26.0
 langchain-chroma==1.1.0
 chromadb==1.5.5
-langchain-core==1.2.21
+langchain-core==1.4.6
 jsonpatch==1.33
 langsmith==0.7.22
 latex2mathml==3.79.0
