@@ -52,11 +52,11 @@ bcrypt==5.0.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:79d127e40edb07f252fb2c5e802665c5a28a26a49eaf9c5f1be7b9af93b4d61e
     # via docling-slim
-boto3==1.43.45 \
-    --hash=sha256:7c37a2735fef76b0f4d166eef3f69a7b812b0f681dd73e832975f3dc3721b6ac
+boto3==1.43.46 \
+    --hash=sha256:40970f7172b58c39e8a67abe31d6bc6d8b2edfcd230a1433c52e2e5f7e383d9a
     # via ai4rag
-botocore==1.43.45 \
-    --hash=sha256:99f396a74ec0ca6d8681576ceb477f22098354075480e42e7af60b0f14cd3642
+botocore==1.43.46 \
+    --hash=sha256:b1e0ccb99ad6c4a199b68097d88207054e335e48fe74ab45a86cd5a9d0e498b5
     # via
     #   boto3
     #   s3transfer
@@ -652,6 +652,12 @@ pypika==0.51.1 \
 pyproject-hooks==1.2.0 \
     --hash=sha256:4e752e11f209d13b9c22ee233a9a15b095e0fe1ca2e2ef263f70371a03a80227
     # via build
+pysqlite3==0.6.0 \
+    --hash=sha256:5006f29fa99da521ddd5b88d8455198d1255565d975395cbe3b4bae85cf4db67 \
+    --hash=sha256:8d629fb20ad3dad1bbeb63ea98577b1c670a6e468681da7ef70fc9bf7582821e \
+    --hash=sha256:b3c5f411de2f37eee033c8e3a5e9d00e515493a4ddb350de5ca8d1912c1c33a5 \
+    --hash=sha256:be27f09c5bb5da1ea5daeafd3f601a6c646231bcf004fa787f09b24e7f3aa563
+    # via -r requirements.in
 python-dateutil==2.9.0.post0 \
     --hash=sha256:48d0381d3876a6f959d2731ffddb508ea44e2f55212e48c3eea2c9b187c15712
     # via
@@ -704,11 +710,10 @@ referencing==0.37.0 \
     # via
     #   jsonschema
     #   jsonschema-specifications
-regex==2026.6.28 \
-    --hash=sha256:0a446b8df5e25136bc4593e7fda87a6e9fd90c39f6590b17f956a4a33f06befd \
-    --hash=sha256:61e0265249e21c085a43eae5697f8af4f5de2e2bb618d84a2a26cb74b835291d \
-    --hash=sha256:6b66ade7516653a196b9fe8df143287d2db5ab967c994568b02be4cee7a59684 \
-    --hash=sha256:cb5ec8de92e359fea1bd7178cd4a19e00d57739be51016c3d78ad8f5a5735de0
+regex==2026.7.10 \
+    --hash=sha256:08953ce98a4d4651720eb1f9eab1b6e1420e794949707fa50b99b6a8a0db74a3 \
+    --hash=sha256:228df7d37b129645868b12b6761f4a04fdccfa64110d5c4ec030ea40f3ece3b5 \
+    --hash=sha256:7aace66aba0972be9268979cfa5364a3b5d48ae020569f395d0bbd0b762051f9
     # via transformers
 requests==2.34.2 \
     --hash=sha256:ea6708de2da329a533299949db29fca0e3f7e3135068ad5171a28d07a9687631
@@ -755,8 +760,8 @@ rtree==1.4.1 \
     # via
     #   docling-ibm-models
     #   docling-slim
-s3transfer==0.19.0 \
-    --hash=sha256:655d6499f27e1ada64bc74d7bbf10360a6683f192245e6c5e458df9d230b5d42
+s3transfer==0.19.1 \
+    --hash=sha256:3514b610ae555d9b8948879d13da86f116dc5fec2f93ef4e11f11234d639a7a4
     # via boto3
 safetensors[numpy,torch]==0.8.0 \
     --hash=sha256:23e3a3c88c19ad1a2d282a4eb04a84433aa406daeaa4e1d8f49b0123cafc9e62 \
@@ -880,8 +885,8 @@ tqdm==4.68.4 \
     #   rapidocr
     #   semchunk
     #   transformers
-transformers==5.13.0 \
-    --hash=sha256:2e64acd606f084cd00e166054f8dbe3b540040d7aa9f3aa31d24a75126e0fb7e
+transformers==5.13.1 \
+    --hash=sha256:578ad82628ac5204686739b66d4dbad55a50297d8cc2001a00a40e35eab23ee3
     # via
     #   docling-core
     #   docling-ibm-models
@@ -962,8 +967,8 @@ typing-inspection==0.4.2 \
     # via
     #   pydantic
     #   pydantic-settings
-tzdata==2026.2 \
-    --hash=sha256:97cd135246a60d3b1c3b8c77ff13dd509daf21b82b151cf920576378a7d72132
+tzdata==2026.3 \
+    --hash=sha256:c785829cf72ef723f0788ee27618a0143532630f9e301ecc09f73990c7b212be
     # via pandas
 unitxt==1.26.10 \
     --hash=sha256:a36cc04a0d4a7926e9bdcf799737efa1e510190693005a804877e7f6310ab5e1
@@ -1005,11 +1010,11 @@ wcwidth==0.8.2 \
 websocket-client==1.9.0 \
     --hash=sha256:5edaafdaa419fd1e24bf182d0ac731c2ddc8d3ab7c3fe1f21237a62ea6cb3bc7
     # via kubernetes
-websockets==16.0 \
-    --hash=sha256:372b24576e770a55319b342c17f4f49c8c92556a497e6a1469e38f1e34ffd2e6 \
-    --hash=sha256:b323ac337655e52b3a9557fa36b7f8e8f418b23f63b95f44de599907f7d80774 \
-    --hash=sha256:c9f7d2dcf0a5eeadce610e5fe578cb7c57c0d6e743205e167ef607f4fa055641 \
-    --hash=sha256:f62ee020be41a6a2c879f7fb9e6529d70f307e8bd1d5fb430a03e76db50fede4
+websockets==16.1 \
+    --hash=sha256:07c8150136f44d1f84c7cc8b597be792dbeb9d6e7aa7852cebce194e8ee090e3 \
+    --hash=sha256:11cbd3e8107c538b1741d36190fa0505effe952543db913982f5c24d7946d259 \
+    --hash=sha256:3e089eab3fbec43f007741848b965df768d35b5a447e5d99ce3440820a74a365 \
+    --hash=sha256:537970a3428f6ed229f448180567fad3b0ee84e10852649e05b49f64e00b5565
     # via
     #   docling-slim
     #   langsmith
