@@ -15,7 +15,6 @@ metadata:
           p.matches('(^|/)pipeline\\.yaml$')
           || (p.matches('^Dockerfile\\.konflux\\.')
           && !p.matches('^Dockerfile\\.konflux\\.automl$'))))
-        || ".tekton/odh-automl-v3-4-push.yaml".pathChanged()
         || "Dockerfile.konflux.automl".pathChanged() )
   labels:
     appstudio.openshift.io/application: rhoai-v3-4
