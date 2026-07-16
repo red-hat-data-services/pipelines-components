@@ -1,8 +1,10 @@
---index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
 
 packaging==26.2 \
     --hash=sha256:7c418e01ce14b2bfd2cbf95e6d0a2b1278b711cd84527100f02b0966f08cc4a5
-setuptools==80.10.2 \
-    --hash=sha256:38fd6a399113360efcbade5b776c53a83dcd122927484bc699d8baf30e2918eb
+pip==26.1.2 \
+    --hash=sha256:876e532f77a384303bd24023c41b56cb66c4c4b1961fea4aafc14498714b426c
+setuptools==83.0.0 \
+    --hash=sha256:dc49212ee796886410290db24cc02bdefa4eabe840828a172cf4cf942fbae0ae
 wheel==0.47.0 \
     --hash=sha256:4d257e492750accebd41145b357afd5d5799dac67883bd6b8a2a5de8131da9fd
