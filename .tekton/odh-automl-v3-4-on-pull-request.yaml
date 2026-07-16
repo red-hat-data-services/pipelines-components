@@ -22,7 +22,7 @@ metadata:
     appstudio.openshift.io/application: rhoai-v3-4
     appstudio.openshift.io/component: odh-automl-v3-4
     pipelines.appstudio.openshift.io/type: build
-  name: odh-automl-v3-4-on-pull-request
+  name: odh-automl-v3-4-on-pull-request-hermetic-test
   namespace: rhoai-tenant
 spec:
   timeouts:
@@ -54,7 +54,19 @@ spec:
   - name: path-context
     value: .
   - name: hermetic
-    value: 'false'
+    value: 'true'
+  - name: prefetch-input
+    value:
+      [
+        {
+          "type": "pip",
+          "path": "pipelines/training/automl",
+          "requirements_files": [
+            "autogluon_tabular_training_pipeline/requirements.txt"
+          ],
+          "binary": { "arch": ":all:" }
+        }
+      ]
   - name: build-source-image
     value: true
   - name: build-image-index
