@@ -89,7 +89,7 @@ def example_pipeline(
   - autorag
   - optimization
   - rag-patterns
-- **Last Verified**: 2026-06-10 00:00:00+00:00
+- **Last Verified**: 2026-07-16 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
