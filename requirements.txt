@@ -1,7 +1,7 @@
---index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
 
-certifi==2026.5.20 \
-    --hash=sha256:05c8400840d93782ba65327c7d0e74d952899224101ed9674ad094f508853834
+certifi==2026.6.17 \
+    --hash=sha256:36a32caf926900a4f112e18621636a19ce6474c5b2aeb148588147d2633ec530
 cffi==2.0.0 \
     --hash=sha256:400ea3a9004c2d47638dbefec51ef0775667a48bde8a53e741dd8ad63af54795 \
     --hash=sha256:6374f45e552853f9428077e5ff238b1e6ae7c61fdca9d2f4bbb03d8885dbe4b7 \
@@ -9,27 +9,27 @@ cffi==2.0.0 \
     --hash=sha256:e581c23e80f3ab8537cfbc3123af0892b0746c361d2304a1e249c20f9c48a3a8
 charset-normalizer==3.4.7 \
     --hash=sha256:29d94e888271160a8b8c2a465d62777b7f0c2a5c056a57b1c47dc60765eea275
-click==8.4.1 \
-    --hash=sha256:b6631fcc106907263ae7f6376f80d967fd75c1902c3d2bb2ca1cead22e589b39
+click==8.4.2 \
+    --hash=sha256:368d4af9976de9fc5efc4d8a26c64d23c187c21a2eba9336254832d466dd6198
 click-option-group==0.5.7 \
     --hash=sha256:da5ba168330faf26958b52e807290d609ea9c66a1ed96db7d5a82be0db2becf7
-cryptography==48.0.0 \
-    --hash=sha256:359a2866fda9abee70b5c4795287c382f5827b5ef4a11734810ff302ed05362e \
-    --hash=sha256:3fe3961a9d43de0878f828c5ac8aed8d4e94af3fabf9c8001a97d43ac405d8e3 \
-    --hash=sha256:c6bfaefaf4cf7aa70c376ea75956643b5171f15aa0f6d9b2a0159bb76cac32d2 \
-    --hash=sha256:ecac0bbd5b51ca40eb08ef74446ca1fd1a794b37b8f2bc8fcefeb9ec36929a5c
+cryptography==49.0.0 \
+    --hash=sha256:272f6cf35bd11146fb7182ed94b7123b9547174e944a0ec41fb547d1ad363982 \
+    --hash=sha256:44e7dda87cce4e64a4eada2469ade616471772ee8203d7331967ef7ba2fee2bd \
+    --hash=sha256:542c5b1fe720d9d3b012f50dc1cbd7946e482fd03a1c3215ef6dcb899be7989e \
+    --hash=sha256:8e320bcb06edbda1999f4f992caf8d1af2a9f6b846d5d4acc8584c120779308a
 docstring-parser==0.18.0 \
     --hash=sha256:99af886f2018766522dbfcfbd80dde97b776b4b407d7d298d5d17dcd502a4f7a
 durationpy==0.10 \
     --hash=sha256:7f09ea3ef8ceecbade4314c9dd1e9269e77bde08f3569802ae1606d6f6775efa
 google-api-core==2.31.0 \
     --hash=sha256:2975c76ecb910406ff6f71c62ed09848d0db421b27986413c448cb8766fc827e
-google-auth==2.53.0 \
-    --hash=sha256:35b2867acc2881e18d98f2860f0165b509cd191b4253951d19f1a28b654700bb
+google-auth==2.55.1 \
+    --hash=sha256:ac65513eeeb2813444f44744b513a087303eeaa34e9296f0fb151503196635c5
 google-cloud-core==2.6.0 \
     --hash=sha256:2b0e1f09be56b927f3cb231052fea35805cb74f5594235a927eb519af1c78b17
-google-cloud-storage==3.11.0 \
-    --hash=sha256:9d6dbc4c0ba4c3dc18195a5bf02284454ed08292cbde866ee76a9cd2da20ce36
+google-cloud-storage==3.12.0 \
+    --hash=sha256:454905bf0f0ec2f5e5d33f0f87a5338dc2a0d63f6e76ce8f2d729918c6f5a20a
 google-crc32c==1.8.0 \
     --hash=sha256:3152fc17ef99180190f8e14a850fddc3ab8c3911b2d92d130e7219c79dfe7d7c
 google-resumable-media==2.10.0 \
