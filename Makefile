@@ -4,7 +4,7 @@ RUFF ?= $(UVRUN) ruff
 YAMLLINT ?= $(UVRUN) yamllint
 PYTEST ?= $(UVRUN) pytest
 
-.PHONY: format fix lint lint-format lint-python lint-markdown lint-yaml lint-imports test test-coverage component pipeline tests readme sync-packages
+.PHONY: format fix lint lint-format lint-python lint-markdown lint-yaml lint-imports test test-coverage component pipeline tests readme sync-packages pipeline-requirements
 
 format:
 	$(RUFF) format components pipelines scripts
@@ -106,10 +106,21 @@ readme:
 sync-packages:
 	@$(UVRUN) python -m scripts.sync_packages.sync_packages
 
-AIPCC_INDEX_URL := https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5-EA2/cpu-ubi9/simple
-
-# RHEL UBI9 (glibc 2.34)
-PYTHON_PLATFORM := x86_64-manylinux_2_34
+AIPCC_INDEX_URL := https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
+# Refresh Hermeto-compatible requirements.txt for RHOAI pipelines (requires Podman or Docker)
+# Usage: make pipeline-requirements [PIPELINE=path/to/pipeline] [RUNTIME=podman|docker] [IMAGE=...] [NO_UPGRADE=true] [DRY_RUN=true] [QUIET=true]
+pipeline-requirements:
+	@export PIPELINE="$(PIPELINE)" IMAGE="$(IMAGE)" RUNTIME="$(RUNTIME)"; \
+	if [ -n "$$RUNTIME" ] && [ "$$RUNTIME" != "podman" ] && [ "$$RUNTIME" != "docker" ]; then \
+		echo "Error: RUNTIME must be podman or docker"; exit 1; \
+	fi; \
+	$(UVRUN) python -m scripts.refresh_pipeline_requirements.refresh_pipeline_requirements \
+		$(if $(filter true,$(NO_UPGRADE)),--no-upgrade,) \
+		$(if $(filter true,$(DRY_RUN)),--dry-run,) \
+		$(if $(filter true,$(QUIET)),--quiet,) \
+		$${RUNTIME:+--runtime "$$RUNTIME"} \
+		$${IMAGE:+--image "$$IMAGE"} \
+		$${PIPELINE:+"$$PIPELINE"}
 
 # RHEL UBI9 (glibc 2.34)
 PYTHON_PLATFORM := x86_64-manylinux_2_34
@@ -121,10 +132,10 @@ requirements:
 		--no-emit-package kfp-components \
 		--python-version 3.12 \
 		--python-platform $(PYTHON_PLATFORM) \
-		--index-url $(AIPCC_INDEX_URL) >> requirements.txt
+		--index-url "$(AIPCC_INDEX_URL)" >> requirements.txt
 	echo "--index-url $(AIPCC_INDEX_URL)" > requirements-build.txt
 	echo "" >> requirements-build.txt
-	printf 'setuptools\nwheel\n' | uv pip compile --generate-hashes --no-header --no-annotate \
+	printf 'pip>=26.1.2\nsetuptools\nwheel\n' | uv pip compile --generate-hashes --no-header --no-annotate \
 		--python-version 3.12 \
 		--python-platform $(PYTHON_PLATFORM) \
-		--index-url $(AIPCC_INDEX_URL) - >> requirements-build.txt
+		--index-url "$(AIPCC_INDEX_URL)" - >> requirements-build.txt
