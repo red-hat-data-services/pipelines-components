@@ -26,7 +26,7 @@ The system integrates with OGX API for inference and vector database operations,
 | `input_data_key` | `str` | `""` | Object key (path) of the input documents in the input data bucket. |
 | `embedding_models` | `Optional[List]` | `None` | Optional list of embedding model identifiers to use in the search space. |
 | `generation_models` | `Optional[List]` | `None` | Optional list of foundation/generation model identifiers to use in the search space. |
-| `optimization_metric` | `str` | `faithfulness` | Quality metric used to optimize RAG patterns. Supported values: "faithfulness", "answer_correctness", "context_correctness". |
+| `optimization_metric` | `str` | `overall_score` | Quality metric used to rank RAG patterns. Supported values: "faithfulness", "answer_correctness", "context_correctness", "answer_relevance", and "overall_score" (default). "faithfulness", "answer_correctness", and "context_correctness" are deterministic Unitxt metrics; choosing one as the optimization metric keeps the experiment deterministic. The LLM-judge metric "answer_relevance" is always computed but only drives optimization when selected (or via "overall_score", which aggregates all metrics). |
 | `optimization_max_rag_patterns` | `int` | `8` | Maximum number of RAG patterns to generate. Passed to ai4rag (max_number_of_rag_patterns). Defaults to 8. |
 | `preset` | `str` | `speed` | Pipeline quality tier. "speed" (default) uses recursive chunking, no table structure parsing, and no contextual enrichment. "balanced" enables Docling table layout parsing, hybrid chunking, and LLM contextual enrichment. Both presets use the same resource tier. |
 
@@ -39,7 +39,7 @@ The system integrates with OGX API for inference and vector database operations,
   - Kubeflow:
     - Name: Pipelines, Version: 2.16.1
   - External Services:
-    - Name: ai4rag, Version: ~=0.8.1
+    - Name: ai4rag, Version: ~=0.10.0
     - Name: OGX API, Version: ~=1.1.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
@@ -51,7 +51,7 @@ The system integrates with OGX API for inference and vector database operations,
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-06-09 12:00:00+00:00
+- **Last Verified**: 2026-07-16 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

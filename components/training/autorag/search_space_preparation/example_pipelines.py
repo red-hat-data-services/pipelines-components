@@ -5,14 +5,8 @@ from kfp_components.components.training.autorag.search_space_preparation import 
 
 
 @dsl.pipeline(name="search-space-preparation-example")
-def example_pipeline(
-    metric: str = "faithfulness",
-):
-    """Example pipeline using search_space_preparation.
-
-    Args:
-        metric: Evaluation metric name.
-    """
+def example_pipeline():
+    """Example pipeline using search_space_preparation."""
     test_data = dsl.importer(
         artifact_uri="gs://placeholder/test_data",
         artifact_class=dsl.Artifact,
@@ -24,5 +18,4 @@ def example_pipeline(
     search_space_preparation(
         test_data=test_data.output,
         extracted_text=extracted_text.output,
-        metric=metric,
     )
