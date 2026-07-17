@@ -50,7 +50,7 @@ def documents_rag_optimization_pipeline(
     input_data_key: str = "",
     embedding_models: Optional[List] = None,
     generation_models: Optional[List] = None,
-    optimization_metric: str = "faithfulness",
+    optimization_metric: str = "overall_score",
     optimization_max_rag_patterns: int = 8,
     preset: str = "speed",
 ):
@@ -87,8 +87,13 @@ def documents_rag_optimization_pipeline(
         embedding_models: Optional list of embedding model identifiers to use in the search space.
         generation_models: Optional list of foundation/generation model identifiers to use in the
             search space.
-        optimization_metric: Quality metric used to optimize RAG patterns. Supported values:
-            "faithfulness", "answer_correctness", "context_correctness".
+        optimization_metric: Quality metric used to rank RAG patterns. Supported values:
+            "faithfulness", "answer_correctness", "context_correctness", "answer_relevance",
+            and "overall_score" (default). "faithfulness", "answer_correctness", and
+            "context_correctness" are deterministic Unitxt metrics; choosing one as the
+            optimization metric keeps the experiment deterministic. The LLM-judge metric
+            "answer_relevance" is always computed but only drives optimization when selected
+            (or via "overall_score", which aggregates all metrics).
         optimization_max_rag_patterns: Maximum number of RAG patterns to generate. Passed to ai4rag
             (max_number_of_rag_patterns). Defaults to 8.
         preset: Pipeline quality tier. "speed" (default) uses recursive chunking,
@@ -158,7 +163,6 @@ def documents_rag_optimization_pipeline(
         extracted_text=text_extraction_task.outputs["extracted_text"],
         embedding_models=embedding_models,
         generation_models=generation_models,
-        metric=optimization_metric,
         preset=preset,
     )
 

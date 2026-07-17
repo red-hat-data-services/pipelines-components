@@ -8,7 +8,7 @@ dependencies:
       version: '2.16.1'
   external_services:
     - name: ai4rag
-      version: "~=0.8.1"
+      version: "~=0.10.0"
     - name: OGX API
       version: "~=1.1.0"
     - name: RHOAI Connections API
@@ -26,4 +26,4 @@ tags:
   - pipeline
   - autorag
   - rag-optimization
-lastVerified: 2026-06-09T12:00:00Z
+lastVerified: 2026-07-16T00:00:00Z

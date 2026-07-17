@@ -18,7 +18,6 @@ Thin wrapper that delegates to ``ai4rag.components.optimization.search_space_pre
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 | `embedding_models` | `Optional[List]` | `None` | List of embedding model identifiers to try. |
 | `generation_models` | `Optional[List]` | `None` | List of generation model identifiers to try. |
-| `metric` | `str` | `None` | Quality metric for evaluation (e.g. "faithfulness"). |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `preset` | `str` | `speed` | Pipeline quality tier. "speed" (default) uses recursive chunking without contextual enrichment. "balanced" uses hybrid chunking with LLM contextual enrichment in the search space. |
 
@@ -32,14 +31,8 @@ from kfp_components.components.training.autorag.search_space_preparation import 
 
 
 @dsl.pipeline(name="search-space-preparation-example")
-def example_pipeline(
-    metric: str = "faithfulness",
-):
-    """Example pipeline using search_space_preparation.
-
-    Args:
-        metric: Evaluation metric name.
-    """
+def example_pipeline():
+    """Example pipeline using search_space_preparation."""
     test_data = dsl.importer(
         artifact_uri="gs://placeholder/test_data",
         artifact_class=dsl.Artifact,
@@ -51,7 +44,6 @@ def example_pipeline(
     search_space_preparation(
         test_data=test_data.output,
         extracted_text=extracted_text.output,
-        metric=metric,
     )
 
 ```
@@ -64,7 +56,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.9.1
+    - Name: ai4rag, Version: ~=0.10.0
     - Name: pyYaml, Version: >=6.0.0
     - Name: pandas, Version: >=2.0.0
 - **Tags**:
@@ -72,7 +64,7 @@ def example_pipeline(
   - autorag
   - search-space
   - optimization
-- **Last Verified**: 2026-05-14 00:00:00+00:00
+- **Last Verified**: 2026-07-16 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

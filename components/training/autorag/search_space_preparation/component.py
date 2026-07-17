@@ -20,7 +20,6 @@ def search_space_preparation(
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     embedding_models: Optional[List] = None,
     generation_models: Optional[List] = None,
-    metric: str = None,
     component_status: dsl.Output[dsl.Artifact] = None,
     preset: str = "speed",
 ):
@@ -37,7 +36,6 @@ def search_space_preparation(
         embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
         embedding_models: List of embedding model identifiers to try.
         generation_models: List of generation model identifiers to try.
-        metric: Quality metric for evaluation (e.g. "faithfulness").
         preset: Pipeline quality tier. "speed" (default) uses recursive chunking
             without contextual enrichment. "balanced" uses hybrid chunking with
             LLM contextual enrichment in the search space.
@@ -115,7 +113,6 @@ def search_space_preparation(
                 ogx_client=ogx_client,
                 embedding_models=embedding_models,
                 generation_models=generation_models,
-                metric=metric if metric is not None else "faithfulness",
                 chunking_methods=chunking_methods,
                 chunk_sizes=chunk_sizes,
                 chunk_overlaps=chunk_overlaps,

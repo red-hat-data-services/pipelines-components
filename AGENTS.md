@@ -36,7 +36,8 @@ Agents typically interact with this repository in three modes. Use the mode to d
   - `make pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>] [NO_TESTS=true] [CREATE_SHARED=true]`
   - `make tests TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
   - `make readme TYPE=component|pipeline CATEGORY=<cat> NAME=<name> [SUBCATEGORY=<sub>]`
-  - `make pipeline-requirements [PIPELINE=path] [RUNTIME=podman|docker] [NO_UPGRADE=true] [DRY_RUN=true] [QUIET=true]` — refresh Hermeto-compatible `requirements.txt` for RHOAI pipelines (requires Podman or Docker; see [`scripts/refresh_pipeline_requirements/README.md`](scripts/refresh_pipeline_requirements/README.md))
+  - `make pipeline-requirements [PIPELINE=path] [RUNTIME=podman|docker] [NO_UPGRADE=true] [DRY_RUN=true] [QUIET=true]` — refresh
+    Hermeto-compatible `requirements.txt` for RHOAI pipelines (see [`scripts/refresh_pipeline_requirements/`](scripts/refresh_pipeline_requirements/))
 - **Validate like CI**: follow [`CONTRIBUTING.md` (Testing and Quality)](docs/CONTRIBUTING.md#testing-and-quality) and
   reference the workflows under `.github/workflows/` (example: [`.github/workflows/python-lint.yml`](.github/workflows/python-lint.yml)).
 - **New assets require approval**: for initial contributions (introducing a new component/pipeline to the catalog),

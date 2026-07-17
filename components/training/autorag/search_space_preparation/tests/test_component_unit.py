@@ -58,7 +58,6 @@ class TestSearchSpacePreparationUnitTests:
         assert "search_space_prep_report" in params
         assert "embedding_models" in params
         assert "generation_models" in params
-        assert "metric" in params
         assert "preset" in params
         assert sig.parameters["preset"].default == "speed"
 
@@ -85,7 +84,6 @@ class TestSearchSpacePreparationUnitTests:
                 search_space_prep_report=report_artifact,
                 embedding_models=["embed-1", "embed-2"],
                 generation_models=["gen-1"],
-                metric="answer_correctness",
             )
 
         mock_sqlite.assert_called_once()
@@ -99,36 +97,12 @@ class TestSearchSpacePreparationUnitTests:
             ogx_client=mock_ogx_client,
             embedding_models=["embed-1", "embed-2"],
             generation_models=["gen-1"],
-            metric="answer_correctness",
             chunking_methods=["recursive"],
             chunk_sizes=[128, 256, 512],
             chunk_overlaps=[32, 64],
             inference_max_threads=10,
         )
         mock_report.save_json.assert_called_once_with(str(tmp_path / "report.yml"))
-
-    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_default_metric_is_faithfulness(self, tmp_path):
-        """When metric is None, 'faithfulness' is passed as default."""
-        modules, mock_create_ogx, mock_prepare, _ = _make_ai4rag_mocks()
-        mock_create_ogx.return_value = mock.MagicMock()
-        mock_prepare.return_value = mock.MagicMock()
-
-        test_data = mock.MagicMock()
-        test_data.path = str(tmp_path / "test.json")
-        extracted_text = mock.MagicMock()
-        extracted_text.path = str(tmp_path / "ext")
-        report = mock.MagicMock()
-        report.path = str(tmp_path / "report.yml")
-
-        with mock.patch.dict("sys.modules", modules):
-            search_space_preparation.python_func(
-                test_data=test_data,
-                extracted_text=extracted_text,
-                search_space_prep_report=report,
-            )
-
-        assert mock_prepare.call_args.kwargs["metric"] == "faithfulness"
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
     def test_none_models_passed_through(self, tmp_path):
@@ -197,7 +171,6 @@ class TestSearchSpacePreparationUnitTests:
                     test_data=test_data,
                     extracted_text=extracted_text,
                     search_space_prep_report=report,
-                    metric="not_real",
                 )
 
     def test_component_status_defaults_to_none(self):
