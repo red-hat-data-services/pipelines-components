@@ -1,0 +1,106 @@
+---
+name: Requirements Regeneration
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Base branch to run against (manual runs only)'
+        required: true
+        default: 'main'
+  schedule:
+    - cron: '0 */12 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: requirements-regeneration-${{ github.event.inputs.branch || 'main' }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.repository == 'opendatahub-io/pipelines-components')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BASE_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || 'main' }}
+    steps:
+      - name: Validate base branch exists
+        run: |
+          set -euo pipefail
+          repo_url="https://github.com/${GITHUB_REPOSITORY}.git"
+          if ! git ls-remote --heads "$repo_url" -- "$BASE_BRANCH" | grep -q .; then
+            echo "Base branch '$BASE_BRANCH' not found in ${GITHUB_REPOSITORY}."
+            echo "Use an existing branch name for workflow_dispatch input 'branch'."
+            exit 1
+          fi
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install yq
+        run: sudo apt-get update && sudo apt-get install -y yq
+
+      - name: Make pipeline directories writable for rootless Podman
+        run: |
+          find pipelines -name requirements.in -execdir chmod a+rw . requirements.txt \; 2>/dev/null || true
+
+      - name: Refresh pipeline requirements
+        run: make pipeline-requirements
+
+      - name: Fix ownership of generated files
+        run: sudo chown -R "$USER:$USER" .
+
+      - name: Load reviewers from OWNERS file
+        id: owners_reviewers
+        run: |
+          set -euo pipefail
+          if [[ ! -f OWNERS ]]; then
+            echo "reviewers=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          reviewers="$(yq -r '(.reviewers // .approvers // []) | join(",")' OWNERS)"
+          echo "reviewers=${reviewers}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update Pull Request
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0  # v8
+        with:
+          token: ${{ github.token }}
+          base: ${{ env.BASE_BRANCH }}
+          branch: requirements/regenerate-${{ env.BASE_BRANCH }}
+          delete-branch: true
+          commit-message: 'chore(pipelines): regenerate requirements.txt lockfiles for AutoML and AutoRAG pipelines'
+          title: 'chore(pipelines): regenerate requirements.txt lockfiles for AutoML and AutoRAG pipelines'
+          body: |
+            ## Description
+            Regenerated pipeline requirements lockfiles by running `pip-compile`
+            inside a UBI9 container, resolving against the AIPCC PyPI index.
+
+            ## Changes
+            - Pipeline `requirements.txt` files (compiled from `requirements.in`)
+
+            Triggered by **Actions → Requirements Regeneration** (manual or every 12 hours).
+          add-paths: |
+            pipelines/**/requirements.txt
+          reviewers: >-
+            ${{
+              github.repository == 'opendatahub-io/pipelines-components'
+              && steps.owners_reviewers.outputs.reviewers
+              || ''
+            }}
