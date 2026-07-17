@@ -52,11 +52,11 @@ bcrypt==5.0.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:79d127e40edb07f252fb2c5e802665c5a28a26a49eaf9c5f1be7b9af93b4d61e
     # via docling-slim
-boto3==1.43.46 \
-    --hash=sha256:40970f7172b58c39e8a67abe31d6bc6d8b2edfcd230a1433c52e2e5f7e383d9a
+boto3==1.43.47 \
+    --hash=sha256:441c21d41e88484e1685cb5c5936e6108485164709dd7e913444025746a90929
     # via ai4rag
-botocore==1.43.46 \
-    --hash=sha256:b1e0ccb99ad6c4a199b68097d88207054e335e48fe74ab45a86cd5a9d0e498b5
+botocore==1.43.47 \
+    --hash=sha256:5427bfa7610518a874d3fffe0da4040fc1971bc3daf966342b2e81b2a8956bd9
     # via
     #   boto3
     #   s3transfer
@@ -205,8 +205,8 @@ google-api-core==2.31.0 \
     #   google-cloud-core
     #   google-cloud-storage
     #   kfp
-google-auth==2.55.2 \
-    --hash=sha256:22f8bfe3b0352e49b091e9d4fdcd10e4c12266b6d8ae25559a0c5b468879115b
+google-auth==2.56.0 \
+    --hash=sha256:b374a612174e26376a82bcc20296002fdcc8c58dcd0d8b9eed6c972df4c0320c
     # via
     #   google-api-core
     #   google-cloud-core
@@ -215,8 +215,8 @@ google-auth==2.55.2 \
 google-cloud-core==2.6.0 \
     --hash=sha256:2b0e1f09be56b927f3cb231052fea35805cb74f5594235a927eb519af1c78b17
     # via google-cloud-storage
-google-cloud-storage==3.12.1 \
-    --hash=sha256:ad58fdb55a9133bcd81a4dfc2c1dd990050f8d69d53aec2084f561904f959741
+google-cloud-storage==3.13.0 \
+    --hash=sha256:a2f05a1db47b0ee5cc2f14ee4bd9736d4da5329e51fd10ed466e44082637e9b9
     # via kfp
 google-crc32c==1.8.0 \
     --hash=sha256:3152fc17ef99180190f8e14a850fddc3ab8c3911b2d92d130e7219c79dfe7d7c
@@ -328,8 +328,8 @@ kfp-pipeline-spec==2.17.0 \
 kfp-server-api==2.17.0 \
     --hash=sha256:97a52d31d5fbe533c1beb2f6bfd5060bf1494893c7cce4a88af8510b57baba97
     # via kfp
-kubernetes==36.0.2 \
-    --hash=sha256:48617d55c4fa6ded5f35aead8ccacc4cc448b2272feaeeb3f16b703d65704b28
+kubernetes==36.0.3 \
+    --hash=sha256:8fa78b23a212533a45eda88b56515f4a5d953df468ac759f1a34574d7e53cc3d
     # via
     #   chromadb
     #   kfp
