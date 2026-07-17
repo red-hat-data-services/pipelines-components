@@ -90,7 +90,7 @@ packaging==26.0
 pandas==2.2.3
 patsy==1.0.2
 peft==0.17.1
-pillow==12.1.1
+pillow==12.3.0
 plotly==6.6.0
 plum-dispatch==2.8.0
 preshed==3.0.13
