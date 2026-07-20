@@ -52,11 +52,11 @@ bcrypt==5.0.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:79d127e40edb07f252fb2c5e802665c5a28a26a49eaf9c5f1be7b9af93b4d61e
     # via docling-slim
-boto3==1.43.47 \
-    --hash=sha256:441c21d41e88484e1685cb5c5936e6108485164709dd7e913444025746a90929
+boto3==1.43.49 \
+    --hash=sha256:05dcd8fd1dc5291702dfc335c25824c5ea7294ad1f8d16d1128378307242a431
     # via ai4rag
-botocore==1.43.47 \
-    --hash=sha256:5427bfa7610518a874d3fffe0da4040fc1971bc3daf966342b2e81b2a8956bd9
+botocore==1.43.49 \
+    --hash=sha256:f65e2e5df3298a444b99f348ab3f39de98253f02a042ccf3ae7c602f6fc216d2
     # via
     #   boto3
     #   s3transfer
@@ -166,8 +166,8 @@ et-xmlfile==2.0.0 \
 evaluate==0.4.6 \
     --hash=sha256:f098c7a20a500e0b8e7ad56b4f922106580db04e9103df80eff5cc0e08dc5882
     # via unitxt
-faker==40.28.1 \
-    --hash=sha256:eef459b92a0d67418967cc7b717329eaf46e3e16fd9b17e92e5054113ab24799
+faker==40.31.0 \
+    --hash=sha256:2045a96cbb764b050126da080b26ba6388c961a69569b8cdfa9d2cf534e681fd
     # via polyfactory
 filelock==3.29.7 \
     --hash=sha256:23543cc34a61918869874773bcc0340e77a3b5281205c84340214d541d9d106e
@@ -347,8 +347,8 @@ langchain-protocol==0.0.18 \
 langchain-text-splitters==1.1.2 \
     --hash=sha256:eda0d11e2b0dbf2ffc9e9f050f3148ddcd3f69cdaaf693f190851da02674f29f
     # via ai4rag
-langsmith==0.10.2 \
-    --hash=sha256:19226d0cc062501a06fd8d46c8c7e02ec7496295969a44a354c81a4d493ac8e7
+langsmith==0.10.5 \
+    --hash=sha256:55beec44a3716b6323623b158cc9a1a01ff07f4f9e530c408340a087d7ea5dec
     # via langchain-core
 latex2mathml==3.81.0 \
     --hash=sha256:5a3349309f1c40de170cbb6a23e4ebe7c7524f2b0a4a0e38200ad20773c96a46
@@ -846,11 +846,15 @@ tokenizers==0.22.2 \
     #   chromadb
     #   transformers
 torch==2.11.0 \
+    --hash=sha256:163f4e9c4b0343bb77d50676450aa911df677985bcc8dd7396f08bf82f150368 \
     --hash=sha256:295792d7e9bc15de90102b759af7c9f992a79e63237cbc4533a3fc22a35a341b \
+    --hash=sha256:2d4bdff625895d89ef136b804824b3a1830aea24088968cf8a952bf99baf7196 \
     --hash=sha256:4a952ae1aac7c6e29887b95e85bf42a684d26b1cb15454eb0dfb2fdc0661ec03 \
     --hash=sha256:511b340c8a5b380ce2ea5a2b7facb288dd86fe96f7bd8135013b235123dce68f \
     --hash=sha256:6b40f508c63fd697a5db30b500f672546a80b90245734c952b7e299a95fa82f3 \
     --hash=sha256:8868279107548716a4fff5285592010e52a2f863527260e75e8581676b151e3e \
+    --hash=sha256:92bf12ddbbc3f4ca61212f33c4dc020522a3d7c70ceecb7e56aa4f5fe1195e6c \
+    --hash=sha256:a3a2b44e5026163bd71578bca9fa2bb39ac44e08d2b530e8ceb8f1737d373ca9 \
     --hash=sha256:cae92e5cb6b1441eb6e1def8dbaef7f1d719dd551d6e956fdfee0790e0975ffd \
     --hash=sha256:e2fdbbbd77a87f448677fbfc7ea1c94d987e64b0d16e8850d50b682e836b2aeb
     # via
@@ -884,8 +888,8 @@ tqdm==4.68.4 \
     #   rapidocr
     #   semchunk
     #   transformers
-transformers==5.13.1 \
-    --hash=sha256:578ad82628ac5204686739b66d4dbad55a50297d8cc2001a00a40e35eab23ee3
+transformers==5.14.0 \
+    --hash=sha256:4c41d78778e174bc4b46fa0578d975393c9df13d0e583aedab267202074542f5
     # via
     #   docling-core
     #   docling-ibm-models
