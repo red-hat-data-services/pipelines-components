@@ -80,7 +80,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.10.0
+    - Name: ai4rag, Version: ~=0.10.1
     - Name: OGX API, Version: ~=1.1.0
     - Name: Milvus, Version: >=2.0.0
     - Name: Milvus Lite, Version: >=2.0.0
@@ -89,7 +89,7 @@ def example_pipeline(
   - autorag
   - optimization
   - rag-patterns
-- **Last Verified**: 2026-07-16 00:00:00+00:00
+- **Last Verified**: 2026-07-20 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
