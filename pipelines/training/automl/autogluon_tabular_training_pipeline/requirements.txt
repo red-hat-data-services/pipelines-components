@@ -92,14 +92,14 @@ blis==1.3.3 \
     --hash=sha256:80c8d5f0e51831694734105d9a047193aebf7918c05c865923abe52b56785910 \
     --hash=sha256:c1ae9d426e7345eb936fda81639a7dddcaaf479bffc948da7c0c4018fe18103b
     # via thinc
-boto3==1.43.47 \
-    --hash=sha256:441c21d41e88484e1685cb5c5936e6108485164709dd7e913444025746a90929
+boto3==1.43.49 \
+    --hash=sha256:05dcd8fd1dc5291702dfc335c25824c5ea7294ad1f8d16d1128378307242a431
     # via
     #   -r requirements.in
     #   autogluon-common
     #   autogluon-core
-botocore==1.43.47 \
-    --hash=sha256:5427bfa7610518a874d3fffe0da4040fc1971bc3daf966342b2e81b2a8956bd9
+botocore==1.43.49 \
+    --hash=sha256:f65e2e5df3298a444b99f348ab3f39de98253f02a042ccf3ae7c602f6fc216d2
     # via
     #   boto3
     #   s3transfer
@@ -210,8 +210,8 @@ executing==2.2.1 \
 fastai==2.8.7 \
     --hash=sha256:807e2f12314d88cf73e04bd5aa56b09b3894de1ceadfd0147dd06d27d082bbb5
     # via autogluon-tabular
-fastcore==2.0.5 \
-    --hash=sha256:b93459b7aae560759178686fa71626f46a53228cb8a1921c7e51df85d307a4d6
+fastcore==2.1.0 \
+    --hash=sha256:33427ae92966f59d25af2a8537ee9a0c3fcf943ee110588ac5182516c7f5447e
     # via
     #   apswutils
     #   fastai
@@ -324,8 +324,8 @@ hf-xet==1.5.1 \
 httpcore==1.0.9 \
     --hash=sha256:fc0ea63671089523efc6fe94ec49d0b10c9660460cbca6172fc972c1c5f9c0ac
     # via httpx
-httpcore2==2.5.0 \
-    --hash=sha256:1e8550e99da4297cb64d0cd5dd797c11a736a11f6fcbd8ffec350a9a85b39a27
+httpcore2==2.7.0 \
+    --hash=sha256:586c0f25ee49a5a78bbe193a347cef7966bc72c51ab1f778dd8fe2e1ce4c0dce
     # via httpx2
 httptools==0.8.0 \
     --hash=sha256:0d87c67fcf648e1b77acdd1eb0178be0a1252e3aeeec5985a9a7a87ae63dc05f \
@@ -338,8 +338,8 @@ httpx==0.28.1 \
     # via
     #   huggingface-hub
     #   weasel
-httpx2==2.5.0 \
-    --hash=sha256:78cf66523b7294f6cd2f18e8a04f0b46b2fec6bdb294c464ba111ddd44953129
+httpx2==2.7.0 \
+    --hash=sha256:509c40d7ca223de952f6a62574fe103ea082c14617fc1cc0c0cadefd623f4f32
     # via python-fasthtml
 huggingface-hub==1.23.0 \
     --hash=sha256:02a6f0907297162b84f172e438459418d4fa1fd282270941d40da74b73be55a0
@@ -845,8 +845,8 @@ six==1.17.0 \
     #   kubernetes
     #   python-dateutil
     #   triad
-smart-open==8.0.0 \
-    --hash=sha256:fe571f1d98d54fc4c7237c09b02bf1fcaf6aac90f50abe8fc441046ddb13f246
+smart-open==8.0.1 \
+    --hash=sha256:b665424be35ae03117e3a242c6d0d50fd5f47b94cf29e275204a5e437618ed87
     # via weasel
 soupsieve==2.8.4 \
     --hash=sha256:44c0800eab5e3d194c01a74a9758a71ea555698bf13a13163ced21a69626d8f9
@@ -934,11 +934,15 @@ toolz==0.12.1 \
     --hash=sha256:b9c10de6c58f7ba5b1dbdbf8d0e41a02414b38b36e788b6bbc70ea7ef01056b6
     # via gluonts
 torch==2.11.0 \
+    --hash=sha256:163f4e9c4b0343bb77d50676450aa911df677985bcc8dd7396f08bf82f150368 \
     --hash=sha256:295792d7e9bc15de90102b759af7c9f992a79e63237cbc4533a3fc22a35a341b \
+    --hash=sha256:2d4bdff625895d89ef136b804824b3a1830aea24088968cf8a952bf99baf7196 \
     --hash=sha256:4a952ae1aac7c6e29887b95e85bf42a684d26b1cb15454eb0dfb2fdc0661ec03 \
     --hash=sha256:511b340c8a5b380ce2ea5a2b7facb288dd86fe96f7bd8135013b235123dce68f \
     --hash=sha256:6b40f508c63fd697a5db30b500f672546a80b90245734c952b7e299a95fa82f3 \
     --hash=sha256:8868279107548716a4fff5285592010e52a2f863527260e75e8581676b151e3e \
+    --hash=sha256:92bf12ddbbc3f4ca61212f33c4dc020522a3d7c70ceecb7e56aa4f5fe1195e6c \
+    --hash=sha256:a3a2b44e5026163bd71578bca9fa2bb39ac44e08d2b530e8ceb8f1737d373ca9 \
     --hash=sha256:cae92e5cb6b1441eb6e1def8dbaef7f1d719dd551d6e956fdfee0790e0975ffd \
     --hash=sha256:e2fdbbbd77a87f448677fbfc7ea1c94d987e64b0d16e8850d50b682e836b2aeb
     # via
@@ -986,8 +990,8 @@ traitlets==5.15.1 \
     # via
     #   ipython
     #   matplotlib-inline
-transformers[sentencepiece]==5.13.1 \
-    --hash=sha256:578ad82628ac5204686739b66d4dbad55a50297d8cc2001a00a40e35eab23ee3
+transformers[sentencepiece]==5.14.0 \
+    --hash=sha256:4c41d78778e174bc4b46fa0578d975393c9df13d0e583aedab267202074542f5
     # via
     #   autogluon-timeseries
     #   chronos-forecasting
@@ -1009,8 +1013,8 @@ truststore==0.10.4 \
     # via
     #   httpcore2
     #   httpx2
-typer==0.26.8 \
-    --hash=sha256:e11064797c5ea712f3b5f3b762d3a612db240d9ce99da8d06d7ec2dbe624c07d
+typer==0.27.0 \
+    --hash=sha256:113ce519fc083f858ebeae5a7b93bd5e0641ef7a86355125e571741187c29b0f
     # via
     #   spacy
     #   transformers
