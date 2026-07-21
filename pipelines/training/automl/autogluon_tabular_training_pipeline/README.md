@@ -171,7 +171,7 @@ The `autogluon-models-training` component writes a single Model artifact (`model
 
 | Key | Type | Description |
 | ----- | ------ | ----------- |
-| `model_names` | `str` (JSON) | JSON-encoded list of refitted model names with `_FULL` suffix, e.g. `'["LightGBM_BAG_L1_FULL", "CatBoost_BAG_L1_FULL"]'`. |
+| `model_names` | `str` (JSON) | JSON-encoded list of refitted model names with `_FULL` suffix, e.g. `'["LightGBM_BAG_L1_FULL", "NeuralNetFastAI_BAG_L1_FULL"]'`. |
 | `context` | `dict` | Run and model context (see below). |
 
 **`context`** contains:
@@ -197,7 +197,7 @@ Example (regression, top_n=2):
 
 ```json
 {
-  "model_names": "[\"LightGBM_BAG_L1_FULL\", \"CatBoost_BAG_L1_FULL\"]",
+  "model_names": "[\"LightGBM_BAG_L1_FULL\", \"NeuralNetFastAI_BAG_L1_FULL\"]",
   "context": {
     "data_config": {
       "sampling_config": {"n_samples": 10000},
@@ -219,11 +219,11 @@ Example (regression, top_n=2):
         }
       },
       {
-        "name": "CatBoost_BAG_L1_FULL",
+        "name": "NeuralNetFastAI_BAG_L1_FULL",
         "location": {
-          "model_directory": "CatBoost_BAG_L1_FULL",
-          "predictor": "CatBoost_BAG_L1_FULL/predictor",
-          "notebook": "CatBoost_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
+          "model_directory": "NeuralNetFastAI_BAG_L1_FULL",
+          "predictor": "NeuralNetFastAI_BAG_L1_FULL/predictor",
+          "notebook": "NeuralNetFastAI_BAG_L1_FULL/notebooks/automl_predictor_notebook.ipynb"
         },
         "metrics": {
           "test_data": {"root_mean_squared_error": 0.51, "r2": 0.80}
