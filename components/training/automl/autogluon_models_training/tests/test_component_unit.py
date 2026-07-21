@@ -270,7 +270,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_regression_happy_path(self, mock_predictor_class, mock_read_csv, tmp_path):
         """Full regression flow: fit, select top 2, refit_full batch, per-model artifacts."""
-        top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
+        top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
@@ -305,7 +305,7 @@ class TestAutogluonModelsTrainingUnitTests:
         # Return value
         assert result.eval_metric == "r2"
         assert isinstance(result.best_model_name, str)
-        assert result.best_model_name in ("LightGBM_BAG_L1_FULL", "CatBoost_BAG_L1_FULL")
+        assert result.best_model_name in ("LightGBM_BAG_L1_FULL", "NeuralNetFastAI_BAG_L1_FULL")
 
         # TabularPredictor constructed and fitted with correct params
         mock_predictor_class.assert_called_once_with(
@@ -323,6 +323,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert fit_call[1]["set_best_to_refit_full"] is False
         assert fit_call[1]["save_bag_folds"] is True
         assert "hyperparameters" not in fit_call[1]
+        assert fit_call[1]["excluded_model_types"] == ["CAT"]
 
         # read_csv: train, test, extra
         assert mock_read_csv.call_count == 3
@@ -346,7 +347,7 @@ class TestAutogluonModelsTrainingUnitTests:
         # predict called per model with explicit model= arg
         assert mock_predictor_clone.predict.call_count == 2
         mock_predictor_clone.predict.assert_any_call(mock_test_df, model="LightGBM_BAG_L1_FULL")
-        mock_predictor_clone.predict.assert_any_call(mock_test_df, model="CatBoost_BAG_L1_FULL")
+        mock_predictor_clone.predict.assert_any_call(mock_test_df, model="NeuralNetFastAI_BAG_L1_FULL")
 
         # evaluate_predictions called per model (not evaluate())
         assert mock_predictor_clone.evaluate_predictions.call_count == 2
@@ -357,23 +358,23 @@ class TestAutogluonModelsTrainingUnitTests:
             mock_test_df, model="LightGBM_BAG_L1_FULL", subsample_size=2000
         )
         mock_predictor_clone.feature_importance.assert_any_call(
-            mock_test_df, model="CatBoost_BAG_L1_FULL", subsample_size=2000
+            mock_test_df, model="NeuralNetFastAI_BAG_L1_FULL", subsample_size=2000
         )
 
         # set_model_best called per model before clone_for_deployment
         assert mock_predictor_clone.set_model_best.call_count == 2
         mock_predictor_clone.set_model_best.assert_any_call(model="LightGBM_BAG_L1_FULL", save_trainer=True)
-        mock_predictor_clone.set_model_best.assert_any_call(model="CatBoost_BAG_L1_FULL", save_trainer=True)
+        mock_predictor_clone.set_model_best.assert_any_call(model="NeuralNetFastAI_BAG_L1_FULL", save_trainer=True)
         assert mock_predictor_clone.clone_for_deployment.call_count == 2
 
         # metadata["model_names"] serialized as JSON string
         assert json.loads(mock_models_artifact.metadata["model_names"]) == [
             "LightGBM_BAG_L1_FULL",
-            "CatBoost_BAG_L1_FULL",
+            "NeuralNetFastAI_BAG_L1_FULL",
         ]
 
         # Artifacts written on disk for each model
-        for model_name_full in ("LightGBM_BAG_L1_FULL", "CatBoost_BAG_L1_FULL"):
+        for model_name_full in ("LightGBM_BAG_L1_FULL", "NeuralNetFastAI_BAG_L1_FULL"):
             model_dir = Path(models_output_dir) / model_name_full
             metrics_dir = model_dir / "metrics"
             assert (metrics_dir / "metrics.json").exists()
@@ -457,6 +458,7 @@ class TestAutogluonModelsTrainingUnitTests:
         assert fit_call[1]["set_best_to_refit_full"] is False
         assert fit_call[1]["save_bag_folds"] is True
         assert "hyperparameters" not in fit_call[1]
+        assert fit_call[1]["excluded_model_types"] == ["CAT"]
 
         context = mock_models_artifact.metadata["context"]
         assert context["model_config"]["preset"] == "speed"
@@ -508,6 +510,7 @@ class TestAutogluonModelsTrainingUnitTests:
         fit_call = mock_predictor_class.return_value.fit.call_args
         assert fit_call[1]["presets"] == "high_quality"
         assert fit_call[1]["time_limit"] == 90 * 60
+        assert fit_call[1]["excluded_model_types"] == ["CAT"]
 
         context = mock_models_artifact.metadata["context"]
         assert context["model_config"]["preset"] == "balanced"
@@ -1057,7 +1060,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_refit_full_called_once_with_all_top_models(self, mock_predictor_class, mock_read_csv, tmp_path):
         """refit_full is called exactly once with the full list of top models (batch, not per-model)."""
-        top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1", "NeuralNetFastAI_BAG_L1"]
+        top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1", "XGBoost_BAG_L1"]
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
@@ -1102,7 +1105,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_context_models_metadata(self, mock_predictor_class, mock_read_csv, tmp_path):
         """context['models'] contains one entry per model with correct name, location, and metrics."""
-        top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
+        top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
@@ -1163,13 +1166,13 @@ class TestAutogluonModelsTrainingUnitTests:
         assert lgbm["metrics"]["test_data"] == {"r2": 0.9, "root_mean_squared_error": 0.31}
 
         cat = models[1]
-        assert cat["name"] == "CatBoost_BAG_L1_FULL"
-        assert cat["location"]["model_directory"] == "CatBoost_BAG_L1_FULL"
-        assert cat["location"]["predictor"] == str(Path("CatBoost_BAG_L1_FULL") / "predictor")
+        assert cat["name"] == "NeuralNetFastAI_BAG_L1_FULL"
+        assert cat["location"]["model_directory"] == "NeuralNetFastAI_BAG_L1_FULL"
+        assert cat["location"]["predictor"] == str(Path("NeuralNetFastAI_BAG_L1_FULL") / "predictor")
         assert cat["location"]["notebook"] == str(
-            Path("CatBoost_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
+            Path("NeuralNetFastAI_BAG_L1_FULL") / "notebooks" / "automl_predictor_notebook.ipynb"
         )
-        assert cat["location"]["metrics"] == str(Path("CatBoost_BAG_L1_FULL") / "metrics")
+        assert cat["location"]["metrics"] == str(Path("NeuralNetFastAI_BAG_L1_FULL") / "metrics")
         assert cat["metrics"]["test_data"] == {"r2": 0.85, "root_mean_squared_error": 0.42}
 
         # Shared context fields still present alongside models
@@ -1738,7 +1741,7 @@ class TestAutogluonModelsTrainingUnitTests:
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_leaderboard_html_written_and_best_model_returned(self, mock_predictor_class, mock_read_csv, tmp_path):
         """After Phase A/B the leaderboard HTML is written and best_model_name is returned."""
-        top_models = ["LightGBM_BAG_L1", "CatBoost_BAG_L1"]
+        top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
