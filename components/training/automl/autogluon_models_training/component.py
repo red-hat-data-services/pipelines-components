@@ -248,6 +248,8 @@ def autogluon_models_training(
             # Required so refit_full() can access bag fold models after fit().
             save_bag_folds=True,
             time_limit=time_limit,
+            # exclude CatBoost models
+            excluded_model_types=["CAT"],
         )
 
         # Select top N models
