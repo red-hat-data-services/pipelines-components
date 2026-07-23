@@ -1,7 +1,7 @@
 --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9-test/simple
 
-autogluon.tabular[lightgbm,xgboost,tabm,fastai]==1.5.0+rhaiv.4
-autogluon.timeseries==1.5.0+rhaiv.4
+autogluon.tabular[lightgbm,xgboost,tabm,fastai]==1.5.0+rhaiv.5
+autogluon.timeseries==1.5.0+rhaiv.5
 boto3
 pandas==2.2.3
 ipython
