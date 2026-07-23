@@ -21,8 +21,8 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
 | `vector_store_id` | `str` | `None` | OGX vector store / collection id to reuse (aligned with ``pattern.json`` ``settings.vector_store_binding.vector_store_id``). Omit to create a new collection. |
 | `embedding_params` | `Optional[dict]` | `None` | Dict passed to OGXEmbeddingParams (default: {}). |
 | `chunking_method` | `str` | `recursive` | Chunking method (e.g. "recursive"). |
-| `chunk_size` | `int` | `1024` | Chunk size in characters. |
-| `chunk_overlap` | `int` | `0` | Chunk overlap in characters. |
+| `chunk_size` | `int` | `1024` | Maximum chunk size in tokens (128--2048). |
+| `chunk_overlap` | `int` | `0` | Token overlap between consecutive chunks (recursive method only). |
 | `batch_size` | `int` | `20` | Number of documents per batch. Defaults to ``20``; ``0`` processes all documents in a single batch. |
 
 ## Metadata 🗂️
