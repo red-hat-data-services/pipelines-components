@@ -1,6 +1,7 @@
 ---
 name: documents-indexing-pipeline
-stability: alpha
+stability: beta
+managed: true
 dependencies:
   kubeflow:
     - name: Pipelines
