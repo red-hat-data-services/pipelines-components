@@ -67,6 +67,11 @@ class TestRagTemplatesOptimizationUnitTests:
         assert "embedded_artifact" in params
         assert "test_data_key" in params
         assert "vector_io_provider_id" in params
+        assert "ogx_secret_name" in params
+        assert "input_data_secret_name" in params
+        assert "input_data_bucket_name" in params
+        for name in ("ogx_secret_name", "input_data_secret_name", "input_data_bucket_name"):
+            assert sig.parameters[name].default is inspect.Parameter.empty
         assert "optimization_settings" in params
         assert "input_data_key" in params
         assert "preset" in params
@@ -101,6 +106,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key="data/test.json",
                 vector_io_provider_id="milvus-provider",
+                ogx_secret_name="ogx-connection",
+                input_data_secret_name="s3-input-connection",
+                input_data_bucket_name="customer-docs",
                 html_artifact=html_artifact,
                 optimization_settings={"max_number_of_rag_patterns": 8},
                 input_data_key="data/docs/",
@@ -121,6 +129,15 @@ class TestRagTemplatesOptimizationUnitTests:
         assert call_kwargs["test_data_key"] == "data/test.json"
         assert call_kwargs["input_data_key"] == "data/docs/"
         assert call_kwargs["optimization_settings"] == {"max_number_of_rag_patterns": 8}
+        assert call_kwargs["indexing_pipeline_params"] == {
+            "pipeline_name": "documents-indexing-pipeline",
+            "ogx_secret_name": "ogx-connection",
+            "vector_io_provider_id": "milvus-provider",
+            "input_data_secret_name": "s3-input-connection",
+            "input_data_bucket_name": "customer-docs",
+            "input_data_key": "data/docs/",
+            "batch_size": 20,
+        }
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
     def test_sets_artifact_metadata(self, tmp_path):
@@ -151,6 +168,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key="key.json",
                 vector_io_provider_id="provider",
+                ogx_secret_name="ogx-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
                 html_artifact=html_artifact,
             )
 
@@ -183,6 +203,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key="key.json",
                 vector_io_provider_id="provider",
+                ogx_secret_name="ogx-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
                 html_artifact=html_artifact,
             )
 
@@ -212,6 +235,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key=None,
                 vector_io_provider_id="provider",
+                ogx_secret_name="ogx-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
                 html_artifact=html_artifact,
                 input_data_key=None,
             )
@@ -219,6 +245,7 @@ class TestRagTemplatesOptimizationUnitTests:
         call_kwargs = mock_run_opt.call_args.kwargs
         assert call_kwargs["test_data_key"] == ""
         assert call_kwargs["input_data_key"] == ""
+        assert call_kwargs["indexing_pipeline_params"]["input_data_key"] == ""
 
     def test_missing_ogx_env_raises_key_error(self, tmp_path):
         """Missing OGX env vars raise KeyError."""
@@ -242,6 +269,9 @@ class TestRagTemplatesOptimizationUnitTests:
                         rag_patterns=rag_patterns,
                         test_data_key="key.json",
                         vector_io_provider_id="provider",
+                        ogx_secret_name="ogx-secret",
+                        input_data_secret_name="s3-secret",
+                        input_data_bucket_name="bucket",
                         html_artifact=html_artifact,
                     )
 
@@ -269,6 +299,9 @@ class TestRagTemplatesOptimizationUnitTests:
                     rag_patterns=rag_patterns,
                     test_data_key="key.json",
                     vector_io_provider_id="provider",
+                    ogx_secret_name="ogx-secret",
+                    input_data_secret_name="s3-secret",
+                    input_data_bucket_name="bucket",
                     html_artifact=html_artifact,
                 )
 
@@ -304,6 +337,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key="key.json",
                 vector_io_provider_id="provider",
+                ogx_secret_name="ogx-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
                 html_artifact=html_artifact,
             )
 
@@ -338,6 +374,9 @@ class TestRagTemplatesOptimizationUnitTests:
                     rag_patterns=rag_patterns,
                     test_data_key="key.json",
                     vector_io_provider_id="provider",
+                    ogx_secret_name="ogx-secret",
+                    input_data_secret_name="s3-secret",
+                    input_data_bucket_name="bucket",
                     html_artifact=html_artifact,
                     preset="invalid",
                 )
@@ -367,6 +406,9 @@ class TestRagTemplatesOptimizationUnitTests:
                 rag_patterns=rag_patterns,
                 test_data_key="key.json",
                 vector_io_provider_id="provider",
+                ogx_secret_name="ogx-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
                 html_artifact=html_artifact,
                 preset=preset_value,
             )
