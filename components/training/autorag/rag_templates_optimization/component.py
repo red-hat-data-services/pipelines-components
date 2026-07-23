@@ -19,6 +19,9 @@ def rag_templates_optimization(
     rag_patterns: dsl.Output[dsl.Artifact],
     test_data_key: Optional[str],
     vector_io_provider_id: str,
+    ogx_secret_name: str,
+    input_data_secret_name: str,
+    input_data_bucket_name: str,
     html_artifact: dsl.Output[dsl.HTML],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_settings: Optional[dict] = None,
@@ -38,6 +41,10 @@ def rag_templates_optimization(
         rag_patterns: Output artifact for generated RAG patterns.
         test_data_key: Path to benchmark JSON in object storage.
         vector_io_provider_id: Vector I/O provider identifier in OGX.
+        ogx_secret_name: Name of the K8s secret with OGX credentials.
+        input_data_secret_name: Name of the K8s secret with S3 credentials for
+            input data.
+        input_data_bucket_name: S3 bucket containing input documents.
         html_artifact: Output HTML artifact; the leaderboard table is written to
             html_artifact.path (single file).
         component_status: Output artifact containing stage-level progress tracking.
@@ -107,6 +114,16 @@ def rag_templates_optimization(
             output_dir = Path(rag_patterns.path)
             output_dir.mkdir(parents=True, exist_ok=True)
 
+            indexing_pipeline_params = {
+                "pipeline_name": "documents-indexing-pipeline",
+                "ogx_secret_name": ogx_secret_name,
+                "vector_io_provider_id": vector_io_provider_id,
+                "input_data_secret_name": input_data_secret_name,
+                "input_data_bucket_name": input_data_bucket_name,
+                "input_data_key": input_data_key or "",
+                "batch_size": 20,
+            }
+
             result = run_rag_optimization(
                 extracted_text_path=extracted_text,
                 test_data_path=test_data,
@@ -118,6 +135,7 @@ def rag_templates_optimization(
                 input_data_key=input_data_key or "",
                 optimization_settings=optimization_settings,
                 inference_max_threads=inference_max_threads,
+                indexing_pipeline_params=indexing_pipeline_params,
             )
 
             status.record(

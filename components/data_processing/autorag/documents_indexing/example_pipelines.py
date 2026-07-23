@@ -8,7 +8,6 @@ from kfp_components.components.data_processing.autorag.documents_indexing import
 def example_pipeline(
     embedding_model_id: str = "all-MiniLM-L6-v2",
     vector_io_provider_id: str = "milvus",
-    distance_metric: str = "cosine",
     chunking_method: str = "recursive",
     chunk_size: int = 1024,
     chunk_overlap: int = 0,
@@ -19,7 +18,6 @@ def example_pipeline(
     Args:
         embedding_model_id: ID of the embedding model.
         vector_io_provider_id: OGX provider ID for the vector database.
-        distance_metric: Distance metric for similarity search.
         chunking_method: Method for text chunking.
         chunk_size: Size of each text chunk.
         chunk_overlap: Overlap between chunks.
@@ -33,7 +31,6 @@ def example_pipeline(
         embedding_model_id=embedding_model_id,
         extracted_text=extracted_text.output,
         vector_io_provider_id=vector_io_provider_id,
-        distance_metric=distance_metric,
         chunking_method=chunking_method,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,

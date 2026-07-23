@@ -1,11 +1,24 @@
-"""Tests for the documents_indexing thin wrapper component."""
+"""Tests for the documents_indexing component."""
 
 import inspect
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 from unittest import mock
 
 import pytest
 
 from ..component import documents_indexing
+
+
+@dataclass
+class _FakeEmbeddingParams:
+    """Dataclass stand-in for OGXEmbeddingParams (supports dataclasses.asdict)."""
+
+    embedding_dimension: Optional[int] = None
+    context_length: Optional[int] = None
+
 
 MOCKED_ENV_VARIABLES = {
     "OGX_CLIENT_BASE_URL": "https://ogx.example.com",
@@ -13,30 +26,124 @@ MOCKED_ENV_VARIABLES = {
 }
 
 
+def _make_module_mock(**attrs):
+    """Create a MagicMock with explicit attributes (avoids auto-attribute creation)."""
+    m = mock.MagicMock()
+    for k, v in attrs.items():
+        setattr(m, k, v)
+    return m
+
+
 def _make_ai4rag_mocks():
-    """Build mock modules for ai4rag submodule imports."""
+    """Build mock modules matching the component's direct imports."""
     mock_create_ogx_client = mock.MagicMock(name="create_ogx_client")
-    mock_index_documents = mock.MagicMock(name="index_documents")
+    mock_DoclingChunker = mock.MagicMock(name="DoclingChunker")
+    mock_LangChainChunker = mock.MagicMock(name="LangChainChunker")
+    mock_OGXEmbeddingModel = mock.MagicMock(name="OGXEmbeddingModel")
+    mock_OGXEmbeddingModel.return_value.params = _FakeEmbeddingParams()
+    mock_OGXEmbeddingParams = mock.MagicMock(name="OGXEmbeddingParams")
+    mock_OGXVectorStore = mock.MagicMock(name="OGXVectorStore")
+    mock_OGXVectorStore.return_value.collection_name = "test-collection"
+    mock_DoclingDocument = mock.MagicMock(name="DoclingDocument")
 
-    mock_ogx_client_module = mock.MagicMock()
-    mock_ogx_client_module.create_ogx_client = mock_create_ogx_client
-
-    mock_indexing_module = mock.MagicMock()
-    mock_indexing_module.index_documents = mock_index_documents
+    mock_ChunkingConstraints = mock.MagicMock()
+    mock_ChunkingConstraints.METHODS = ("recursive", "hybrid")
+    mock_ChunkingConstraints.MIN_CHUNK_SIZE = 128
+    mock_ChunkingConstraints.MAX_CHUNK_SIZE = 2048
 
     modules = {
         "ai4rag": mock.MagicMock(),
         "ai4rag.components": mock.MagicMock(),
         "ai4rag.components.utils": mock.MagicMock(),
-        "ai4rag.components.utils.ogx_client": mock_ogx_client_module,
-        "ai4rag.components.data": mock.MagicMock(),
-        "ai4rag.components.data.indexing": mock_indexing_module,
+        "ai4rag.components.utils.ogx_client": _make_module_mock(create_ogx_client=mock_create_ogx_client),
+        "ai4rag.rag": mock.MagicMock(),
+        "ai4rag.rag.chunking": _make_module_mock(
+            DoclingChunker=mock_DoclingChunker, LangChainChunker=mock_LangChainChunker
+        ),
+        "ai4rag.rag.embedding": mock.MagicMock(),
+        "ai4rag.rag.embedding.ogx": _make_module_mock(
+            OGXEmbeddingModel=mock_OGXEmbeddingModel, OGXEmbeddingParams=mock_OGXEmbeddingParams
+        ),
+        "ai4rag.rag.vector_store": mock.MagicMock(),
+        "ai4rag.rag.vector_store.ogx": _make_module_mock(OGXVectorStore=mock_OGXVectorStore),
+        "ai4rag.utils": mock.MagicMock(),
+        "ai4rag.utils.constants": _make_module_mock(ChunkingConstraints=mock_ChunkingConstraints),
+        "docling_core": mock.MagicMock(),
+        "docling_core.types": mock.MagicMock(),
+        "docling_core.types.doc": mock.MagicMock(),
+        "docling_core.types.doc.document": _make_module_mock(DoclingDocument=mock_DoclingDocument),
     }
-    return modules, mock_create_ogx_client, mock_index_documents
+    mocks = {
+        "create_ogx_client": mock_create_ogx_client,
+        "DoclingChunker": mock_DoclingChunker,
+        "LangChainChunker": mock_LangChainChunker,
+        "OGXEmbeddingModel": mock_OGXEmbeddingModel,
+        "OGXEmbeddingParams": mock_OGXEmbeddingParams,
+        "OGXVectorStore": mock_OGXVectorStore,
+        "DoclingDocument": mock_DoclingDocument,
+        "ChunkingConstraints": mock_ChunkingConstraints,
+    }
+    return modules, mocks
 
 
-class TestDocumentsIndexingUnitTests:
-    """Unit tests for the documents_indexing thin wrapper."""
+def _make_extracted_text(tmp_path, filenames=None):
+    """Create a mock extracted_text artifact with optional JSON files."""
+    extracted_dir = tmp_path / "extracted"
+    extracted_dir.mkdir()
+    for name in filenames or []:
+        (extracted_dir / name).write_text("{}")
+    artifact = mock.MagicMock()
+    artifact.path = str(extracted_dir)
+    return artifact
+
+
+def _make_report_artifact(tmp_path):
+    """Create a mock indexing_report output artifact."""
+    report = mock.MagicMock()
+    report.path = str(tmp_path / "indexing_report.json")
+    report.metadata = {}
+    return report
+
+
+def _make_html_artifact(tmp_path):
+    """Create a mock html_report output artifact."""
+    art = mock.MagicMock()
+    art.path = str(tmp_path / "report.html")
+    art.metadata = {}
+    return art
+
+
+def _make_embedded_artifact():
+    """Create a mock embedded_artifact pointing to the real HTML template on disk."""
+    art = mock.MagicMock()
+    art.path = str(Path(__file__).resolve().parents[1] / "indexing_report_template.html")
+    return art
+
+
+def _call_component(tmp_path, modules, mocks, *, filenames=None, **overrides):
+    """Invoke the component with sensible defaults and return (report, html) artifacts."""
+    extracted = _make_extracted_text(tmp_path, filenames=filenames)
+    report = _make_report_artifact(tmp_path)
+    html = _make_html_artifact(tmp_path)
+
+    defaults = {
+        "embedding_model_id": "embed-v1",
+        "extracted_text": extracted,
+        "vector_io_provider_id": "provider-1",
+        "indexing_report": report,
+        "html_report": html,
+        "embedded_artifact": _make_embedded_artifact(),
+    }
+    defaults.update(overrides)
+
+    with mock.patch.dict("sys.modules", modules):
+        documents_indexing.python_func(**defaults)
+
+    return report, html
+
+
+class TestDocumentsIndexingInterface:
+    """Tests for component existence and KFP interface."""
 
     def test_component_function_exists(self):
         """Component factory exists and exposes python_func."""
@@ -44,114 +151,422 @@ class TestDocumentsIndexingUnitTests:
         assert hasattr(documents_indexing, "python_func")
 
     def test_component_has_expected_interface(self):
-        """Component has expected required parameters."""
+        """Component declares expected parameters."""
         sig = inspect.signature(documents_indexing.python_func)
         params = list(sig.parameters)
         assert "embedding_model_id" in params
         assert "extracted_text" in params
         assert "vector_io_provider_id" in params
+        assert "indexing_report" in params
+        assert "html_report" in params
+        assert "embedded_artifact" in params
         assert "vector_store_id" in params
-        assert sig.parameters["distance_metric"].default == "cosine"
         assert sig.parameters["chunk_size"].default == 1024
         assert sig.parameters["batch_size"].default == 20
 
-    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_delegates_to_ai4rag_index_documents(self, tmp_path):
-        """Wrapper calls create_ogx_client and index_documents with correct args."""
-        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
-        mock_ogx_client = mock.MagicMock(name="ogx_client_instance")
-        mock_create_ogx.return_value = mock_ogx_client
 
-        extracted = mock.MagicMock()
-        extracted.path = str(tmp_path / "extracted")
-
-        with mock.patch.dict("sys.modules", modules):
-            documents_indexing.python_func(
-                embedding_model_id="embed-v1",
-                extracted_text=extracted,
-                vector_io_provider_id="provider-1",
-                embedding_params={"embedding_dimension": 768},
-                distance_metric="cosine",
-                chunking_method="hybrid",
-                chunk_size=512,
-                chunk_overlap=64,
-                batch_size=10,
-                vector_store_id="my-vector-store",
-            )
-
-        mock_create_ogx.assert_called_once_with(
-            base_url="https://ogx.example.com",
-            api_key="test-api-key",
-        )
-        mock_index.assert_called_once_with(
-            extracted_text_dir=str(tmp_path / "extracted"),
-            embedding_model_id="embed-v1",
-            vector_io_provider_id="provider-1",
-            ogx_client=mock_ogx_client,
-            embedding_params={"embedding_dimension": 768},
-            distance_metric="cosine",
-            chunking_method="hybrid",
-            chunk_size=512,
-            chunk_overlap=64,
-            batch_size=10,
-            collection_name="my-vector-store",
-        )
+class TestDocumentsIndexingValidation:
+    """Tests for input validation — runs before any API calls."""
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_default_parameters_passed_through(self, tmp_path):
-        """Default parameter values are forwarded to index_documents."""
-        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
-        mock_create_ogx.return_value = mock.MagicMock()
-
-        extracted = mock.MagicMock()
-        extracted.path = str(tmp_path)
-
+    def test_empty_embedding_model_id_raises(self, tmp_path):
+        """Empty embedding_model_id raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
         with mock.patch.dict("sys.modules", modules):
-            documents_indexing.python_func(
-                embedding_model_id="embed-v1",
-                extracted_text=extracted,
-                vector_io_provider_id="provider-1",
-            )
+            with pytest.raises(ValueError, match="embedding_model_id must be a non-empty string"):
+                _call_component(tmp_path, modules, mocks, embedding_model_id="")
 
-        call_kwargs = mock_index.call_args.kwargs
-        assert call_kwargs["distance_metric"] == "cosine"
-        assert call_kwargs["chunking_method"] == "recursive"
-        assert call_kwargs["chunk_size"] == 1024
-        assert call_kwargs["chunk_overlap"] == 0
-        assert call_kwargs["batch_size"] == 20
-        assert call_kwargs["collection_name"] is None
-        assert call_kwargs["embedding_params"] is None
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_validates_before_ogx_connection(self, tmp_path):
+        """Validation errors fire before create_ogx_client is called."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError):
+                _call_component(tmp_path, modules, mocks, embedding_model_id="")
+        mocks["create_ogx_client"].assert_not_called()
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_empty_vector_io_provider_raises(self, tmp_path):
+        """Whitespace-only vector_io_provider_id raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="vector_io_provider_id must be a non-empty string"):
+                _call_component(tmp_path, modules, mocks, vector_io_provider_id="  ")
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_whitespace_embedding_model_id_raises(self, tmp_path):
+        """Whitespace-only embedding_model_id raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="embedding_model_id must be a non-empty string"):
+                _call_component(tmp_path, modules, mocks, embedding_model_id="   ")
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_negative_chunk_overlap_raises(self, tmp_path):
+        """Negative chunk_overlap raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="chunk_overlap must be a non-negative integer"):
+                _call_component(tmp_path, modules, mocks, chunk_overlap=-1)
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_invalid_chunking_method_raises(self, tmp_path):
+        """Unsupported chunking_method raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="chunking_method.*is not supported"):
+                _call_component(tmp_path, modules, mocks, chunking_method="semantic")
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_chunk_size_out_of_range_raises(self, tmp_path):
+        """Out-of-range chunk_size raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="chunk_size must be an integer in the range"):
+                _call_component(tmp_path, modules, mocks, chunk_size=64)
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_negative_batch_size_raises(self, tmp_path):
+        """Negative batch_size raises ValueError."""
+        modules, mocks = _make_ai4rag_mocks()
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(ValueError, match="batch_size must be a non-negative integer"):
+                _call_component(tmp_path, modules, mocks, batch_size=-1)
 
     def test_missing_ogx_env_raises_key_error(self, tmp_path):
         """Missing OGX env vars raise KeyError."""
-        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
-
-        extracted = mock.MagicMock()
-        extracted.path = str(tmp_path)
-
+        modules, mocks = _make_ai4rag_mocks()
         with mock.patch.dict("os.environ", {}, clear=True):
             with mock.patch.dict("sys.modules", modules):
                 with pytest.raises(KeyError):
-                    documents_indexing.python_func(
-                        embedding_model_id="embed-v1",
-                        extracted_text=extracted,
-                        vector_io_provider_id="provider-1",
-                    )
+                    _call_component(tmp_path, modules, mocks, filenames=["doc.json"])
+
+
+class TestDocumentsIndexingProcessing:
+    """Tests for the document processing pipeline."""
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_propagates_ai4rag_exception(self, tmp_path):
-        """Exceptions from ai4rag are propagated to the caller."""
-        modules, mock_create_ogx, mock_index = _make_ai4rag_mocks()
-        mock_create_ogx.return_value = mock.MagicMock()
-        mock_index.side_effect = ValueError("embedding_model_id must be a non-empty string.")
+    def test_creates_ogx_client_from_env(self, tmp_path):
+        """OGX client is created with correct env var values."""
+        modules, mocks = _make_ai4rag_mocks()
+        _call_component(tmp_path, modules, mocks)
+        mocks["create_ogx_client"].assert_called_once_with(
+            base_url="https://ogx.example.com",
+            api_key="test-api-key",
+        )
 
-        extracted = mock.MagicMock()
-        extracted.path = str(tmp_path)
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_recursive_chunker_selected(self, tmp_path):
+        """chunking_method='recursive' instantiates LangChainChunker."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["LangChainChunker"].return_value.split_documents.return_value = []
+        _call_component(
+            tmp_path,
+            modules,
+            mocks,
+            filenames=["a.json"],
+            chunking_method="recursive",
+            chunk_size=512,
+            chunk_overlap=64,
+        )
+        mocks["LangChainChunker"].assert_called_once_with(method="recursive", chunk_size=512, chunk_overlap=64)
+        mocks["DoclingChunker"].assert_not_called()
 
-        with mock.patch.dict("sys.modules", modules):
-            with pytest.raises(ValueError, match="embedding_model_id must be a non-empty string"):
-                documents_indexing.python_func(
-                    embedding_model_id="",
-                    extracted_text=extracted,
-                    vector_io_provider_id="provider-1",
-                )
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_hybrid_chunker_selected(self, tmp_path):
+        """chunking_method='hybrid' instantiates DoclingChunker."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingChunker"].return_value.split_documents.return_value = []
+        _call_component(tmp_path, modules, mocks, filenames=["a.json"], chunking_method="hybrid", chunk_size=512)
+        mocks["DoclingChunker"].assert_called_once_with(max_tokens=512)
+        mocks["LangChainChunker"].assert_not_called()
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_documents_loaded_and_indexed(self, tmp_path):
+        """Documents are loaded, chunked, and passed to the vector store."""
+        modules, mocks = _make_ai4rag_mocks()
+        mock_doc = mock.MagicMock(name="loaded_doc")
+        mocks["DoclingDocument"].load_from_json.return_value = mock_doc
+
+        fake_chunks = [mock.MagicMock(name="chunk_1"), mock.MagicMock(name="chunk_2")]
+        mocks["LangChainChunker"].return_value.split_documents.return_value = fake_chunks
+
+        _call_component(tmp_path, modules, mocks, filenames=["doc1.json", "doc2.json"])
+
+        assert mocks["DoclingDocument"].load_from_json.call_count == 2
+        ogx_vs_instance = mocks["OGXVectorStore"].return_value
+        ogx_vs_instance.add_documents.assert_called_once()
+        added_chunks = ogx_vs_instance.add_documents.call_args[0][0]
+        assert len(added_chunks) == 4  # 2 chunks per doc × 2 docs
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_empty_directory_no_vector_store_calls(self, tmp_path):
+        """Empty directory produces no vector store calls and an empty report."""
+        modules, mocks = _make_ai4rag_mocks()
+        _call_component(tmp_path, modules, mocks, filenames=[])
+
+        mocks["OGXVectorStore"].assert_not_called()
+        mocks["DoclingDocument"].load_from_json.assert_not_called()
+
+        report_path = tmp_path / "indexing_report.json"
+        assert report_path.exists()
+        data = json.loads(report_path.read_text())
+        assert data["total_documents"] == 0
+        assert data["completed"] == 0
+        assert data["documents"] == []
+        assert "settings" in data
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_vector_store_receives_collection_name(self, tmp_path):
+        """vector_store_id is forwarded as reuse_collection_name."""
+        modules, mocks = _make_ai4rag_mocks()
+        _call_component(tmp_path, modules, mocks, filenames=["a.json"], vector_store_id="my-collection")
+        call_kwargs = mocks["OGXVectorStore"].call_args.kwargs
+        assert call_kwargs["reuse_collection_name"] == "my-collection"
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_vector_store_no_collection_name_when_none(self, tmp_path):
+        """vector_store_id=None does not pass reuse_collection_name."""
+        modules, mocks = _make_ai4rag_mocks()
+        _call_component(tmp_path, modules, mocks, filenames=["a.json"], vector_store_id=None)
+        call_kwargs = mocks["OGXVectorStore"].call_args.kwargs
+        assert "reuse_collection_name" not in call_kwargs
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_default_parameters(self, tmp_path):
+        """Default values for optional parameters."""
+        sig = inspect.signature(documents_indexing.python_func)
+        assert sig.parameters["chunking_method"].default == "recursive"
+        assert sig.parameters["chunk_size"].default == 1024
+        assert sig.parameters["chunk_overlap"].default == 0
+        assert sig.parameters["batch_size"].default == 20
+        assert sig.parameters["vector_store_id"].default is None
+        assert sig.parameters["embedding_params"].default is None
+
+
+class TestDocumentsIndexingErrorHandling:
+    """Tests for per-document error resilience."""
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_failed_document_skipped_and_reported(self, tmp_path):
+        """A failing document is skipped; others are still indexed."""
+        modules, mocks = _make_ai4rag_mocks()
+
+        good_doc = mock.MagicMock(name="good_doc")
+        good_chunks = [mock.MagicMock(name="chunk")]
+
+        def load_side_effect(path):
+            if "bad" in str(path):
+                raise ValueError("Corrupt JSON")
+            return good_doc
+
+        mocks["DoclingDocument"].load_from_json.side_effect = load_side_effect
+        mocks["LangChainChunker"].return_value.split_documents.return_value = good_chunks
+
+        _call_component(
+            tmp_path,
+            modules,
+            mocks,
+            filenames=["good1.json", "bad.json", "good2.json"],
+        )
+
+        ogx_vs = mocks["OGXVectorStore"].return_value
+        ogx_vs.add_documents.assert_called_once()
+        added = ogx_vs.add_documents.call_args[0][0]
+        assert len(added) == 2  # only the 2 good docs' chunks
+
+        report_path = tmp_path / "indexing_report.json"
+        data = json.loads(report_path.read_text())
+        assert data["total_documents"] == 3
+        assert data["completed"] == 2
+        assert data["failed"] == 1
+
+        failed_entry = next(e for e in data["documents"] if e["status"] == "failed")
+        assert failed_entry["file"] == "bad.json"
+        assert "Corrupt JSON" in failed_entry["error"]
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_all_documents_fail_produces_report_no_vector_insert(self, tmp_path):
+        """When every document fails, no vector store insert occurs."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.side_effect = ValueError("bad")
+
+        _call_component(tmp_path, modules, mocks, filenames=["a.json", "b.json"])
+
+        ogx_vs = mocks["OGXVectorStore"].return_value
+        ogx_vs.add_documents.assert_not_called()
+
+        report_path = tmp_path / "indexing_report.json"
+        data = json.loads(report_path.read_text())
+        assert data["completed"] == 0
+        assert data["failed"] == 2
+        assert data["total_chunks"] == 0
+
+
+class TestDocumentsIndexingReport:
+    """Tests for the indexing report artifact."""
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_report_json_structure(self, tmp_path):
+        """Report contains expected top-level keys and per-document entries."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.return_value = mock.MagicMock()
+        fake_chunks = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
+        mocks["LangChainChunker"].return_value.split_documents.return_value = fake_chunks
+
+        _call_component(tmp_path, modules, mocks, filenames=["d1.json", "d2.json"])
+
+        report_path = tmp_path / "indexing_report.json"
+        assert report_path.exists()
+        data = json.loads(report_path.read_text())
+
+        assert data["total_documents"] == 2
+        assert data["completed"] == 2
+        assert data["failed"] == 0
+        assert data["total_chunks"] == 6  # 3 chunks × 2 docs
+        assert len(data["documents"]) == 2
+        for entry in data["documents"]:
+            assert entry["status"] == "completed"
+            assert entry["chunks"] == 3
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_report_metadata_set(self, tmp_path):
+        """Report artifact metadata is populated."""
+        modules, mocks = _make_ai4rag_mocks()
+        report, _ = _call_component(tmp_path, modules, mocks, filenames=[])
+
+        assert report.metadata["display_name"] == "Documents Indexing Report"
+        assert report.metadata["total_documents"] == 0
+        assert report.metadata["completed"] == 0
+        assert report.metadata["failed"] == 0
+        assert report.metadata["total_chunks"] == 0
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_report_contains_settings_section(self, tmp_path):
+        """Report includes settings with vector store, chunking, and embedding config."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.return_value = mock.MagicMock()
+        mocks["LangChainChunker"].return_value.split_documents.return_value = [mock.MagicMock()]
+        mocks["OGXVectorStore"].return_value.collection_name = "vs_auto_generated"
+        mocks["OGXEmbeddingModel"].return_value.params = _FakeEmbeddingParams(
+            embedding_dimension=1024,
+            context_length=8192,
+        )
+
+        _call_component(
+            tmp_path,
+            modules,
+            mocks,
+            filenames=["doc.json"],
+            vector_io_provider_id="milvus-remote",
+            embedding_model_id="bge-m3",
+            embedding_params={"embedding_dimension": 1024},
+            chunking_method="recursive",
+            chunk_size=256,
+            chunk_overlap=64,
+        )
+
+        report_path = tmp_path / "indexing_report.json"
+        data = json.loads(report_path.read_text())
+
+        assert "settings" in data
+        settings = data["settings"]
+        assert settings["vector_store_binding"]["provider_id"] == "milvus-remote"
+        assert settings["vector_store_binding"]["vector_store_id"] == "vs_auto_generated"
+        assert settings["chunking"]["method"] == "recursive"
+        assert settings["chunking"]["chunk_size"] == 256
+        assert settings["chunking"]["chunk_overlap"] == 64
+        assert settings["embedding"]["model_id"] == "bge-m3"
+        assert settings["embedding"]["embedding_params"]["embedding_dimension"] == 1024
+        assert settings["embedding"]["embedding_params"]["context_length"] == 8192
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_report_settings_in_empty_directory(self, tmp_path):
+        """Empty directory report includes settings with user-provided vector_store_id."""
+        modules, mocks = _make_ai4rag_mocks()
+
+        _call_component(tmp_path, modules, mocks, filenames=[], vector_store_id=None)
+
+        report_path = tmp_path / "indexing_report.json"
+        data = json.loads(report_path.read_text())
+        assert "settings" in data
+        assert data["settings"]["vector_store_binding"]["vector_store_id"] is None
+        assert data["settings"]["chunking"]["method"] == "recursive"
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_report_settings_resolved_embedding_params(self, tmp_path):
+        """Embedding params in settings reflect resolved values from the model."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.return_value = mock.MagicMock()
+        mocks["LangChainChunker"].return_value.split_documents.return_value = [mock.MagicMock()]
+
+        _call_component(tmp_path, modules, mocks, filenames=["doc.json"], embedding_params=None)
+
+        report_path = tmp_path / "indexing_report.json"
+        data = json.loads(report_path.read_text())
+        emb_params = data["settings"]["embedding"]["embedding_params"]
+        assert "embedding_dimension" in emb_params
+        assert "context_length" in emb_params
+
+
+class TestDocumentsIndexingHtmlReport:
+    """Tests for the HTML report artifact."""
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_html_report_written(self, tmp_path):
+        """HTML report is written with expected structure and content."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.return_value = mock.MagicMock()
+        fake_chunks = [mock.MagicMock(), mock.MagicMock()]
+        mocks["LangChainChunker"].return_value.split_documents.return_value = fake_chunks
+        mocks["OGXVectorStore"].return_value.collection_name = "vs_abc"
+
+        _, html = _call_component(
+            tmp_path,
+            modules,
+            mocks,
+            filenames=["doc1.json", "doc2.json"],
+            vector_io_provider_id="milvus-remote",
+            embedding_model_id="bge-m3",
+            chunking_method="recursive",
+            chunk_size=512,
+        )
+
+        html_path = Path(html.path)
+        assert html_path.exists()
+
+        html_text = html_path.read_text(encoding="utf-8")
+        assert "Documents Indexing Report" in html_text
+        assert "doc1.json" in html_text
+        assert "doc2.json" in html_text
+        assert "completed" in html_text.lower()
+        assert "milvus-remote" in html_text
+        assert "bge-m3" in html_text
+        assert "vs_abc" in html_text
+        assert html.metadata["display_name"] == "Documents Indexing Report"
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_html_report_shows_failed_documents(self, tmp_path):
+        """HTML report shows failed status badge for failed documents."""
+        modules, mocks = _make_ai4rag_mocks()
+        mocks["DoclingDocument"].load_from_json.side_effect = ValueError("Bad format")
+
+        _, html = _call_component(tmp_path, modules, mocks, filenames=["bad.json"])
+
+        html_text = Path(html.path).read_text(encoding="utf-8")
+        assert "failed" in html_text.lower()
+        assert "bad.json" in html_text
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_html_report_written_for_empty_directory(self, tmp_path):
+        """HTML report is generated even when no documents are found."""
+        modules, mocks = _make_ai4rag_mocks()
+
+        _, html = _call_component(tmp_path, modules, mocks, filenames=[])
+
+        html_path = Path(html.path)
+        assert html_path.exists()
+        html_text = html_path.read_text(encoding="utf-8")
+        assert "Documents Indexing Report" in html_text
+        assert "No documents were found" in html_text
+        assert html.metadata["display_name"] == "Documents Indexing Report"

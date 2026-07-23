@@ -174,6 +174,9 @@ def documents_rag_optimization_pipeline(
         test_data=test_data_loader_task.outputs["test_data"],
         search_space_prep_report=mps_task.outputs["search_space_prep_report"],
         vector_io_provider_id=vector_io_provider_id,
+        ogx_secret_name=ogx_secret_name,
+        input_data_secret_name=input_data_secret_name,
+        input_data_bucket_name=input_data_bucket_name,
         optimization_settings={
             "metric": optimization_metric,
             "max_number_of_rag_patterns": optimization_max_rag_patterns,

@@ -10,6 +10,9 @@ from kfp_components.components.training.autorag.rag_templates_optimization impor
 def example_pipeline(
     test_data_key: str = "questions",
     vector_io_provider_id: str = "milvus",
+    ogx_secret_name: str = "ogx-connection",
+    input_data_secret_name: str = "s3-input-connection",
+    input_data_bucket_name: str = "my-bucket",
     input_data_key: str = "",
 ):
     """Example pipeline using rag_templates_optimization.
@@ -17,6 +20,9 @@ def example_pipeline(
     Args:
         test_data_key: Key for the test data.
         vector_io_provider_id: Vector I/O provider identifier.
+        ogx_secret_name: Name of the K8s secret with OGX credentials.
+        input_data_secret_name: Name of the K8s secret with S3 credentials.
+        input_data_bucket_name: S3 bucket containing input documents.
         input_data_key: Key for the input data.
     """
     extracted_text = dsl.importer(
@@ -37,5 +43,8 @@ def example_pipeline(
         search_space_prep_report=search_space_prep_report.output,
         test_data_key=test_data_key,
         vector_io_provider_id=vector_io_provider_id,
+        ogx_secret_name=ogx_secret_name,
+        input_data_secret_name=input_data_secret_name,
+        input_data_bucket_name=input_data_bucket_name,
         input_data_key=input_data_key,
     )
