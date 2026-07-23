@@ -1,9 +1,11 @@
 """Unit tests for the documents_indexing_pipeline pipeline."""
 
+import inspect
 import tempfile
 from pathlib import Path
 
 from kfp import compiler
+from kfp_components.components.data_processing.autorag.documents_indexing.component import documents_indexing
 from kfp_components.utils.pipeline_dag_tasks import (
     assert_compiled_pipeline_root_dag_task_ids,
     load_pipeline_spec_document,
@@ -127,3 +129,13 @@ class TestDocumentsIndexingPipelineUnit:
             AUTORAG_INDEXING_EXECUTOR_RESOURCES,
             pipeline_name="documents_indexing_pipeline",
         )
+
+    def test_chunk_defaults_match_component(self):
+        """Pipeline chunk_size/chunk_overlap defaults stay in sync with the component."""
+        pipeline_sig = inspect.signature(documents_indexing_pipeline.pipeline_func)
+        component_sig = inspect.signature(documents_indexing.python_func)
+        for param in ("chunk_size", "chunk_overlap"):
+            assert pipeline_sig.parameters[param].default == component_sig.parameters[param].default, (
+                f"pipeline default for {param} ({pipeline_sig.parameters[param].default}) "
+                f"diverged from component ({component_sig.parameters[param].default})"
+            )

@@ -143,6 +143,9 @@ packages = [
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json"]
+"kfp_components.components.data_processing.autorag.documents_indexing" = [
+    "*.html",
+]
 "kfp_components.components.training.automl.shared" = [
     "*.html",
     "run_status_templates/pipelines/*.json",
