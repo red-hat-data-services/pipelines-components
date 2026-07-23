@@ -1,6 +1,6 @@
 # Documents Indexing Pipeline ✨
 
-> ⚠️ **Stability: alpha** — This asset is not yet stable and may change.
+> ⚠️ **Stability: beta** — This asset is not yet stable and may change.
 
 ## Overview 🧾
 
@@ -29,7 +29,8 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
 ## Metadata 🗂️
 
 - **Name**: documents-indexing-pipeline
-- **Stability**: alpha
+- **Stability**: beta
+- **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
