@@ -31,7 +31,6 @@ def documents_indexing_pipeline(
     input_data_key: Optional[str] = None,
     vector_store_id: str = None,
     embedding_params: Optional[dict] = None,
-    distance_metric: str = "cosine",
     chunking_method: str = "recursive",
     chunk_size: int = 1024,
     chunk_overlap: int = 0,
@@ -56,10 +55,9 @@ def documents_indexing_pipeline(
             ``pattern.json`` ``settings.vector_store_binding.vector_store_id``).
             Omit to create a new collection.
         embedding_params: Dict passed to OGXEmbeddingParams (default: {}).
-        distance_metric: Vector distance metric (e.g. "cosine").
         chunking_method: Chunking method (e.g. "recursive").
-        chunk_size: Chunk size in characters.
-        chunk_overlap: Chunk overlap in characters.
+        chunk_size: Maximum chunk size in tokens (128--2048).
+        chunk_overlap: Token overlap between consecutive chunks (recursive method only).
         batch_size: Number of documents per batch. Defaults to ``20``; ``0`` processes all
             documents in a single batch.
     """
@@ -85,7 +83,6 @@ def documents_indexing_pipeline(
         embedding_model_id=embedding_model_id,
         extracted_text=text_extraction_task.outputs["extracted_text"],
         vector_io_provider_id=vector_io_provider_id,
-        distance_metric=distance_metric,
         chunking_method=chunking_method,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
