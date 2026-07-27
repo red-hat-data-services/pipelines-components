@@ -6,6 +6,7 @@ from kfp_components.utils.consts import AUTOML_IMAGE  # pyright: ignore[reportMi
 
 @dsl.component(
     base_image=AUTOML_IMAGE,  # noqa: E501
+    install_kfp_package=False,
 )
 def autogluon_models_training(
     label_column: str,

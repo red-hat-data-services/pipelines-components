@@ -6,6 +6,7 @@ from kfp_components.utils.consts import AUTOML_IMAGE  # pyright: ignore[reportMi
 
 @dsl.component(
     base_image=AUTOML_IMAGE,  # noqa: E501
+    install_kfp_package=False,
 )
 def automl_data_loader(  # noqa: D417
     file_key: str,

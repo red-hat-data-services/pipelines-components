@@ -10,6 +10,7 @@ from kfp_components.utils.consts import AUTOML_IMAGE  # pyright: ignore[reportMi
 
 @dsl.component(
     base_image=AUTOML_IMAGE,
+    install_kfp_package=False,
 )
 def publish_component_stage_map(
     pipeline_id: str,

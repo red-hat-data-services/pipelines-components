@@ -9,6 +9,7 @@ _AUTORAG_SHARED = Path(__file__).parents[3] / "training" / "autorag" / "shared"
 @dsl.component(
     base_image=AUTORAG_IMAGE,  # noqa: E501
     embedded_artifact_path=str(_AUTORAG_SHARED / "component_status.py"),
+    install_kfp_package=False,
 )
 def test_data_loader(
     test_data_bucket_name: str,
