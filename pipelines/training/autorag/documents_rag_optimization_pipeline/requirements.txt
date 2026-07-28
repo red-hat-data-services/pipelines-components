@@ -1,12 +1,12 @@
---index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9-test/simple
+--index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
 
 accelerate==1.14.0 \
     --hash=sha256:d39aacabf33ce9a0f9313e5d085752b1232db66a7dcdbd5a8cc0a64a86e8cd9d
     # via
     #   docling-ibm-models
     #   docling-slim
-ai4rag==0.10.3 \
-    --hash=sha256:0e8b1e080e8963b2856ae0134dcd13191283248698085505cfccfaf5984fc1f1
+ai4rag==0.10.4 \
+    --hash=sha256:6a8cf6da8e84d6ec1da190caedf58a5b610ff6eff2d53dca54c87510618b7f09
     # via -r requirements.in
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:148c42ea64254eff51702e3643744a5d29e19f1cc7f1adcfb2289d7ac711ae80
