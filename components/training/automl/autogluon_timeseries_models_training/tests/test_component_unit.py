@@ -1192,3 +1192,117 @@ class TestLeaderboardPhase:
         context = models_artifact.metadata["context"]
         assert "best_model_name" in context
         assert context["best_model_name"] == result.best_model_name
+
+
+class TestPredictorMetadata:
+    """Verify predictor_metadata.json is written for each refit model."""
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_predictor_metadata_json_written(
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+    ):
+        """predictor/predictor_metadata.json exists and captures selected-model config."""
+        models_artifact, extra_train_path, html_artifact = mock_artifacts
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+
+        mock_refit_predictor = mock.MagicMock()
+        mock_refit_predictor.evaluate.return_value = {"MASE": 0.5}
+
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="product_id",
+            timestamp_column="date",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            prediction_length=7,
+            eval_metric="MASE",
+            html_artifact=html_artifact,
+            component_status=_DEFAULT_COMPONENT_STATUS,
+        )
+
+        metadata_path = Path(models_artifact.path) / "DeepAR_FULL" / "predictor" / "predictor_metadata.json"
+        assert metadata_path.exists()
+        metadata = json.loads(metadata_path.read_text())
+        assert metadata == {
+            "model_name": "DeepAR_FULL",
+            "base_model": "DeepAR",
+            "prediction_length": 7,
+            "eval_metric": "mean_absolute_scaled_error",
+            "target": "sales",
+            "id_column": "product_id",
+            "timestamp_column": "date",
+            "known_covariates_names": [],
+        }
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_predictor_metadata_includes_known_covariates(
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+    ):
+        """predictor_metadata.json records the covariate columns the model was trained with."""
+        models_artifact, extra_train_path, html_artifact = mock_artifacts
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+
+        mock_refit_predictor = mock.MagicMock()
+        mock_refit_predictor.evaluate.return_value = {"MASE": 0.5}
+
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="product_id",
+            timestamp_column="date",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            prediction_length=7,
+            known_covariates_names=["promo", "temperature"],
+            html_artifact=html_artifact,
+            component_status=_DEFAULT_COMPONENT_STATUS,
+        )
+
+        metadata_path = Path(models_artifact.path) / "DeepAR_FULL" / "predictor" / "predictor_metadata.json"
+        metadata = json.loads(metadata_path.read_text())
+        assert metadata["known_covariates_names"] == ["promo", "temperature"]
