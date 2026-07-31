@@ -364,6 +364,21 @@ def autogluon_timeseries_models_training(
                         "and was dropped from metrics. Cannot produce a valid leaderboard entry."
                     )
 
+                # Save additional metadata about the selected model
+                predictor_metadata = {
+                    "model_name": model_name_full,
+                    "base_model": model_name,
+                    "prediction_length": prediction_length,
+                    "eval_metric": eval_metric,
+                    "target": target,
+                    "id_column": id_column,
+                    "timestamp_column": timestamp_column,
+                    "known_covariates_names": known_covariates_names or [],
+                }
+                predictor_output.mkdir(parents=True, exist_ok=True)
+                with (predictor_output / "predictor_metadata.json").open("w", encoding="utf-8") as f:
+                    json.dump(predictor_metadata, f, indent=2)
+
                 metrics_path = output_path / "metrics"
                 metrics_path.mkdir(parents=True, exist_ok=True)
                 with (metrics_path / "metrics.json").open("w", encoding="utf-8") as f:
