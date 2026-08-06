@@ -172,3 +172,34 @@ sniffio==1.3.1
 termcolor==3.3.0
 wcwidth==0.6.0
 
+antlr4-python3-runtime==4.9.3
+    # via omegaconf
+colorlog==6.10.1
+    # via rapidocr
+docling-slim==2.94.0
+    # via docling
+omegaconf==2.3.1
+    # via rapidocr
+opencv-python==4.13.0.92
+    # via rapidocr
+pyclipper==1.4.0
+    # via rapidocr
+pyyaml==6.0.3
+    # via
+    #   accelerate
+    #   chromadb
+    #   datasets
+    #   docling-core
+    #   huggingface-hub
+    #   kubernetes
+    #   langchain-core
+    #   omegaconf
+    #   pyaml
+    #   rapidocr
+    #   transformers
+    #   uvicorn
+rapidocr==3.8.1
+    # via docling-slim
+shapely==2.1.2
+    # via rapidocr
+
