@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu@sha256:2f93df7e0b1b823bb63311f38b91cb8e0dc305d588813815dd4f77061fd15585"
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu@sha256:c82f534ada384930cdfc64bee4721a4553c7f6a3e35eee47e2399d5095e4b698"
 
 ## Build stage: build a kfp-components wheel from the local source tree
 FROM ${BASE_IMAGE} AS builder
