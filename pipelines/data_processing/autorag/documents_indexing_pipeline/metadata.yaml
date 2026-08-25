@@ -7,8 +7,6 @@ dependencies:
     - name: Pipelines
       version: '>=2.15.2'
   external_services:
-    - name: docling
-      version: ">=2.72.0"
     - name: boto3
       version: ">=1.42.34"
     - name: ai4rag

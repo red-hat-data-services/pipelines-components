@@ -5,9 +5,6 @@ dependencies:
   kubeflow:
     - name: Pipelines
       version: '>=2.15.2'
-  external_services:
-    - name: docling
-      version: ">=1.0.0"
 tags:
   - data-processing
   - autorag

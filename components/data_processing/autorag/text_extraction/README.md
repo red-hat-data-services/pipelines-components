@@ -47,8 +47,6 @@ def example_pipeline():
 - **Dependencies**:
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
-  - External Services:
-    - Name: docling, Version: >=1.0.0
 - **Tags**:
   - data-processing
   - autorag

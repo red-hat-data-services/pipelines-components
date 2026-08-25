@@ -45,7 +45,6 @@ deployment settings), executable notebooks, and evaluation results.
     - Name: Milvus, Version: >=2.0.0
     - Name: PGVector, Version: >=0.5.0
     - Name: MLFlow, Version: >=2.0.0
-    - Name: docling, Version: >=1.0.0
 - **Tags**:
   - training
   - pipeline
@@ -140,7 +139,7 @@ RAG templates with optimal parameter values, which are referred to as RAG Patter
 
 - **RAG Type**: Documents (documents provided as input)
 - **Supported Languages**: English
-- **Supported Document Types**: PDF, DOCX, PPTX, Markdown, HTML, Plain text
+- **Supported Document Types**: PDF, DOCX, PPTX, Markdown (.md, .qmd, .Rmd), HTML (.html, .xhtml), Plain text, ODT, ODP, AsciiDoc, LaTeX, EPUB, EML
 - **Document Data Sources**: S3 (Amazon S3), Local filesystem (FS)
 
 ### Infrastructure Components
