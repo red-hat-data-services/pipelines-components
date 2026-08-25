@@ -7,16 +7,16 @@ dependencies:
       version: '>=2.15.2'
   external_services:
     - name: ai4rag
-      version: "~=0.10.3"
-    - name: OGX API
-      version: "~=1.1.0"
+      version: "~=0.12.0"
+    - name: MaaS
+      version: ">=1.0.0"
     - name: Milvus
       version: ">=2.0.0"
-    - name: Milvus Lite
-      version: ">=2.0.0"
+    - name: PGVector
+      version: ">=0.5.0"
 tags:
   - training
   - autorag
   - optimization
   - rag-patterns
-lastVerified: 2026-07-20T00:00:00Z
+lastVerified: 2026-08-24T00:00:00Z
