@@ -38,6 +38,9 @@ Reads the static JSON template from the embedded artifact (``run_status_template
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
+    - filip-komarzyniec
+    - jakub-walaszczyk
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR

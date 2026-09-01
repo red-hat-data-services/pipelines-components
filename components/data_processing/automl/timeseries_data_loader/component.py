@@ -298,7 +298,7 @@ def timeseries_data_loader(
         status.record(
             "prepare_data",
             "running",
-            source=f"s3://{bucket_name}/{file_key}",
+            metrics={"source": f"s3://{bucket_name}/{file_key}"},
         )
         df = load_timeseries_data_truncate(bucket_name, file_key, MAX_SIZE_BYTES, PANDAS_CHUNK_SIZE)
 
@@ -325,7 +325,7 @@ def timeseries_data_loader(
                 "Provide a larger dataset or fix invalid timestamps, null ids, and duplicate keys."
             )
 
-        status.record("prepare_data", "completed", rows=n_valid)
+        status.record("prepare_data", "completed", metrics={"rows": n_valid})
         status.record("split_and_export", "started")
 
         # Create workspace datasets directory
@@ -406,8 +406,7 @@ def timeseries_data_loader(
         status.record(
             "split_and_export",
             "completed",
-            test_size=test_size,
-            selection_train_size=selection_train_size,
+            metrics={"test_size": test_size, "selection_train_size": selection_train_size},
         )
 
         logger.info(

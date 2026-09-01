@@ -6,7 +6,7 @@ The dashboard aggregates component statuses to show overall pipeline progress.
 Usage:
     with ComponentStatusTracker(artifact.path, "autogluon_models_training") as status:
         status.record("load_data", "started")
-        status.record("load_data", "completed", rows=1000)
+        status.record("load_data", "completed", metrics={"rows": 1000})
         with status.stage("model_selection"):
             ...  # marks started/completed; marks failed on exception
     # context exit saves best-effort and marks active stage failed on error
@@ -31,6 +31,8 @@ STATUS_STARTED = "started"
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
+
+_VALID_STATES = frozenset({STATUS_STARTED, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED})
 
 
 class ComponentStatusEncoder(json.JSONEncoder):
@@ -59,6 +61,10 @@ class ComponentStatusTracker:
 
     Publishes component-local status to an artifact without requiring workspace.
     Each component independently tracks its stages and metadata.
+
+    Emits the canonical AutoX component_status.json schema: each stage carries a
+    nested ``status`` object (state, optional step/message/running_at), an optional
+    ``metrics`` bag for counters, and an optional ``error`` string.
     """
 
     def __init__(self, artifact_path: str, component_id: str) -> None:
@@ -72,44 +78,69 @@ class ComponentStatusTracker:
         self.component_id = component_id
         self.stages: list[dict[str, Any]] = []
         self.started_at = utc_now_z()
+        self.completed_at: str | None = None
         self.metadata: dict[str, Any] = {}
 
-    def record(self, stage_id: str, status: str, **metadata: Any) -> None:
+    def record(
+        self,
+        stage_id: str,
+        state: str,
+        *,
+        step: str | None = None,
+        message: dict[str, str] | None = None,
+        metrics: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
         """Record or update a stage's status.
 
         If the stage already exists, it will be updated. Otherwise, a new stage is appended.
 
         Args:
             stage_id: Stage identifier (e.g., "load_data", "model_selection").
-            status: Stage status ("started", "running", "completed", "failed").
-            **metadata: Additional stage data (e.g., rows=1000, steps=["step1", "step2"]).
-
-        Example:
-            status.record("load_data", "completed", rows=1000, duration_seconds=5.2)
-            status.record("model_selection", "completed",
-                         steps=["feature_eng", "training", "stacking"],
-                         models_trained=15)
+            state: Stage state ("started", "running", "completed", "failed").
+            step: Current sub-step id. Only when the stage map lists steps[].
+            message: Status message dict with "level" (info/warning/error) and "text".
+            metrics: Counters and measurements for this stage (e.g., {"rows": 1000}).
+            error: Error description. Only when state is "failed".
         """
+        if state not in _VALID_STATES:
+            raise ValueError(f"state must be one of {sorted(_VALID_STATES)}; got {state!r}")
+
+        status_obj: dict[str, Any] = {"state": state}
+        if step is not None:
+            status_obj["step"] = step
+        if message is not None:
+            status_obj["message"] = message
+        if state == STATUS_RUNNING:
+            status_obj["running_at"] = utc_now_z()
+
+        stage_data: dict[str, Any] = {"id": stage_id, "status": status_obj}
+        if metrics:
+            stage_data["metrics"] = metrics
+        if error is not None:
+            stage_data["error"] = error
+
         existing_idx = next((i for i, s in enumerate(self.stages) if s["id"] == stage_id), None)
 
-        stage_data = {
-            "id": stage_id,
-            "status": status,
-            "timestamp": utc_now_z(),
-            **metadata,
-        }
-
         if existing_idx is not None:
-            self.stages[existing_idx].update(stage_data)
+            existing = self.stages[existing_idx]
+            existing["status"] = stage_data["status"]
+            if "metrics" in stage_data:
+                existing.setdefault("metrics", {}).update(stage_data["metrics"])
+            if state == STATUS_FAILED:
+                if "error" in stage_data:
+                    existing["error"] = stage_data["error"]
+            else:
+                existing.pop("error", None)
         else:
             self.stages.append(stage_data)
 
         logger.info(
-            "COMPONENT_STATUS component=%s stage=%s status=%s %s",
+            "COMPONENT_STATUS component=%s stage=%s state=%s%s",
             self.component_id,
             stage_id,
-            status,
-            " ".join(f"{k}={v}" for k, v in metadata.items()),
+            state,
+            f" metrics={metrics}" if metrics else "",
         )
 
     def set_metadata(self, **metadata: Any) -> None:
@@ -117,11 +148,18 @@ class ComponentStatusTracker:
 
         Args:
             **metadata: Key-value pairs to store at component level.
-
-        Example:
-            status.set_metadata(total_training_time_seconds=3600, models_produced=5)
+                        Must include display_name before save().
         """
         self.metadata.update(metadata)
+
+    def _is_finished(self) -> bool:
+        """Return True if all recorded stages are completed or any stage has failed."""
+        if not self.stages:
+            return False
+        states = [s["status"]["state"] for s in self.stages]
+        if STATUS_FAILED in states:
+            return True
+        return all(s == STATUS_COMPLETED for s in states)
 
     def save(self) -> None:
         """Write the final status to the artifact.
@@ -131,13 +169,16 @@ class ComponentStatusTracker:
         """
         self.artifact_path.mkdir(parents=True, exist_ok=True)
 
-        data = {
+        data: dict[str, Any] = {
             "component_id": self.component_id,
             "started_at": self.started_at,
-            "completed_at": utc_now_z(),
             "stages": self.stages,
             "metadata": self.metadata,
         }
+
+        if self._is_finished():
+            self.completed_at = self.completed_at or utc_now_z()
+            data["completed_at"] = self.completed_at
 
         output_file = self.artifact_path / COMPONENT_STATUS_FILENAME
         with output_file.open("w", encoding="utf-8") as f:
@@ -169,20 +210,27 @@ class ComponentStatusTracker:
 
         active_statuses = (STATUS_STARTED, STATUS_RUNNING)
         for stage in reversed(self.stages):
-            if stage.get("status") in active_statuses:
+            if stage["status"]["state"] in active_statuses:
                 self.record(stage["id"], STATUS_FAILED, error=error_msg)
                 return
 
-        if self.stages and self.stages[-1].get("status") != STATUS_COMPLETED:
+        if self.stages and self.stages[-1]["status"]["state"] != STATUS_COMPLETED:
             self.record(self.stages[-1]["id"], STATUS_FAILED, error=error_msg)
             return
 
         self.set_metadata(status=STATUS_FAILED, error=error_msg)
 
     @contextmanager
-    def stage(self, stage_id: str, **start_metadata: Any) -> Iterator[None]:
+    def stage(
+        self,
+        stage_id: str,
+        *,
+        step: str | None = None,
+        message: dict[str, str] | None = None,
+        metrics: dict[str, Any] | None = None,
+    ) -> Iterator[None]:
         """Record stage started/completed, or failed when an exception escapes the block."""
-        self.record(stage_id, STATUS_STARTED, **start_metadata)
+        self.record(stage_id, STATUS_STARTED, step=step, message=message, metrics=metrics)
         try:
             yield
         except BaseException as exc:
@@ -191,7 +239,7 @@ class ComponentStatusTracker:
             raise
         else:
             latest = next((s for s in reversed(self.stages) if s["id"] == stage_id), None)
-            if latest is None or latest.get("status") not in (STATUS_COMPLETED, STATUS_FAILED):
+            if latest is None or latest["status"]["state"] not in (STATUS_COMPLETED, STATUS_FAILED):
                 self.record(stage_id, STATUS_COMPLETED)
 
     def __enter__(self) -> ComponentStatusTracker:
@@ -217,10 +265,6 @@ def load_component_status(artifact_path: str) -> dict[str, Any]:
     Returns:
         Dict containing component_id, started_at, completed_at, stages, and metadata.
         Returns empty dict if file doesn't exist or is unreadable.
-
-    Example:
-        status = load_component_status("/path/to/artifact")
-        print(f"Component {status['component_id']} completed {len(status['stages'])} stages")
     """
     status_file = Path(artifact_path) / COMPONENT_STATUS_FILENAME
     if not status_file.exists():

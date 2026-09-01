@@ -21,10 +21,6 @@
       "description": "Train AutoGluon time series models, refit top N, evaluate on holdout, and render leaderboard.",
       "stages": [
         {
-          "id": "load_data",
-          "description": "Load train/test CSVs and build TimeSeriesDataFrames."
-        },
-        {
           "id": "model_selection",
           "description": "Run TimeSeriesPredictor fit on selection train and rank on test.",
           "steps": [

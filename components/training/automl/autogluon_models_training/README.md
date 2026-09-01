@@ -57,6 +57,7 @@ mutates predictor state. All artifacts are written under a single output artifac
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR

@@ -327,8 +327,7 @@ def automl_data_loader(  # noqa: D417
         status.record(
             "prepare_data",
             "running",
-            sampling_method=sampling_method,
-            source=f"s3://{bucket_name}/{file_key}",
+            metrics={"sampling_method": sampling_method, "source": f"s3://{bucket_name}/{file_key}"},
         )
         s3_client = get_s3_client()
         sampled_dataframe = load_data_in_batches(
@@ -396,9 +395,7 @@ def automl_data_loader(  # noqa: D417
         status.record(
             "prepare_data",
             "completed",
-            rows=n_samples,
-            duplicates_dropped=n_dup_dropped,
-            labels_dropped=n_dropped,
+            metrics={"rows": n_samples, "duplicates_dropped": n_dup_dropped, "labels_dropped": n_dropped},
         )
 
         status.record("split_and_export", "started")
@@ -460,9 +457,11 @@ def automl_data_loader(  # noqa: D417
         status.record(
             "split_and_export",
             "completed",
-            test_size=test_size,
-            selection_train_size=selection_train_size,
-            stratify=stratify_effective,
+            metrics={
+                "test_size": test_size,
+                "selection_train_size": selection_train_size,
+                "stratify": stratify_effective,
+            },
         )
 
         # Sample row for downstream use (JSON string to avoid NaN issues)

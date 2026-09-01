@@ -161,7 +161,6 @@ def autogluon_timeseries_models_training(
         split_config = split_config or {}
         time_limit = PRESET_TIME_LIMITS[preset]
 
-        status.record("load_data", "started")
         train_df = pd.read_csv(train_data_path)
         test_df = pd.read_csv(test_data.path)
         logger.info("Loaded train=%s test=%s rows", len(train_df), len(test_df))
@@ -188,12 +187,6 @@ def autogluon_timeseries_models_training(
             train_ts.num_items,
             len(test_ts),
             test_ts.num_items,
-        )
-        status.record(
-            "load_data",
-            "completed",
-            train_rows=len(train_ts),
-            test_rows=len(test_ts),
         )
 
         # Create predictor path in workspace
@@ -243,9 +236,7 @@ def autogluon_timeseries_models_training(
         status.record(
             "model_selection",
             "completed",
-            top_n=top_n,
-            selected_models=top_models,
-            steps=["feature_engineering", "model_training", "stacking", "evaluation"],
+            metrics={"top_n": top_n, "selected_models": top_models},
         )
         logger.info(
             "Timeseries selection done: top_%s=%s best_score_test=%s",
@@ -537,8 +528,7 @@ def autogluon_timeseries_models_training(
         status.record(
             "refit_and_evaluate",
             "completed",
-            model_count=len(model_names_full),
-            eval_metric=eval_metric,
+            metrics={"model_count": len(model_names_full), "eval_metric": eval_metric},
         )
 
         # Phase C: leaderboard generation - uses models_metadata already built in the refit loop
@@ -606,8 +596,7 @@ def autogluon_timeseries_models_training(
         status.record(
             "build_leaderboard",
             "completed",
-            best_model=best_model_name,
-            model_count=n,
+            metrics={"best_model": best_model_name, "model_count": n},
         )
 
         models_artifact.metadata["model_names"] = json.dumps(model_names_full)

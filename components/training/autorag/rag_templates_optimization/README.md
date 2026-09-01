@@ -108,6 +108,9 @@ def example_pipeline(
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
+    - filip-komarzyniec
+    - jakub-walaszczyk
   - Reviewers:
     - filip-komarzyniec
     - jakub-walaszczyk
