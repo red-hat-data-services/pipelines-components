@@ -168,8 +168,6 @@ def autogluon_models_training(
     with status:
         status.set_metadata(display_name="Models Training Status")
         component_status.metadata["display_name"] = "Models Training Status"
-        # Stage: load_data
-        status.record("load_data", "started")
 
         # 1. models selection stage
 
@@ -203,13 +201,6 @@ def autogluon_models_training(
             if extra_train_df.empty:
                 logger.warning("Extra train CSV is empty; passing train_data_extra=None to refit_full.")
                 extra_train_df = None
-
-        status.record(
-            "load_data",
-            "completed",
-            train_rows=len(train_data_df),
-            test_rows=len(test_data_df),
-        )
 
         coerced_positive_class = _coerce_positive_class(positive_class)
         if coerced_positive_class is not None and task_type != "binary":
@@ -260,9 +251,7 @@ def autogluon_models_training(
         status.record(
             "model_selection",
             "completed",
-            top_n=top_n,
-            selected_models=top_models,
-            steps=["feature_engineering", "model_training", "stacking", "evaluation"],
+            metrics={"top_n": top_n, "selected_models": top_models},
         )
 
         model_config = {
@@ -702,8 +691,7 @@ def autogluon_models_training(
         status.record(
             "refit_and_evaluate",
             "completed",
-            model_count=len(model_names_full),
-            eval_metric=str(predictor.eval_metric),
+            metrics={"model_count": len(model_names_full), "eval_metric": str(predictor.eval_metric)},
         )
 
         # Phase C: leaderboard generation - uses eval_results_by_model already in memory
@@ -770,8 +758,7 @@ def autogluon_models_training(
         status.record(
             "build_leaderboard",
             "completed",
-            best_model=best_model_name,
-            model_count=n,
+            metrics={"best_model": best_model_name, "model_count": n},
         )
 
         # Serialize as a JSON string and parse back in downstream components.

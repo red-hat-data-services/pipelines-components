@@ -100,6 +100,7 @@ def example_pipeline(
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
   - Reviewers:
     - Mateusz-Switala
     - DorotaDR

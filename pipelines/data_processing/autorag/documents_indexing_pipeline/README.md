@@ -52,6 +52,9 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
+    - filip-komarzyniec
+    - jakub-walaszczyk
   - Reviewers:
     - LukaszCmielowski
     - DorotaDR

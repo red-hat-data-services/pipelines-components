@@ -21,10 +21,6 @@
       "description": "Train AutoGluon tabular models, refit, evaluate on validation data, and render leaderboard.",
       "stages": [
         {
-          "id": "load_data",
-          "description": "Load train/validation CSVs from the workspace."
-        },
-        {
           "id": "model_selection",
           "description": "Run AutoGluon model selection (fit) with presets and time limits.",
           "steps": [

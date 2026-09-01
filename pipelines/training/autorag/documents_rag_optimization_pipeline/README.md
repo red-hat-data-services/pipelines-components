@@ -56,6 +56,9 @@ deployment settings), executable notebooks, and evaluation results.
   - Approvers:
     - LukaszCmielowski
     - DorotaDR
+    - Mateusz-Switala
+    - filip-komarzyniec
+    - jakub-walaszczyk
   - Reviewers:
     - filip-komarzyniec
     - jakub-walaszczyk

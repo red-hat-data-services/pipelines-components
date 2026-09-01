@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutoRAG component_status.json (canonical)",
+  "description": "Per-component progress artifact emitted by ComponentStatusTracker. Dashboard joins this to the stage map published by component_stage_map_publisher.",
+  "type": "object",
+  "required": ["component_id", "started_at", "stages", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "component_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Must equal run_status_templates components[].id."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC with Z suffix. Set by tracker init."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set only when the component has finished (all stages completed or failed)."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["display_name"],
+      "additionalProperties": true,
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable title shown in the Dashboard."
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stage" },
+      "description": "One object per recorded stage id. Later writes update the same id."
+    }
+  },
+  "$defs": {
+    "statusMessage": {
+      "type": "object",
+      "required": ["level", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["info", "warning", "error"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "stageStatus": {
+      "type": "object",
+      "required": ["state"],
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["started", "running", "completed", "failed"]
+        },
+        "step": {
+          "type": "string",
+          "description": "Current sub-step id. Only when the stage map lists steps[] for this stage."
+        },
+        "message": {
+          "$ref": "#/$defs/statusMessage"
+        },
+        "running_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Auto-set when state is running."
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "required": ["id", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Must equal run_status_templates components[].stages[].id."
+        },
+        "status": {
+          "$ref": "#/$defs/stageStatus"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "array", "null"],
+            "items": { "type": ["string", "number", "boolean"] }
+          },
+          "description": "Counters and measurements. Open key set, snake_case convention."
+        },
+        "error": {
+          "type": "string",
+          "description": "Only when status.state is failed. Prefer 'ExceptionType: message' format."
+        }
+      }
+    }
+  }
+}

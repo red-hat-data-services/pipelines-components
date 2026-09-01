@@ -2,6 +2,7 @@ no_parent_owners: true
 approvers:
   - LukaszCmielowski
   - DorotaDR
+  - Mateusz-Switala
 reviewers:
   - Mateusz-Switala
   - DorotaDR

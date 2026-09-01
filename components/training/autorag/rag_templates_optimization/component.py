@@ -108,13 +108,11 @@ def rag_templates_optimization(
         status = _status_module.bootstrap_status_tracker(
             embedded_artifact, component_status, "rag_templates_optimization"
         )
-    optimize_templates_steps = ["chunking", "embedding", "retrieval", "generation", "evaluation"]
-
     with status:
         if component_status is not None:
             status.set_metadata(display_name="RAG Templates Optimization Status")
             component_status.metadata["display_name"] = "RAG Templates Optimization Status"
-        with status.stage("optimize_templates", steps=optimize_templates_steps):
+        with status.stage("optimize_templates"):
             maas_client = create_maas_client(
                 base_url=os.environ["MAAS_BASE_URL"],
                 api_key=os.environ["MAAS_API_KEY"],
@@ -165,9 +163,10 @@ def rag_templates_optimization(
             status.record(
                 "optimize_templates",
                 "completed",
-                max_rag_patterns=len(result.patterns),
-                selected_patterns=[p.get("name", "") for p in result.patterns],
-                steps=optimize_templates_steps,
+                metrics={
+                    "max_rag_patterns": len(result.patterns),
+                    "selected_patterns": [p.get("name", "") for p in result.patterns],
+                },
             )
 
             rag_patterns.metadata["name"] = "rag_patterns_artifact"

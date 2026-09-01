@@ -2,6 +2,21 @@
 
 Publishes the static component-to-stage-to-step map as a KFP artifact at pipeline start so
 dashboards know the expected structure before components run.
+
+Dashboard contract
+~~~~~~~~~~~~~~~~~~
+The stage map (``component_stage_map.json``) defines the *expected* structure;
+each component then emits a ``component_status.json`` artifact tracking *actual*
+progress against that map.
+
+Join keys:
+- ``component_status.component_id`` == stage-map ``components[].id``
+- ``component_status.stages[].id`` == stage-map ``components[].stages[].id``
+- ``component_status.stages[].status.step`` (when present) must be one of
+  stage-map ``components[].stages[].steps[]``
+
+The canonical JSON Schema for ``component_status.json`` lives in this component
+directory at ``component_status.schema.json``.
 """
 
 from kfp import dsl

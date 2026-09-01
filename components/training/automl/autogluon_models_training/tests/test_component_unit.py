@@ -2036,4 +2036,4 @@ class TestComponentStatusOutput:
         data = load_component_status(status_artifact.path)
         assert data["component_id"] == "autogluon_models_training"
         assert data["stages"]
-        assert data["stages"][-1]["status"] == "completed"
+        assert data["stages"][-1]["status"]["state"] == "completed"
