@@ -7,7 +7,7 @@ dependencies:
       version: '>=2.15.2'
   external_services:
     - name: ai4rag
-      version: "~=0.12.0"
+      version: "~=0.14.0"
 tags:
   - training
   - autorag

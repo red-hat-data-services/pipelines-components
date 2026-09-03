@@ -61,8 +61,8 @@ def documents_discovery(
     import os
     from pathlib import Path
 
-    from ai4rag.components.data.documents_discovery import discover_documents
-    from ai4rag.components.utils.s3 import create_s3_client
+    from ai4rag.utils.clients.s3 import create_s3_client
+    from ai4rag.utils.data import discover_documents
 
     logging.basicConfig(level=logging.INFO)
 
@@ -90,7 +90,7 @@ def documents_discovery(
         load_benchmark = bool(test_data_bucket_name and test_data_path_key)
 
         if load_benchmark:
-            from ai4rag.components.data.test_data_loader import load_test_data
+            from ai4rag.utils.data import load_test_data
 
             with status.stage("load_benchmark"):
                 test_data_s3_client = create_s3_client(

@@ -6,7 +6,7 @@
 
 Text Extraction component.
 
-Thin wrapper that delegates to ``ai4rag.components.data.text_extraction.extract_text``.
+Thin wrapper that delegates to ``ai4rag.utils.data.text_extraction.extract_text``.
 
 ## Inputs 📥
 

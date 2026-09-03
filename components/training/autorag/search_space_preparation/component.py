@@ -54,8 +54,8 @@ def search_space_preparation(
     ensure_sqlite3()
 
     import pandas as pd
-    from ai4rag.components.utils import create_maas_client
     from ai4rag.search_space.prepare import build_search_space_report, prepare_search_space_with_maas
+    from ai4rag.utils.clients import create_maas_client
 
     logging.basicConfig(level=logging.INFO)
 

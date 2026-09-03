@@ -39,7 +39,7 @@ deployment settings), executable notebooks, and evaluation results.
   - Kubeflow:
     - Name: Pipelines, Version: 2.16.1
   - External Services:
-    - Name: ai4rag, Version: ~=0.12.0
+    - Name: ai4rag, Version: ~=0.14.0
     - Name: MaaS, Version: >=1.0.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0

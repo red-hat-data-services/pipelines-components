@@ -81,14 +81,14 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: RHOAI Connections API, Version: >=1.0.0
-    - Name: ai4rag, Version: ~=0.12.0
+    - Name: ai4rag, Version: ~=0.14.0
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
     - Name: PGVector, Version: >=0.5.0
 - **Tags**:
   - data-indexing
   - autorag
-- **Last Verified**: 2026-08-24 00:00:00+00:00
+- **Last Verified**: 2026-09-02 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

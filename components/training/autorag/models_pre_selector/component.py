@@ -119,14 +119,14 @@ def models_pre_selector(
                 )
 
                 import pandas as pd
-                from ai4rag.components.utils import create_maas_client
-                from ai4rag.components.utils.docling_io import load_docling_documents
                 from ai4rag.core.experiment.benchmark_data import BenchmarkData
                 from ai4rag.search_space.prepare import (
                     get_embedding_models,
                     get_foundation_models,
                     serialize_model,
                 )
+                from ai4rag.utils.clients import create_maas_client
+                from ai4rag.utils.docling_io import load_docling_documents
 
                 maas_client = create_maas_client(
                     base_url=os.environ["MAAS_BASE_URL"],
