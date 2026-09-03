@@ -6,7 +6,7 @@
 
 RAG Templates Optimization component.
 
-Thin wrapper that delegates to ``ai4rag.components.optimization.rag_templates_optimization.run_rag_optimization``.
+Runs search-space construction, evaluator setup, and the optimization experiment directly against ``ai4rag`` primitives (``AI4RAGSearchSpace``, ``AI4RAGExperiment``, and the ``ragas``/``unitxt`` evaluators), since ``ai4rag`` no longer ships a single orchestration entry point for this flow.
 
 ## Inputs 📥
 
@@ -16,7 +16,7 @@ Thin wrapper that delegates to ``ai4rag.components.optimization.rag_templates_op
 | `test_data` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to benchmark test data JSON. |
 | `search_space_mps_report` | `dsl.InputPath(dsl.Artifact)` | `None` | Path to the JSON search space report. |
 | `rag_patterns` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact for generated RAG patterns. |
-| `test_data_key` | `Optional[str]` | `None` | Path to benchmark JSON in object storage. |
+| `test_data_key` | `str` | `None` | Path to benchmark JSON in object storage. |
 | `maas_secret_name` | `str` | `None` | Name of the K8s secret with MaaS inference credentials ("MAAS_BASE_URL", "MAAS_API_KEY"). Propagated into each generated ``pattern.json`` indexing spec for downstream deployment. |
 | `vector_db_secret_name` | `str` | `None` | Name of the K8s secret holding the vector database configuration. Its keys select the backend: ``MILVUS_*`` keys use Milvus, ``PGVECTOR_*`` keys use PGVector. Propagated into each generated ``pattern.json`` indexing spec. |
 | `input_data_secret_name` | `str` | `None` | Name of the K8s secret with S3 credentials for input data. |
@@ -93,7 +93,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.12.0
+    - Name: ai4rag, Version: ~=0.14.0
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
     - Name: PGVector, Version: >=0.5.0
@@ -102,7 +102,7 @@ def example_pipeline(
   - autorag
   - optimization
   - rag-patterns
-- **Last Verified**: 2026-08-24 00:00:00+00:00
+- **Last Verified**: 2026-09-02 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

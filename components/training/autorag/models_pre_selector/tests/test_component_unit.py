@@ -73,10 +73,9 @@ def _make_ai4rag_mocks() -> SimpleNamespace:
         "ai4rag.core.experiment.benchmark_data": benchmark_module,
         "ai4rag.search_space": mock.MagicMock(),
         "ai4rag.search_space.prepare": prepare_module,
-        "ai4rag.components": mock.MagicMock(),
-        "ai4rag.components.utils": utils_module,
-        "ai4rag.components.utils.docling_io": docling_module,
         "ai4rag.utils": mock.MagicMock(),
+        "ai4rag.utils.clients": utils_module,
+        "ai4rag.utils.docling_io": docling_module,
         "ai4rag.utils.compat": compat,
         "pandas": mock.MagicMock(name="pandas"),
     }

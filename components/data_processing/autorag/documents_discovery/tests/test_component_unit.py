@@ -20,31 +20,33 @@ VALID_BENCHMARK_RECORDS = [
 
 
 def _make_ai4rag_mocks(include_test_data_loader=False):
-    """Build mock modules for ai4rag.components and ai4rag.components.data."""
+    """Build mock modules matching the component's imports.
+
+    ``discover_documents`` and ``load_test_data`` are both imported from the
+    ``ai4rag.utils.data`` package, while ``create_s3_client`` comes from
+    ``ai4rag.utils.clients.s3``.
+    """
     mock_create_s3_client = mock.MagicMock(name="create_s3_client")
     mock_discover_documents = mock.MagicMock(name="discover_documents")
 
     mock_s3_module = mock.MagicMock()
     mock_s3_module.create_s3_client = mock_create_s3_client
 
-    mock_discovery_module = mock.MagicMock()
-    mock_discovery_module.discover_documents = mock_discover_documents
+    mock_data_module = mock.MagicMock()
+    mock_data_module.discover_documents = mock_discover_documents
 
     modules = {
         "ai4rag": mock.MagicMock(),
-        "ai4rag.components": mock.MagicMock(),
-        "ai4rag.components.data": mock.MagicMock(),
-        "ai4rag.components.data.documents_discovery": mock_discovery_module,
-        "ai4rag.components.utils": mock.MagicMock(),
-        "ai4rag.components.utils.s3": mock_s3_module,
+        "ai4rag.utils": mock.MagicMock(),
+        "ai4rag.utils.data": mock_data_module,
+        "ai4rag.utils.clients": mock.MagicMock(),
+        "ai4rag.utils.clients.s3": mock_s3_module,
     }
 
     mock_load_test_data = None
     if include_test_data_loader:
         mock_load_test_data = mock.MagicMock(name="load_test_data")
-        mock_loader_module = mock.MagicMock()
-        mock_loader_module.load_test_data = mock_load_test_data
-        modules["ai4rag.components.data.test_data_loader"] = mock_loader_module
+        mock_data_module.load_test_data = mock_load_test_data
 
     return modules, mock_create_s3_client, mock_discover_documents, mock_load_test_data
 

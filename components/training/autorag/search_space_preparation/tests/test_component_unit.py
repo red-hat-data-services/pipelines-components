@@ -41,8 +41,7 @@ def _make_ai4rag_mocks() -> SimpleNamespace:
 
     modules = {
         "ai4rag": mock.MagicMock(),
-        "ai4rag.components": mock.MagicMock(),
-        "ai4rag.components.utils": utils,
+        "ai4rag.utils.clients": utils,
         "ai4rag.search_space": mock.MagicMock(),
         "ai4rag.search_space.prepare": prepare_module,
         "ai4rag.utils": mock.MagicMock(),

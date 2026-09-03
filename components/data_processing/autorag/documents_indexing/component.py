@@ -83,10 +83,10 @@ def documents_indexing(
 
     ensure_sqlite3()
 
-    from ai4rag.components.utils import create_maas_client
     from ai4rag.rag.chunking import DoclingChunker, LangChainChunker
     from ai4rag.rag.embedding.openai_model import OpenAIEmbeddingModel, OpenAIEmbeddingParams
     from ai4rag.rag.vector_store import get_vector_store, get_vector_store_config
+    from ai4rag.utils.clients import create_maas_client
     from ai4rag.utils.constants import ChunkingConstraints
     from docling_core.types.doc.document import DoclingDocument
 

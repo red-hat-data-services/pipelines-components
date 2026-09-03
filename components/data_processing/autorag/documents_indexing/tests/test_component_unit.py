@@ -62,8 +62,7 @@ def _make_ai4rag_mocks():
 
     modules = {
         "ai4rag": mock.MagicMock(),
-        "ai4rag.components": mock.MagicMock(),
-        "ai4rag.components.utils": _make_module_mock(create_maas_client=mock_create_maas_client),
+        "ai4rag.utils.clients": _make_module_mock(create_maas_client=mock_create_maas_client),
         "ai4rag.rag": mock.MagicMock(),
         "ai4rag.rag.chunking": _make_module_mock(
             DoclingChunker=mock_DoclingChunker, LangChainChunker=mock_LangChainChunker
