@@ -16,7 +16,7 @@ metadata:
     appstudio.openshift.io/application: automation
     appstudio.openshift.io/component: pull-request-pipelines-odh-pipelines-components
     pipelines.appstudio.openshift.io/type: build
-  name: odh-pipelines-components-on-pull-request
+  name: odh-pipelines-components-on-pull-request-release-branch
   namespace: rhoai-tenant
 spec:
   timeouts:
