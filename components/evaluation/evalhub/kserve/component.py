@@ -50,6 +50,8 @@ def evalhub_evaluator_kserve(
     trust_remote_code: bool = False,
     verify_tls: bool = False,
     isvc_ready_timeout: int = 600,
+    gpu_tolerations: bool = True,
+    gpu_node_selector: str = "",
 ):
     """Evaluate a model via Eval Hub with a KServe InferenceService.
 
@@ -82,6 +84,10 @@ def evalhub_evaluator_kserve(
         trust_remote_code: Pass --trust-remote-code to vLLM (enables arbitrary code from model repos).
         verify_tls: Verify TLS certificates for Eval Hub API calls (False for self-signed certs).
         isvc_ready_timeout: Max seconds to wait for InferenceService readiness.
+        gpu_tolerations: Add GPU tolerations (nvidia.com/gpu NoSchedule) to the predictor pod.
+            Required on clusters where GPU nodes have taints. Defaults to True.
+        gpu_node_selector: Optional node selector label for GPU nodes (e.g. "nvidia.com/gpu.present=true").
+            Format: "key=value". Empty string means no nodeSelector is added.
     """
     import json
     import logging
@@ -229,6 +235,39 @@ def evalhub_evaluator_kserve(
     def _create_inference_service(namespace, name, runtime_name, pvc_name, model_relative_path, n_gpu, mem, n_cpu):
         storage_uri = f"pvc://{pvc_name}/{model_relative_path}"
 
+        predictor_spec = {
+            "maxReplicas": 1,
+            "minReplicas": 1,
+            "model": {
+                "modelFormat": {"name": "vLLM"},
+                "runtime": runtime_name,
+                "storageUri": storage_uri,
+                "resources": {
+                    "limits": {
+                        "nvidia.com/gpu": str(n_gpu),
+                        "cpu": n_cpu,
+                        "memory": mem,
+                    },
+                    "requests": {
+                        "nvidia.com/gpu": str(n_gpu),
+                        "cpu": n_cpu,
+                        "memory": mem,
+                    },
+                },
+            },
+            "timeout": 30,
+        }
+
+        if gpu_tolerations:
+            predictor_spec["tolerations"] = [
+                {"key": "nvidia.com/gpu", "operator": "Exists", "effect": "NoSchedule"},
+            ]
+
+        if gpu_node_selector:
+            parts = gpu_node_selector.split("=", 1)
+            if len(parts) == 2:
+                predictor_spec["nodeSelector"] = {parts[0]: parts[1]}
+
         isvc = {
             "apiVersion": "serving.kserve.io/v1beta1",
             "kind": "InferenceService",
@@ -245,28 +284,7 @@ def evalhub_evaluator_kserve(
                 },
             },
             "spec": {
-                "predictor": {
-                    "maxReplicas": 1,
-                    "minReplicas": 1,
-                    "model": {
-                        "modelFormat": {"name": "vLLM"},
-                        "runtime": runtime_name,
-                        "storageUri": storage_uri,
-                        "resources": {
-                            "limits": {
-                                "nvidia.com/gpu": str(n_gpu),
-                                "cpu": n_cpu,
-                                "memory": mem,
-                            },
-                            "requests": {
-                                "nvidia.com/gpu": str(n_gpu),
-                                "cpu": n_cpu,
-                                "memory": mem,
-                            },
-                        },
-                    },
-                    "timeout": 30,
-                },
+                "predictor": predictor_spec,
             },
         }
         path = f"{KSERVE_ISVC_API}/namespaces/{namespace}/inferenceservices"
