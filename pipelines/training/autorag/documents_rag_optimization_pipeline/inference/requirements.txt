@@ -1,0 +1,8 @@
+--index-url https://pypi.org/simple
+
+# Minimal placeholder dependencies for odh-autorag-inference
+# TODO: Add actual inference dependencies once deployment implementation is complete
+
+# Core AutoRAG inference dependencies (placeholder versions)
+ai4rag>=0.14.0
+

@@ -52,6 +52,8 @@ jobs:
             context: pipelines/training/automl/autogluon_tabular_training_pipeline
           - name: pipelines-training-autorag-documents_rag_optimization_pipeline
             context: pipelines/training/autorag/documents_rag_optimization_pipeline
+          - name: pipelines-training-autorag-documents_rag_optimization_pipeline-inference
+            context: pipelines/training/autorag/documents_rag_optimization_pipeline/inference
 
     steps:
       - name: Checkout repository
