@@ -1,0 +1,11 @@
+# This container is used for deploying AutoRAG-generated agents for inference.
+# Placeholder image for initial onboarding to ODH & RHOAI (odh-autorag-inference).
+
+ARG BASE_IMAGE="quay.io/aipcc/base-images/cpu:3.5.0"
+
+FROM ${BASE_IMAGE}
+
+COPY pipelines/training/autorag/documents_rag_optimization_pipeline/inference/requirements.txt /tmp/
+
+## TODO: Ensure build isolation
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
