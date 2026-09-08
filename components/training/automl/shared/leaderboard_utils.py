@@ -6,7 +6,21 @@ at the end of their Phase C.
 """
 
 import html as _html_module
+import math
 from pathlib import Path
+
+
+def _format_metric_value(value):
+    """Render a leaderboard metric as a fixed 4-decimal string.
+
+    ``round(4)`` alone drops trailing zeros when the value is later stringified
+    (e.g. ``-4`` renders as ``"-4.0"``), so format to a string here instead
+    (e.g. ``-4`` -> ``"-4.0000"``, ``-18.33214157590419`` -> ``"-18.3321"``).
+    Non-finite values (``NaN``/``inf``) and non-numeric values pass through unchanged.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return value
+    return f"{value:.4f}"
 
 
 def _build_leaderboard_table(df) -> str:

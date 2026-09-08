@@ -1140,6 +1140,72 @@ class TestLeaderboardPhase:
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
+    def test_leaderboard_metrics_use_shared_fixed_decimal_formatter(
+        self,
+        mock_predictor_cls,
+        mock_ts_df_cls,
+        mock_concat,
+        mock_read_csv,
+        mock_artifacts,  # noqa: F811
+        tmp_path,
+    ):
+        """Metric columns are formatted via the shared _format_metric_value helper, not round(4).
+
+        pandas is fully module-mocked in this test file, so real formatting can't be observed
+        end-to-end here (see shared/tests/test_leaderboard_utils.py for that). This test instead
+        pins the wiring: the component must call ``.map(_format_metric_value)`` on the metric
+        columns rather than ``.round(4)``, which silently drops trailing zeros
+        (e.g. -4 -> "-4.0" instead of "-4.0000").
+        """
+        models_artifact, extra_train_path, _ = mock_artifacts
+        mock_sorted_df = self._configure_pd_mock_for_leaderboard("DeepAR_FULL", {"MASE": -0.42})
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR"])
+        mock_predictor.fit_summary.return_value = {"model_hyperparams": {"DeepAR": {}}}
+        mock_predictor._trainer.get_model_attribute.return_value = mock.MagicMock
+        mock_refit_predictor = mock.MagicMock()
+        mock_refit_predictor.evaluate.return_value = {"MASE": -0.42}
+        mock_predictor_cls.side_effect = [mock_predictor, mock_refit_predictor]
+        mock_ts_df_cls.from_data_frame.side_effect = [_mock_ts_df(), _mock_ts_df(), _mock_ts_df()]
+        mock_ts_df_cls.from_path.return_value = _mock_ts_df()
+        mock_ts_df_cls.return_value = _mock_ts_df()
+        mock_concat.return_value = mock.MagicMock()
+        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        test_data = mock.MagicMock()
+        test_data.path = "/tmp/test.csv"
+
+        html_artifact = mock.MagicMock()
+        html_artifact.path = str(tmp_path / "leaderboard3.html")
+        html_artifact.metadata = {}
+
+        autogluon_timeseries_models_training.python_func(
+            target="sales",
+            id_column="item_id",
+            timestamp_column="timestamp",
+            train_data_path="/tmp/train.csv",
+            test_data=test_data,
+            top_n=1,
+            workspace_path="/tmp/workspace",
+            pipeline_name="ts-pipeline-123",
+            run_id="run-123",
+            models_artifact=models_artifact,
+            extra_train_data_path=extra_train_path,
+            html_artifact=html_artifact,
+            component_status=_DEFAULT_COMPONENT_STATUS,
+        )
+
+        metric_cols_mock = mock_sorted_df.__getitem__.return_value
+        metric_cols_mock.round.assert_not_called()
+        metric_cols_mock.map.assert_called_once()
+        formatter = metric_cols_mock.map.call_args.args[0]
+        assert formatter(-4) == "-4.0000"
+        assert formatter(-18.33214157590419) == "-18.3321"
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.concat")
+    @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
+    @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_leaderboard_best_model_name_consistent_across_return_and_context(
         self,
         mock_predictor_cls,

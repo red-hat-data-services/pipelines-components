@@ -1805,6 +1805,68 @@ class TestAutogluonModelsTrainingUnitTests:
 
     @mock.patch("pandas.read_csv")
     @mock.patch("autogluon.tabular.TabularPredictor")
+    def test_leaderboard_metrics_formatted_with_fixed_four_decimals(
+        self, mock_predictor_class, mock_read_csv, tmp_path
+    ):
+        """Leaderboard metric columns render with exactly 4 decimals, trailing zeros included.
+
+        ``round(4)`` alone drops trailing zeros once the value is stringified (e.g. -4 -> "-4.0"),
+        so both the JSON leaderboard data and the HTML table must show fixed-precision strings
+        (e.g. -4 -> "-4.0000", -18.33214157590419 -> "-18.3321").
+        """
+        top_models = ["ModelA", "ModelB"]
+        mock_predictor = mock.MagicMock()
+        mock_predictor_clone = mock.MagicMock()
+        mock_predictor_class.return_value.fit.return_value = mock_predictor
+        mock_predictor.clone.return_value = mock_predictor_clone
+        mock_predictor.problem_type = "regression"
+        mock_predictor.label = "target"
+        mock_predictor.eval_metric = "r2"
+        _mock_leaderboard_top_models(mock_predictor, top_models)
+        mock_predictor_clone.evaluate_predictions.side_effect = [
+            {"r2": -4, "root_mean_squared_error": -18.33214157590419},
+            {"r2": -16, "root_mean_squared_error": -0.09377590974198631},
+        ]
+        mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
+        mock_predictor_clone.predict.return_value = mock.MagicMock()
+
+        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+
+        workspace_path = str(tmp_path / "ws")
+        Path(workspace_path).mkdir()
+        models_output_dir = str(tmp_path / "out")
+        Path(models_output_dir).mkdir()
+        mock_models_artifact = mock.MagicMock()
+        mock_models_artifact.path = models_output_dir
+        mock_models_artifact.uri = "s3://bucket/run123/models"
+        mock_models_artifact.metadata = {}
+        html_artifact = _make_html_artifact(tmp_path)
+
+        autogluon_models_training.python_func(
+            label_column="target",
+            task_type="regression",
+            top_n=2,
+            train_data_path="/tmp/train.csv",
+            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            workspace_path=workspace_path,
+            pipeline_name=PIPELINE_NAME,
+            run_id=RUN_ID,
+            sample_row=SAMPLE_ROW,
+            models_artifact=mock_models_artifact,
+            html_artifact=html_artifact,
+            component_status=_make_component_status_artifact(tmp_path),
+        )
+
+        html_text = Path(html_artifact.path).read_text(encoding="utf-8")
+        for formatted in ("-4.0000", "-16.0000", "-18.3321", "-0.0938"):
+            assert formatted in html_text, f"{formatted!r} not found in leaderboard HTML"
+
+        data_parsed = json.loads(html_artifact.metadata["data"])
+        assert {record["r2"] for record in data_parsed} == {"-4.0000", "-16.0000"}
+        assert {record["root_mean_squared_error"] for record in data_parsed} == {"-18.3321", "-0.0938"}
+
+    @mock.patch("pandas.read_csv")
+    @mock.patch("autogluon.tabular.TabularPredictor")
     def test_leaderboard_best_model_name_in_context(self, mock_predictor_class, mock_read_csv, tmp_path):
         """best_model_name is stored in models_artifact context metadata."""
         mock_predictor = mock.MagicMock()

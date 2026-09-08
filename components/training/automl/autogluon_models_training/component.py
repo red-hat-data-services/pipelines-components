@@ -702,6 +702,7 @@ def autogluon_models_training(
         from kfp_components.components.training.automl.shared.leaderboard_utils import (
             _build_leaderboard_html,
             _build_leaderboard_table,
+            _format_metric_value,
         )
 
         base_uri = models_artifact.uri.rstrip("/")
@@ -735,7 +736,7 @@ def autogluon_models_training(
         best_model_name = str(leaderboard_df.iloc[0]["model"])
         leaderboard_df.index = pd.RangeIndex(start=1, stop=n + 1, name="rank")
         _metric_cols = [c for c in leaderboard_df.columns if c not in ("model", "notebook", "predictor")]
-        leaderboard_df[_metric_cols] = leaderboard_df[_metric_cols].round(4)
+        leaderboard_df[_metric_cols] = leaderboard_df[_metric_cols].map(_format_metric_value)
         html_table = _build_leaderboard_table(leaderboard_df)
 
         _template_ref = (
