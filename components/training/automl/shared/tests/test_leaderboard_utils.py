@@ -1,5 +1,6 @@
 """Tests for shared leaderboard utility functions in leaderboard_utils.py."""
 
+import math
 from pathlib import Path
 from unittest import mock
 
@@ -8,13 +9,59 @@ import pytest
 # Importable via the sys.path insertion in components/training/automl/conftest.py,
 # which replicates what KFP does at container runtime (adding the embedded
 # artifact directory to sys.path).
-from ..leaderboard_utils import _build_leaderboard_html, _build_leaderboard_table
+from ..leaderboard_utils import _build_leaderboard_html, _build_leaderboard_table, _format_metric_value
 
 
 @pytest.fixture()
 def template_path():
     """Path to the shared leaderboard HTML template."""
     return Path(__file__).resolve().parent.parent / "leaderboard_html_template.html"
+
+
+class TestFormatMetricValue:
+    """Tests for _format_metric_value."""
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (-4, "-4.0000"),
+            (-16, "-16.0000"),
+            (3.930903911590576, "3.9309"),
+            (-2.447969763208402, "-2.4480"),
+            (-0.25757575757575757, "-0.2576"),
+            (-0.22098441196210455, "-0.2210"),
+            (-18.33214157590419, "-18.3321"),
+            (-5.992558824413116, "-5.9926"),
+            (-2.44797034794401, "-2.4480"),
+            (-0.09377590974198631, "-0.0938"),
+            (0, "0.0000"),
+        ],
+    )
+    def test_formats_to_fixed_four_decimals(self, value, expected):
+        """Values render with exactly 4 decimals, including trailing zeros for whole numbers."""
+        assert _format_metric_value(value) == expected
+
+    def test_nan_passes_through_unchanged(self):
+        """NaN is not stringified so it still serializes as JSON null downstream."""
+        value = float("nan")
+        result = _format_metric_value(value)
+        assert isinstance(result, float)
+        assert math.isnan(result)
+
+    def test_infinite_values_pass_through_unchanged(self):
+        """Infinite values are not stringified."""
+        assert _format_metric_value(float("inf")) == float("inf")
+        assert _format_metric_value(float("-inf")) == float("-inf")
+
+    def test_bool_passes_through_unchanged(self):
+        """Bool is an int subclass; it must not be formatted as a decimal string."""
+        assert _format_metric_value(True) is True
+        assert _format_metric_value(False) is False
+
+    def test_non_numeric_passes_through_unchanged(self):
+        """Non-numeric values (strings, None) are returned unchanged."""
+        assert _format_metric_value("n/a") == "n/a"
+        assert _format_metric_value(None) is None
 
 
 class TestBuildLeaderboardTable:
