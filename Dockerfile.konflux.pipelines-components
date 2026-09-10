@@ -1,5 +1,8 @@
 FROM registry.redhat.io/ubi9/python-312@sha256:1918f356719985f9fdae68937d185ffe8a55aa39e00e6a0d07108a0ddd476d9b
 
+# base image switch RHOAIENG-94184
+RUN update-crypto-policies --set DEFAULT:PQ --no-reload
+
 WORKDIR /app
 
 USER root
