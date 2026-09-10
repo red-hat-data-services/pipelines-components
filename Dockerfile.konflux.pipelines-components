@@ -23,6 +23,7 @@ USER 1001
 
 RUN pip install --no-cache-dir --no-deps .
 
-RUN python -m scripts.generate_managed_pipelines.generate_managed_pipelines
+# Work around s390x segfault during cleanup by forcing immediate exit without cleanup
+RUN python -c "import sys; sys.path.insert(0, '/app'); from scripts.generate_managed_pipelines.generate_managed_pipelines import main; import os; os._exit(main())"
 
 CMD ["python", "-m", "scripts.init_managed_pipelines.init_managed_pipelines"]
