@@ -50,7 +50,7 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `train_data_secret_name` | `str` | `None` | Kubernetes secret name with S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION). |
+| `train_data_secret_name` | `str` | `None` | Kubernetes secret name with S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION). Used for training data and optional user-provided external test data. |
 | `train_data_bucket_name` | `str` | `None` | S3-compatible bucket name containing the tabular data file. |
 | `train_data_file_key` | `str` | `None` | S3 object key of the CSV file (features and target column). |
 | `label_column` | `str` | `None` | Name of the target/label column in the dataset. |
@@ -59,6 +59,8 @@ The pipeline leverages AutoGluon's unique ensembling strategy that combines mult
 | `positive_class` | `str` | `""` | Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values. |
 | `eval_metric` | `str` | `""` | Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification. |
 | `preset` | `str` | `speed` | Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB). |
+| `test_data_bucket_name` | `str` | `""` | Optional S3-compatible bucket name for a user-provided test dataset. Default: empty string (use the holdout split from training data). |
+| `test_data_file_key` | `str` | `""` | Optional S3 object key for a user-provided test CSV file. Default: empty string (use the holdout split from training data). |
 
 ## Metadata 🗂️
 

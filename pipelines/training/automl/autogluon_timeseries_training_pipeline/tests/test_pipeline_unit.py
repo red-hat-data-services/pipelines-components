@@ -56,6 +56,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             "top_n",
             "preset",
             "eval_metric",
+            "test_data_bucket_name",
+            "test_data_file_key",
         }
         inputs = autogluon_timeseries_training_pipeline.component_spec.inputs
         params = set(inputs.keys())
@@ -66,6 +68,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert inputs["known_covariates_names"].default == []
         assert inputs["preset"].default == "speed"
         assert inputs["eval_metric"].default == "mean_absolute_scaled_error"
+        assert inputs["test_data_bucket_name"].default == ""
+        assert inputs["test_data_file_key"].default == ""
 
     def test_compiled_pipeline_has_expected_inputs(self):
         """Test that compiled pipeline YAML contains expected pipeline input names."""
@@ -90,6 +94,8 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
                 "top_n",
                 "preset",
                 "eval_metric",
+                "test_data_bucket_name",
+                "test_data_file_key",
             ):
                 assert name in content, f"Expected pipeline input '{name}' in compiled YAML"
         except Exception as e:
@@ -164,6 +170,44 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
             pipeline_name="autogluon_timeseries_training_pipeline (training tiers only)",
             allow_extra=True,
         )
+
+    def test_compiled_pipeline_wires_test_data_params_to_data_loader(self):
+        """Test that pipeline wires test_data_bucket_name and test_data_file_key to data loader."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        # Verify test data parameters are passed to data loader
+        assert "test_data_bucket_name:" in content
+        assert "test_data_file_key:" in content
+        assert "componentInputParameter: test_data_bucket_name" in content
+        assert "componentInputParameter: test_data_file_key" in content
+
+    def test_compiled_pipeline_uses_single_train_secret_mount(self):
+        """Train secret is mounted once; test data reuses AWS_* via component fallback."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "condition-1" not in content
+        assert "TEST_DATA_AWS_ACCESS_KEY_ID" not in content
+        train_secret_block = content.split("envVar: AWS_ACCESS_KEY_ID", 1)[1]
+        assert "optional: true" in train_secret_block[:500]
+        assert "componentInputParameter: train_data_secret_name" in train_secret_block[:500]
 
 
 class TestTimeseriesTestConfigs:

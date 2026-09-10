@@ -1,4 +1,5 @@
 from kfp import dsl
+from kfp.kubernetes import use_secret_as_env
 from kfp_components.components.data_processing.automl.tabular_data_loader import automl_data_loader
 from kfp_components.components.training.automl.autogluon_models_training import autogluon_models_training
 from kfp_components.components.training.automl.component_stage_map_publisher import publish_component_stage_map
@@ -41,6 +42,8 @@ def autogluon_tabular_training_pipeline(
     positive_class: str = "",
     eval_metric: str = "",
     preset: str = "speed",
+    test_data_bucket_name: str = "",
+    test_data_file_key: str = "",
 ):
     """AutoGluon Tabular Training Pipeline.
 
@@ -112,7 +115,9 @@ def autogluon_tabular_training_pipeline(
     - Selecting optimal ensemble configurations
 
     Args:
-        train_data_secret_name: Kubernetes secret name with S3 credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION).
+        train_data_secret_name: Kubernetes secret name with S3 credentials (AWS_ACCESS_KEY_ID,
+            AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION). Used for training data
+            and optional user-provided external test data.
         train_data_bucket_name: S3-compatible bucket name containing the tabular data file.
         train_data_file_key: S3 object key of the CSV file (features and target column).
         label_column: Name of the target/label column in the dataset.
@@ -121,6 +126,10 @@ def autogluon_tabular_training_pipeline(
         positive_class: Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values.
         eval_metric: Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification.
         preset: Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB).
+        test_data_bucket_name: Optional S3-compatible bucket name for a user-provided test dataset.
+            Default: empty string (use the holdout split from training data).
+        test_data_file_key: Optional S3 object key for a user-provided test CSV file.
+            Default: empty string (use the holdout split from training data).
 
     Returns:
         HTML artifact with leaderboard of refitted models ranked by task_type metric (e.g. accuracy, r2).
@@ -146,8 +155,6 @@ def autogluon_tabular_training_pipeline(
             top_n=3,
         )
     """  # noqa: E501
-    from kfp.kubernetes import use_secret_as_env
-
     # Publish component-to-stage-to-step map first so dashboards know expected structure
     component_stage_map_task = publish_component_stage_map(
         pipeline_id=PIPELINE_NAME,
@@ -164,11 +171,14 @@ def autogluon_tabular_training_pipeline(
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         label_column=label_column,
         task_type=task_type,
+        test_data_bucket_name=test_data_bucket_name,
+        test_data_file_key=test_data_file_key,
     )
     data_loader_task.after(component_stage_map_task)
     data_loader_task.set_caching_options(False)
     data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
+    # Object storage credentials for data loading.
     use_secret_as_env(
         data_loader_task,
         secret_name=train_data_secret_name,
@@ -178,7 +188,7 @@ def autogluon_tabular_training_pipeline(
             "AWS_S3_ENDPOINT": "AWS_S3_ENDPOINT",
             "AWS_DEFAULT_REGION": "AWS_DEFAULT_REGION",
         },
-        optional=True,  # Mark as optional to not block the pipeline. If needed, error will be raised by component
+        optional=True,
     )
 
     # Stage 1 + 2: Model selection and sequential refit of top N models.

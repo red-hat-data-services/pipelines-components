@@ -39,6 +39,8 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 | `task_type` | `str` | `regression` | "binary", "multiclass", or "regression" (default); used when sampling_method is None. |
 | `split_config` | `Optional[dict]` | `None` | Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool). |
 | `selection_train_size` | `float` | `0.3` | Fraction of the train portion used for model selection (default 0.3). |
+| `test_data_bucket_name` | `str` | `""` | S3 bucket name for user-provided test dataset (default: empty string). |
+| `test_data_file_key` | `str` | `""` | S3 object key of the user-provided test CSV (default: empty string). |
 
 ## Outputs 📤
 

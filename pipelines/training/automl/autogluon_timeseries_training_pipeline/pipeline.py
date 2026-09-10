@@ -1,6 +1,7 @@
 from typing import List
 
 from kfp import dsl
+from kfp.kubernetes import use_secret_as_env
 from kfp_components.components.data_processing.automl.timeseries_data_loader import timeseries_data_loader
 from kfp_components.components.training.automl.autogluon_timeseries_models_training import (
     autogluon_timeseries_models_training,
@@ -45,6 +46,8 @@ def autogluon_timeseries_training_pipeline(
     top_n: int = 3,
     eval_metric: str = "mean_absolute_scaled_error",
     preset: str = "speed",
+    test_data_bucket_name: str = "",
+    test_data_file_key: str = "",
 ):
     """AutoGluon time series training pipeline.
 
@@ -88,6 +91,7 @@ def autogluon_timeseries_training_pipeline(
     Args:
         train_data_secret_name: Kubernetes secret name containing S3 credentials
             (e.g. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT, AWS_DEFAULT_REGION).
+            Used for training data and optional user-provided external test data.
         train_data_bucket_name: S3-compatible bucket name containing the time series data file.
         train_data_file_key: S3 object key of the data file (CSV or Parquet). When ``id_column`` is
             provided, file must include columns for id, timestamp, and target. When ``id_column=""``
@@ -113,6 +117,10 @@ def autogluon_timeseries_training_pipeline(
             ``"mean_absolute_scaled_error"``.
         preset: Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB) or
             ``"balanced"`` (may run more than 2x longer, 8 vCPU / 32 GiB).
+        test_data_bucket_name: Optional S3-compatible bucket name for a user-provided test dataset.
+            Default: empty string (use the per-series holdout split from training data).
+        test_data_file_key: Optional S3 object key for a user-provided test CSV file.
+            Default: empty string (use the per-series holdout split from training data).
 
     Returns:
         This pipeline wires task outputs between components; compiled runs expose the combined models artifact
@@ -155,14 +163,16 @@ def autogluon_timeseries_training_pipeline(
         target=target,
         id_column=id_column,
         timestamp_column=timestamp_column,
+        prediction_length=prediction_length,
+        known_covariates_names=known_covariates_names,
+        test_data_bucket_name=test_data_bucket_name,
+        test_data_file_key=test_data_file_key,
     )
     data_loader_task.after(component_stage_map_task)
     data_loader_task.set_caching_options(False)
     data_loader_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(MAX_MEMORY)
 
-    # Configure S3 secret for data loader
-    from kfp.kubernetes import use_secret_as_env
-
+    # Object storage credentials for data loading.
     use_secret_as_env(
         data_loader_task,
         secret_name=train_data_secret_name,
