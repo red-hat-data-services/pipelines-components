@@ -6,8 +6,8 @@ accelerate==1.14.0 \
     # via
     #   docling-ibm-models
     #   docling-slim
-ai4rag==0.15.0 \
-    --hash=sha256:acfaadd99fa41e139ecd22c5827656e9b0cc8c51442caaa4a8aaa82dd48eb491
+ai4rag==0.16.0 \
+    --hash=sha256:943da7a6060cbd922a87e8154693feba08503da8087f8752f92012fae8ebcd96
     # via -r requirements.in
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:c1207ce1e31a8cb2fe0a3dc94cecd44dd3ba65e16a5cb7bc79f62d6b8074bc78
@@ -57,6 +57,12 @@ attrs==26.1.0 \
     #   jsonlines
     #   jsonschema
     #   referencing
+av==13.1.0 \
+    --hash=sha256:4ec32044431cf4e578eac647fbb9a44f90b47c38f232472745dca2dae48351bf \
+    --hash=sha256:ac70e152ae3b17ee50d84b6e0c5dda705d352cb19e2dd018a2558241db0a571e \
+    --hash=sha256:f4c93c7a83e13bd6778541b8e2d1d5e8e9cb9c34de2a1eb52d94a2f9592f63d2 \
+    --hash=sha256:f9600e44735d2aee906076db4543cc96be1e38e45066136f2f8904bdd9adb8ba
+    # via whisper-s2t-reborn
 bcrypt==5.0.0 \
     --hash=sha256:0f4190da1810679994e8d9e04b3361d1131a36ebfa2a69ba6772e1195733cabc \
     --hash=sha256:2ef57281bbc3824e32d59d70df87e8b3a1e03aa25648afbab2e3696aee848e7e \
@@ -111,6 +117,7 @@ click==8.5.0 \
     #   click-option-group
     #   huggingface-hub
     #   kfp
+    #   python-oxmsg
     #   uvicorn
 click-option-group==0.5.7 \
     --hash=sha256:b48288d7abe1ab1f28dcea6e84597743e09b8a43345c1f30e04e772bbfaad24a
@@ -127,6 +134,15 @@ cryptography==50.0.1 \
     --hash=sha256:cbab34813a87e21ef5fc14a049859984e8b0bb6da890d4fedd2cd941c316f05d \
     --hash=sha256:cbfd8106711fa3284a3ee7b0beba311125a3e32678b47db019921ad95050a0ff
     # via google-auth
+ctranslate2==4.8.2 \
+    --hash=sha256:1537f25a2aa715aac670fc9d957347e0b6826909a6974699c5c5ac61844f857f \
+    --hash=sha256:22ae7ac9bdc3f294b6aca4ab019dad3ba212803e2440a56f124a6d8f1c34bad3 \
+    --hash=sha256:49e01a3a08f66e32afd4c5a2636b45a79a2bab8141019c973e6816233e26d0c0 \
+    --hash=sha256:61e70db53b34b8244840be7dcae3b85800b8e5ca0146c70c84827dda847abb04 \
+    --hash=sha256:6822cc87c4bbd9a37aaf631ce09feef2b4b345474af29b29e4c9fc48974c5765 \
+    --hash=sha256:c5c60a4362ba83511a01f35c095bf6e89b95c3e26eead863f37b2c6563bd28ff \
+    --hash=sha256:ef67385613959ac5314d1b039a30a30bc4a12509cebcbb02f9f15993d150f711
+    # via whisper-s2t-reborn
 dataclasses-json==0.6.7 \
     --hash=sha256:f7691cae145e4804fe7f4ed2c07de56f54660a645dca7357806284b62a39a2db
     # via langchain-community
@@ -175,8 +191,8 @@ docling-parse==7.17.0 \
     --hash=sha256:a655165e72334cacd08dff8d55de1b805326f6fa044efe35a670483940a8fbbf \
     --hash=sha256:b16ca3ecebc5153dcabb0a1c15057fcc5eac36a972b095456f741b92447a7a49
     # via docling-slim
-docling-slim==2.107.0 \
-    --hash=sha256:412a884b5a9ac6b148d48654a8ec09d283f2ce8e7c5da0791f3148773a746ee4
+docling-slim==2.121.0 \
+    --hash=sha256:63ad21644eb95ed91bd5dc743cb91f672d3c5a5a46f72a0cc11b9e4443931f5b
     # via ai4rag
 docstring-parser==0.18.0 \
     --hash=sha256:9c5320c27124b926c7c44ed569788bed1efc1c74b3cf544f710c2fe384404694
@@ -319,6 +335,7 @@ huggingface-hub==1.30.0 \
     #   evaluate
     #   tokenizers
     #   transformers
+    #   whisper-s2t-reborn
 idna==3.19 \
     --hash=sha256:492c0c229145c325e797f50f3aabad4fb65eaa27821e08da07542bf114dc64ed
     # via
@@ -445,8 +462,8 @@ langsmith==0.12.2 \
     #   langchain-classic
     #   langchain-community
     #   langchain-core
-latex2mathml==3.81.0 \
-    --hash=sha256:c745e99f8ab06596fff9262745ba16413fe782a7ba3be266517095431434a7c8
+latex2mathml==3.81.1 \
+    --hash=sha256:ae59111c2ea441f366aa5c7d9c6404b65bd5ca66da33447f1fea76ee635083fa
     # via docling-core
 llvmlite==0.49.0 \
     --hash=sha256:09a512ca163ca93efc58a004071abdcc52b5aaeee7a534ef7123fa83bafe3932 \
@@ -461,7 +478,6 @@ lxml==6.1.3 \
     --hash=sha256:c0bcfe67d062d1e1b148f798bb7bbcef8898af0fb19066a2c41bb56fa08ce2d0
     # via
     #   doclang
-    #   docling-slim
     #   odfdo
     #   python-docx
     #   python-pptx
@@ -543,6 +559,7 @@ numpy==2.5.3 \
     # via
     #   accelerate
     #   chromadb
+    #   ctranslate2
     #   datasets
     #   docling-ibm-models
     #   docling-slim
@@ -563,12 +580,16 @@ numpy==2.5.3 \
     #   shapely
     #   torchvision
     #   transformers
+    #   whisper-s2t-reborn
 oauthlib==3.3.1 \
     --hash=sha256:f370abab1b1c2a6c4cee58209d430d26d73807b4e30980e78e9801788f534cf3
     # via requests-oauthlib
 odfdo==3.25.0 \
     --hash=sha256:e8fbf8bdda7cb77a89d9e28a1f2bc004266b81b3dcbf45ef2fe44fc60d1a84d2
     # via docling-slim
+olefile==0.47 \
+    --hash=sha256:ca07b289f721a58095f349d0149539befed54c069df97302d3ae7009ea9755a3
+    # via python-oxmsg
 omegaconf==2.3.1 \
     --hash=sha256:e662f1c0660e1b9185dd8f400ba244384e1e1f6a7372d88f4d95466c101770c5
     # via rapidocr
@@ -688,6 +709,9 @@ pillow==12.3.0 \
     #   ragas
     #   rapidocr
     #   torchvision
+platformdirs==4.11.7 \
+    --hash=sha256:4c8b696e593e1515425d9bb6d539e2cf13860cfbe0e2a92f2274c666e127120e
+    # via whisper-s2t-reborn
 pluggy==1.6.0 \
     --hash=sha256:eb916f2cdafd558b27aa4c2a9d813134691c9fdd394270817c598a508cf89855
     # via docling-slim
@@ -834,6 +858,9 @@ python-dotenv==1.2.3 \
     #   pydantic-settings
     #   pymilvus
     #   uvicorn
+python-oxmsg==0.0.2 \
+    --hash=sha256:d5f759fe475db73c4f97cafb776a5c8ac1aa6a5580a8873658e7810ecc46a95b
+    # via docling-slim
 python-pptx==1.0.2 \
     --hash=sha256:6eb7fdfacac80d839dc875b454c8312d6557b6100f00db3e4895aaec82c6e6a4
     # via docling-slim
@@ -851,6 +878,7 @@ pyyaml==6.0.3 \
     # via
     #   accelerate
     #   chromadb
+    #   ctranslate2
     #   datasets
     #   docling-core
     #   huggingface-hub
@@ -902,6 +930,7 @@ requests==2.33.0 \
     #   requests-oauthlib
     #   requests-toolbelt
     #   tiktoken
+    #   whisper-s2t-reborn
 requests-oauthlib==2.0.0 \
     --hash=sha256:634963f9a16cff466939af3b006af734a67df64b31a92dd9d1f37d11ec1b9771
     # via kubernetes
@@ -1042,6 +1071,7 @@ tokenizers==0.23.2 \
     # via
     #   chromadb
     #   transformers
+    #   whisper-s2t-reborn
 torch==2.11.0 \
     --hash=sha256:2722128ac000fea6a190208bea2e7835a6c574c81159ed10c835a436542ac434 \
     --hash=sha256:378d861cd0c459ec00307398ebaae166e8f47a7fdcac66bac1c9b13b7febaddf \
@@ -1058,6 +1088,7 @@ torch==2.11.0 \
     #   openai-whisper
     #   safetensors
     #   torchvision
+    #   whisper-s2t-reborn
 torchvision==0.26.0 \
     --hash=sha256:3a61d67726843d0759edd0b29f3d4417065ac2d25c16ccd4b343396dfeeb51cf \
     --hash=sha256:3b7b806cc3a1848b9f0e73b7e54e99d95164f68dad0a325a281f7ea3189bdb31 \
@@ -1086,6 +1117,7 @@ tqdm==4.70.0 \
     #   rapidocr
     #   semchunk
     #   transformers
+    #   whisper-s2t-reborn
 transformers==5.16.1 \
     --hash=sha256:0d2745bc3b92838e9e9bb76a7cdad596f76ffb767f2a8a1c246b1e51cc9ee73c
     # via
@@ -1171,6 +1203,7 @@ typing-extensions==4.16.0 \
     #   pydantic
     #   pydantic-core
     #   python-docx
+    #   python-oxmsg
     #   python-pptx
     #   python-utils
     #   referencing
@@ -1236,6 +1269,9 @@ websockets==16.1.1 \
     #   langgraph-sdk
     #   langsmith
     #   uvicorn
+whisper-s2t-reborn==1.7.1 \
+    --hash=sha256:42db576725c2dbbc9aecc5eff932f7688f99890d0cd4f4da44fb4e2ecf569205
+    # via docling-slim
 xlsxwriter==3.2.9 \
     --hash=sha256:9d229fcd86ced004d0ec560f85751d88f3d2f2dbbdddce134618418bda8d5b9a
     # via python-pptx

@@ -25,7 +25,7 @@ def rag_templates_optimization(
     leaderboard: dsl.Output[dsl.HTML],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_settings: Optional[dict] = None,
-    input_data_key: Optional[str] = "",
+    input_data_keys: Optional[list[str]] = None,
     component_status: dsl.Output[dsl.Artifact] = None,
     preset: str = "speed",
 ):
@@ -57,7 +57,9 @@ def rag_templates_optimization(
         component_status: Output artifact containing stage-level progress tracking.
         embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
         optimization_settings: Additional experiment settings.
-        input_data_key: Path to documents dir within bucket.
+        input_data_keys: Paths to documents dirs within bucket. Only the first entry is
+            used for the generated indexing notebook; the full list is propagated to the
+            indexing pipeline blueprint.
         preset: Pipeline quality tier. "speed" (default) uses 10 benchmark query
             threads. "balanced" uses 4 threads (reduced due to larger per-request
             context).
@@ -87,6 +89,7 @@ def rag_templates_optimization(
         pass
 
     from ai4rag import handler
+    from ai4rag.assets_generator import build_leaderboard_html, generate_notebook_from_template
     from ai4rag.core.experiment.experiment import AI4RAGExperiment
     from ai4rag.core.hpo.gam_opt import GAMOptSettings
     from ai4rag.evaluator import BaseEvaluator, RagasEvaluator, UnitxtEvaluator
@@ -97,7 +100,6 @@ def rag_templates_optimization(
     from ai4rag.search_space.prepare.models import get_embedding_models, get_foundation_models
     from ai4rag.search_space.src.parameter import Parameter
     from ai4rag.search_space.src.search_space import AI4RAGSearchSpace
-    from ai4rag.utils.assets_generator import build_leaderboard_html, generate_notebook_from_template
     from ai4rag.utils.clients.maas_client import create_maas_client
     from ai4rag.utils.docling_io import load_docling_documents
     from ai4rag.utils.event_handler import KFPEventHandler
@@ -168,7 +170,7 @@ def rag_templates_optimization(
                             "vector_db_secret_name": indexing_pipeline_params.get("vector_db_secret_name"),
                             "input_data_secret_name": indexing_pipeline_params.get("input_data_secret_name"),
                             "input_data_bucket_name": indexing_pipeline_params.get("input_data_bucket_name"),
-                            "input_data_key": indexing_pipeline_params.get("input_data_key"),
+                            "input_data_keys": indexing_pipeline_params.get("input_data_keys"),
                             "batch_size": indexing_pipeline_params.get("batch_size"),
                             "provider_type": vector_store_binding["provider_type"],
                             "collection_name": vector_store_binding["collection_name"],
@@ -181,7 +183,7 @@ def rag_templates_optimization(
                         "overrides_allowed": [
                             "input_data_secret_name",
                             "input_data_bucket_name",
-                            "input_data_key",
+                            "input_data_keys",
                             "collection_name",
                             "batch_size",
                         ],
@@ -351,7 +353,7 @@ def rag_templates_optimization(
                 "vector_db_secret_name": vector_db_secret_name,
                 "input_data_secret_name": input_data_secret_name,
                 "input_data_bucket_name": input_data_bucket_name,
-                "input_data_key": input_data_key or "",
+                "input_data_keys": input_data_keys or [],
                 "batch_size": 20,
             }
 
@@ -424,7 +426,7 @@ def rag_templates_optimization(
             patterns = _generate_output_artifacts(
                 patterns_raw=event_handler.patterns,
                 output_dir=output_dir,
-                input_data_key=input_data_key,
+                input_data_key=input_data_keys[0] if input_data_keys else "",
                 test_data_key=test_data_key,
                 indexing_pipeline_params=indexing_pipeline_params,
             )

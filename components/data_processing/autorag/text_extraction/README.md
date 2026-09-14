@@ -12,7 +12,7 @@ Thin wrapper that delegates to ``ai4rag.utils.data.text_extraction.extract_text`
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing documents_descriptor.json with bucket, prefix, and documents list. |
+| `documents_descriptor` | `dsl.Input[dsl.Artifact]` | `None` | Input artifact containing documents_descriptor.json with bucket, prefix, and documents list. Each document entry's ``key`` also names the extracted document, so the prefix is not passed on separately. |
 | `extracted_text` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact directory where DoclingDocument JSON files will be written. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |

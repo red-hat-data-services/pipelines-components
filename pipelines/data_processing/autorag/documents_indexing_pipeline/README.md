@@ -17,7 +17,7 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
 | `embedding_model_id` | `str` | `None` | Embedding model ID served by MaaS. |
 | `input_data_secret_name` | `str` | `None` | Name of the secret with S3 credentials for input data ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_ENDPOINT", "AWS_DEFAULT_REGION"). |
 | `input_data_bucket_name` | `str` | `None` | Name of the S3 bucket containing input data. |
-| `input_data_key` | `Optional[str]` | `None` | Path to folder with input documents within bucket. |
+| `input_data_keys` | `Optional[list[str]]` | `None` | Paths to folders with input documents within bucket. Only the first entry is used by document discovery. |
 | `collection_name` | `Optional[str]` | `None` | Vector store collection to reuse (aligned with ``pattern.json`` ``settings.vector_store_binding.collection_name``). Omit to create a new collection. |
 | `embedding_params` | `Optional[dict]` | `None` | Dict passed to OpenAIEmbeddingParams (default: {}). |
 | `chunking_method` | `str` | `recursive` | Chunking method (e.g. "recursive"). |
@@ -35,7 +35,7 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: boto3, Version: >=1.42.34
-    - Name: ai4rag, Version: ~=0.15.0
+    - Name: ai4rag, Version: ~=0.16.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
