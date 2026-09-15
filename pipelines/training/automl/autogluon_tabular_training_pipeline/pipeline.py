@@ -204,11 +204,16 @@ def autogluon_tabular_training_pipeline(
         pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
         run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
         sample_row=data_loader_task.outputs["sample_row"],
+        train_data_secret_name=train_data_secret_name,
+        train_data_bucket_name=train_data_bucket_name,
+        train_data_file_key=train_data_file_key,
         sampling_config=data_loader_task.outputs["sample_config"],
         split_config=data_loader_task.outputs["split_config"],
         extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
         preset=preset,
         eval_metric=eval_metric,
+        test_data_bucket_name=test_data_bucket_name,
+        test_data_file_key=test_data_file_key,
     )
     with dsl.If(preset == "balanced"):
         training_task_bl = autogluon_models_training(**_training_kwargs)

@@ -199,6 +199,9 @@ def autogluon_timeseries_training_pipeline(
         known_covariates_names=known_covariates_names,
         pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
         run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        train_data_secret_name=train_data_secret_name,
+        train_data_bucket_name=train_data_bucket_name,
+        train_data_file_key=train_data_file_key,
         uses_synthetic_id=data_loader_task.outputs["uses_synthetic_id"],
         sample_rows=data_loader_task.outputs["sample_rows"],
         sampling_config=data_loader_task.outputs["sample_config"],
@@ -206,6 +209,8 @@ def autogluon_timeseries_training_pipeline(
         extra_train_data_path=data_loader_task.outputs["extra_train_data_path"],
         preset=preset,
         eval_metric=eval_metric,
+        test_data_bucket_name=test_data_bucket_name,
+        test_data_file_key=test_data_file_key,
     )
     with dsl.If(preset == "balanced"):
         training_task_bl = autogluon_timeseries_models_training(**_training_kwargs)
