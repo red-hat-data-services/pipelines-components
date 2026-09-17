@@ -44,7 +44,8 @@ def documents_indexing(
     Args:
         embedding_model_id: Embedding model ID served by MaaS.
         extracted_text: Input artifact (directory) containing DoclingDocument
-            JSON files from text extraction.
+            JSON files from text extraction.  Searched recursively, since
+            extraction preserves the nested source key of each document.
         indexing_report: Output artifact containing ``indexing_report.json``
             with per-document indexing status and pipeline settings.
         indexing_report_html: Output HTML artifact containing a styled rendering of
@@ -141,8 +142,11 @@ def documents_indexing(
 
     params = OpenAIEmbeddingParams(**(embedding_params or {}))
 
+    # Text extraction preserves the source S3 key, so documents discovered under a
+    # nested ``input_data_keys`` prefix land in subdirectories here.  Recurse to match
+    # ai4rag's own ``load_docling_documents`` semantics.
     base = Path(extracted_text.path)
-    paths = sorted(p for p in base.iterdir() if p.is_file() and p.suffix.lower() == ".json")
+    paths = sorted(p for p in base.rglob("*") if p.is_file() and p.suffix.lower() == ".json")
     total_documents = len(paths)
     _logger.info("Found %d documents to index", total_documents)
 
