@@ -18,6 +18,7 @@ def kubeflow_model_registry(
     eval_results: dsl.Input[dsl.Artifact] = None,
     registry_address: str = "",
     registry_port: int = 8080,
+    is_secure: bool = False,
     model_name: str = "fine-tuned-model",
     model_version: str = "1.0.0",
     model_format_name: str = "pytorch",
@@ -46,6 +47,8 @@ def kubeflow_model_registry(
         eval_results: Full evaluation results JSON artifact.
         registry_address: Model Registry server address (hostname or IP).
         registry_port: Model Registry server port (default: 8080).
+        is_secure: Use HTTPS/TLS when connecting to the registry (default: False).
+            Set to True for RHOAI 3.5+ where Model Registry uses TLS by default.
         model_name: Name for the registered model.
         model_version: Version string for the model (e.g. "1.0.0").
         model_format_name: Model format name (e.g. "pytorch", "onnx").
@@ -98,13 +101,13 @@ def kubeflow_model_registry(
         # Ensure address has scheme for client URL building
         server_addr = registry_address
         if not server_addr.startswith("http://") and not server_addr.startswith("https://"):
-            server_addr = f"http://{server_addr}"
-        # Create client (HTTP/insecure)
+            server_addr = f"https://{server_addr}" if is_secure else f"http://{server_addr}"
+        # Create client
         client = ModelRegistry(
             server_address=server_addr,
             port=registry_port,
             author=author,
-            is_secure=False,  # HTTP
+            is_secure=is_secure,
         )
 
         # Collect metrics into metadata if provided
