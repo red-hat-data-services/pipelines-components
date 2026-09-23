@@ -198,6 +198,26 @@ class TestAutogluonTabularTrainingPipelineUnitTests:
             allow_extra=True,
         )
 
+    def test_compiled_pipeline_wires_mlflow_inputs_to_training(self):
+        """MLflow inputs are forwarded into the training task.
+
+        The training task now logs to MLflow; the standalone mlflow-logger step no longer exists.
+        """
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_tabular_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "automl-mlflow-logger" not in content
+        assert "exec-autogluon-models-training:" in content
+        assert "exec-autogluon-models-training-2:" in content
+
     def test_compiled_pipeline_data_loader_declares_task_type_and_label(self):
         """Tabular data loader component exposes task_type and label_column inputs."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:

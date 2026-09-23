@@ -2,12 +2,12 @@
 
 import inspect
 import json
-from types import MappingProxyType
+from types import MappingProxyType, SimpleNamespace
 from unittest import mock
 
 import pytest
 
-from ..component import text_extraction
+from ..component import _AUTORAG_SHARED, text_extraction
 
 MOCKED_ENV_VARIABLES = {
     "AWS_ACCESS_KEY_ID": "test_key",
@@ -185,6 +185,85 @@ class TestTextExtractionUnitTests:
         call_kwargs = mock_extract.call_args.kwargs
         assert call_kwargs["documents"] == documents
         assert "input_data_key" not in call_kwargs
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_records_engine_candidates_and_extraction_outcomes(self, tmp_path):
+        """Status reports the configured engines, candidate inputs, and aggregate outcomes."""
+        modules, mock_extract, _ = _make_ai4rag_mocks()
+        mock_extract.return_value = SimpleNamespace(total_documents=5, processed_count=4, error_count=1)
+        descriptor_artifact = _write_descriptor(
+            tmp_path,
+            {
+                "bucket": "b",
+                "documents": [
+                    {"key": "report.pdf"},
+                    {"key": "scan.PNG"},
+                    {"key": "recording.mp3"},
+                    {"key": "meeting.wav"},
+                    {"key": "notes.txt"},
+                ],
+            },
+        )
+        output_artifact = SimpleNamespace(path=str(tmp_path / "output"))
+        component_status = SimpleNamespace(path=str(tmp_path / "status"), metadata={})
+        embedded_artifact = SimpleNamespace(path=str(_AUTORAG_SHARED))
+
+        with mock.patch.dict("sys.modules", modules):
+            text_extraction.python_func(
+                documents_descriptor=descriptor_artifact,
+                extracted_text=output_artifact,
+                component_status=component_status,
+                embedded_artifact=embedded_artifact,
+            )
+
+        status = json.loads((tmp_path / "status" / "component_status.json").read_text(encoding="utf-8"))
+        metrics = status["stages"][0]["metrics"]
+        assert metrics == {
+            "layout_candidate_documents": 2,
+            "layout_model": "Docling Layout Heron",
+            "ocr_candidate_documents": 2,
+            "ocr_engine": "RapidOCR",
+            "ocr_language": "english",
+            "asr_candidate_documents": 2,
+            "asr_model": "Whisper Tiny",
+            "documents_total": 5,
+            "documents_processed": 4,
+            "documents_failed": 1,
+        }
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_failed_extraction_preserves_candidate_metrics(self, tmp_path):
+        """Failure status retains inputs known before ai4rag begins extraction."""
+        modules, mock_extract, _ = _make_ai4rag_mocks()
+        mock_extract.side_effect = RuntimeError("Text extraction failed")
+        descriptor_artifact = _write_descriptor(
+            tmp_path,
+            {
+                "bucket": "b",
+                "documents": [{"key": "report.pdf"}, {"key": "recording.mp3"}],
+            },
+        )
+        output_artifact = SimpleNamespace(path=str(tmp_path / "output"))
+        component_status = SimpleNamespace(path=str(tmp_path / "status"), metadata={})
+        embedded_artifact = SimpleNamespace(path=str(_AUTORAG_SHARED))
+
+        with mock.patch.dict("sys.modules", modules):
+            with pytest.raises(RuntimeError, match="Text extraction failed"):
+                text_extraction.python_func(
+                    documents_descriptor=descriptor_artifact,
+                    extracted_text=output_artifact,
+                    component_status=component_status,
+                    embedded_artifact=embedded_artifact,
+                )
+
+        status = json.loads((tmp_path / "status" / "component_status.json").read_text(encoding="utf-8"))
+        stage = status["stages"][0]
+        assert stage["status"]["state"] == "failed"
+        assert stage["metrics"]["documents_total"] == 2
+        assert stage["metrics"]["layout_candidate_documents"] == 1
+        assert stage["metrics"]["asr_candidate_documents"] == 1
+        assert "documents_processed" not in stage["metrics"]
+        assert "documents_failed" not in stage["metrics"]
 
     def test_passes_docling_artifacts_path(self, tmp_path):
         """DOCLING_ARTIFACTS_PATH env var is forwarded to extract_text."""

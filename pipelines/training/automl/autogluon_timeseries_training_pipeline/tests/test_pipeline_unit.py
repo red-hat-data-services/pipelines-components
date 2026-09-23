@@ -146,6 +146,26 @@ class TestAutogluonTimeseriesTrainingPipelineUnitTests:
         assert "componentInputParameter: preset" in content
         assert "condition-branches-1" in content
 
+    def test_compiled_pipeline_wires_mlflow_inputs_to_training(self):
+        """MLflow inputs are forwarded into the training task.
+
+        The training task now logs to MLflow; the standalone mlflow-logger step no longer exists.
+        """
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=autogluon_timeseries_training_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert "automl-mlflow-logger" not in content
+        assert "exec-autogluon-timeseries-models-training:" in content
+        assert "exec-autogluon-timeseries-models-training-2:" in content
+
     def test_compiled_pipeline_declares_speed_and_balanced_resource_tiers(self):
         """Speed and balanced preset branches request different training CPU/memory."""
         from kfp_components.utils.pipeline_task_resources import (

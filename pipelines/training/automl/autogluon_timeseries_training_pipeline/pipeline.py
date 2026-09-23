@@ -69,6 +69,14 @@ def autogluon_timeseries_training_pipeline(
     dataset artifact. S3 credentials for the initial load are supplied via the Kubernetes secret
     ``train_data_secret_name``.
 
+    MLflow logging:
+
+    Results are logged to MLflow only when the platform injects ``KFP_MLFLOW_CONFIG`` into the
+    step (configured on the Data Science Pipelines / KFP pipeline server, not via a pipeline
+    parameter). To disable MLflow logging, run the pipeline on a server without MLflow
+    configured, or have the cluster admin remove the MLflow configuration from the pipeline
+    server; the training step then skips all tracking and runs unchanged.
+
     Pipeline stages:
 
     0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP
@@ -188,6 +196,9 @@ def autogluon_timeseries_training_pipeline(
     )
 
     # Stage 2: Combined model generation + full refit.
+    # The training component logs results to MLflow incrementally (one nested child run per
+    # model) when the platform injects KFP_MLFLOW_CONFIG. Tracking is best-effort: missing
+    # config or MLflow errors are recorded on component_status only and never fail the run.
     # Resource limits differ by preset: medium_quality needs more CPU/memory.
     _training_kwargs = dict(
         target=target,
@@ -201,6 +212,7 @@ def autogluon_timeseries_training_pipeline(
         known_covariates_names=known_covariates_names,
         pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
         run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
         train_data_secret_name=train_data_secret_name,
         train_data_bucket_name=train_data_bucket_name,
         train_data_file_key=train_data_file_key,
@@ -214,6 +226,7 @@ def autogluon_timeseries_training_pipeline(
         test_data_bucket_name=test_data_bucket_name,
         test_data_file_key=test_data_file_key,
     )
+
     with dsl.If(preset == "balanced"):
         training_task_bl = autogluon_timeseries_models_training(**_training_kwargs)
         training_task_bl.set_caching_options(False)

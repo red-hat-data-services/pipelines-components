@@ -62,6 +62,14 @@ def autogluon_tabular_training_pipeline(
     the test dataset is written to an S3 artifact (for use by the leaderboard evaluation
     component). The workspace is provisioned via ``PipelineConfig.workspace``.
 
+    **MLflow logging:**
+
+    Results are logged to MLflow only when the platform injects ``KFP_MLFLOW_CONFIG`` into the
+    step (configured on the Data Science Pipelines / KFP pipeline server, not via a pipeline
+    parameter). To disable MLflow logging, run the pipeline on a server without MLflow
+    configured, or have the cluster admin remove the MLflow configuration from the pipeline
+    server; the training step then skips all tracking and runs unchanged.
+
     **Pipeline Stages:**
 
     0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP
@@ -126,7 +134,7 @@ def autogluon_tabular_training_pipeline(
         top_n: Number of top models to select and refit (default: 3); positive integer from range [1, 10].
         positive_class: Optional label value for the positive class in binary classification. Defaults to the second unique class after sorting label values.
         eval_metric: Metric used for model ranking. Empty string (default) is resolved by the component to "r2" for regression and "accuracy" for binary and multiclass classification.
-        preset: Training quality tier. "speed" (default, 4 vCPU / 16 GiB) or "balanced" (may run more than 2x longer, 8 vCPU / 32 GiB).
+        preset: Training quality tier. "speed" (45-minute selection budget, default, 4 vCPU / 16 GiB) or "balanced" (180-minute selection budget, 8 vCPU / 32 GiB).
         test_data_bucket_name: Optional S3-compatible bucket name for a user-provided test dataset.
             Default: empty string (use the holdout split from training data).
         test_data_file_key: Optional S3 object key for a user-provided test CSV file.
@@ -194,6 +202,9 @@ def autogluon_tabular_training_pipeline(
     )
 
     # Stage 1 + 2: Model selection and sequential refit of top N models.
+    # The training component logs results to MLflow incrementally (one nested child run per
+    # model) when the platform injects KFP_MLFLOW_CONFIG. Tracking is best-effort: missing
+    # config or MLflow errors are recorded on component_status only and never fail the run.
     # Resource limits differ by preset: balanced needs more CPU/memory than speed.
     _training_kwargs = dict(
         label_column=label_column,
@@ -205,6 +216,7 @@ def autogluon_tabular_training_pipeline(
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
         run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
         sample_row=data_loader_task.outputs["sample_row"],
         train_data_secret_name=train_data_secret_name,
         train_data_bucket_name=train_data_bucket_name,
@@ -217,6 +229,7 @@ def autogluon_tabular_training_pipeline(
         test_data_bucket_name=test_data_bucket_name,
         test_data_file_key=test_data_file_key,
     )
+
     with dsl.If(preset == "balanced"):
         training_task_bl = autogluon_models_training(**_training_kwargs)
         training_task_bl.set_caching_options(False)

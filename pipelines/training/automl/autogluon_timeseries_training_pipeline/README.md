@@ -17,6 +17,11 @@ Storage strategy:
 Train and test CSV splits are produced on the PVC workspace (``PipelineConfig.workspace``) so steps can read shared paths without re-downloading. The per-series test split is also exposed as a dataset artifact. S3 credentials for the initial load are supplied via the Kubernetes secret
 ``train_data_secret_name``.
 
+MLflow logging:
+
+Results are logged to MLflow only when the platform injects ``KFP_MLFLOW_CONFIG`` into the step (configured on the Data Science Pipelines / KFP pipeline server, not via a pipeline parameter). To disable MLflow logging, run the pipeline on a server without MLflow configured, or have the cluster admin
+remove the MLflow configuration from the pipeline server; the training step then skips all tracking and runs unchanged.
+
 Pipeline stages:
 
 0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP artifact for dashboards before data loading.
