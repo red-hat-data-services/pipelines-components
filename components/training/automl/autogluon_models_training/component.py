@@ -37,8 +37,8 @@ def autogluon_models_training(
 ) -> NamedTuple("outputs", eval_metric=str, best_model_name=str):
     """Train AutoGluon models, select the top N, and refit each on the full dataset.
 
-    Expects pre-cleaned CSV data from the tabular data loader (infinite values replaced,
-    duplicates removed, missing labels dropped). Reads train/test/extra-train CSVs and
+    Expects pre-cleaned Parquet data from the tabular data loader (infinite values replaced,
+    duplicates removed, missing labels dropped). Reads train/test/extra-train Parquet files and
     validates that the label column exists in each dataset.
 
     This component combines the model selection and full-refit stages into a single
@@ -57,8 +57,8 @@ def autogluon_models_training(
         label_column: Target/label column name in train and test datasets.
         task_type: ML task type: ``"binary"``, ``"multiclass"``, or ``"regression"``.
         top_n: Number of top models to select and refit (1-10).
-        train_data_path: Path to the selection-train CSV on the PVC workspace.
-        test_data: Dataset artifact (CSV) used for leaderboard ranking and evaluation.
+        train_data_path: Path to the selection-train Parquet file on the PVC workspace.
+        test_data: Dataset artifact (Parquet) used for leaderboard ranking and evaluation.
         workspace_path: PVC workspace directory; predictor saved at ``workspace_path/autogluon_predictor``.
         pipeline_name: Pipeline run name; last dash-segment stripped for the notebook.
         run_id: Pipeline run ID written into the generated notebook.
@@ -72,7 +72,7 @@ def autogluon_models_training(
         component_status: Output artifact containing stage-level progress tracking for this component.
         sampling_config: Data sampling config stored in artifact metadata.
         split_config: Data split config stored in artifact metadata.
-        extra_train_data_path: Optional path to extra training CSV passed to ``refit_full``.
+        extra_train_data_path: Optional path to extra training Parquet file passed to ``refit_full``.
         positive_class: Label value for the positive class in **binary** classification
             (e.g. ``"1"`` or ``"yes"``). Passed to ``TabularPredictor`` when set.
             Empty string (default) lets AutoGluon infer the positive class when ``fit`` runs.
@@ -102,7 +102,7 @@ def autogluon_models_training(
         TypeError: If any required string parameter is empty or configs have wrong types.
         ValueError: If ``task_type`` is invalid, ``top_n`` is out of range, ``sample_row``
             is not a JSON list, ``problem_type`` is unsupported for notebook generation,
-            label column not found in CSV, or train/test data is empty.
+            label column not found in the data, or train/test data is empty.
         FileNotFoundError: If train/test data or predictor paths cannot be found.
     """  # noqa: E501
     import json
@@ -201,35 +201,35 @@ def autogluon_models_training(
 
         # 1. models selection stage
 
-        train_data_df = pd.read_csv(train_data_path)
+        train_data_df = pd.read_parquet(train_data_path)
         if label_column not in train_data_df.columns:
             raise ValueError(
-                f"Label column {label_column!r} not found in train CSV. "
+                f"Label column {label_column!r} not found in train data. "
                 f"Available columns: {list(train_data_df.columns)}"
             )
         if train_data_df.empty:
-            raise ValueError("Training CSV is empty. Ensure the data loader produced valid training data.")
+            raise ValueError("Training data is empty. Ensure the data loader produced valid training data.")
 
-        test_data_df = pd.read_csv(test_data.path)
+        test_data_df = pd.read_parquet(test_data.path)
         if label_column not in test_data_df.columns:
             raise ValueError(
-                f"Label column {label_column!r} not found in test CSV. Available columns: {list(test_data_df.columns)}"
+                f"Label column {label_column!r} not found in test data. Available columns: {list(test_data_df.columns)}"
             )
         if test_data_df.empty:
-            raise ValueError("Test CSV is empty. Ensure the data loader produced valid test data.")
+            raise ValueError("Test data is empty. Ensure the data loader produced valid test data.")
         if not eval_metric:
             eval_metric = "r2" if task_type == "regression" else "accuracy"
 
         extra_train_df = None
         if extra_train_data_path.strip():
-            extra_train_df = pd.read_csv(extra_train_data_path)
+            extra_train_df = pd.read_parquet(extra_train_data_path)
             if label_column not in extra_train_df.columns:
                 raise ValueError(
-                    f"Label column {label_column!r} not found in extra-train CSV. "
+                    f"Label column {label_column!r} not found in extra-train data. "
                     f"Available columns: {list(extra_train_df.columns)}"
                 )
             if extra_train_df.empty:
-                logger.warning("Extra train CSV is empty; passing train_data_extra=None to refit_full.")
+                logger.warning("Extra train data is empty; passing train_data_extra=None to refit_full.")
                 extra_train_df = None
 
         coerced_positive_class = _coerce_positive_class(positive_class)

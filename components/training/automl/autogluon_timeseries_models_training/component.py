@@ -59,7 +59,7 @@ def autogluon_timeseries_models_training(
         target: Name of the target column to forecast.
         id_column: Name of the column identifying each time series (item_id).
         timestamp_column: Name of the timestamp/datetime column.
-        train_data_path: Path to the selection training CSV file.
+        train_data_path: Path to the selection training Parquet file.
         test_data: Test dataset artifact for evaluation.
         top_n: Number of top models to select for full refit.
         workspace_path: Workspace directory where predictor will be saved.
@@ -189,12 +189,13 @@ def autogluon_timeseries_models_training(
         split_config = split_config or {}
         time_limit = PRESET_TIME_LIMITS[preset]
 
-        train_df = pd.read_csv(train_data_path)
-        test_df = pd.read_csv(test_data.path)
+        train_df = pd.read_parquet(train_data_path)
+        test_df = pd.read_parquet(test_data.path)
         logger.info("Loaded train=%s test=%s rows", len(train_df), len(test_df))
-        # pd.read_csv returns the timestamp column as object (string) dtype.
-        # TimeSeriesDataFrame.from_data_frame requires datetime64; convert explicitly.
-        # utc=True handles both tz-naive and tz-aware (e.g. ISO 8601 with Z suffix) strings;
+        # Parquet round-trips the loader's datetime64 dtype directly, but normalize anyway:
+        # TimeSeriesDataFrame.from_data_frame requires tz-naive datetime64, and this guards
+        # against a tz-aware timestamp column reaching this component by any other path.
+        # utc=True handles both tz-naive and tz-aware (e.g. ISO 8601 with Z suffix) values;
         # tz_localize(None) then strips tz info to produce tz-naive datetime64[ns].
         train_df[timestamp_column] = pd.to_datetime(train_df[timestamp_column], utc=True).dt.tz_localize(None)
         test_df[timestamp_column] = pd.to_datetime(test_df[timestamp_column], utc=True).dt.tz_localize(None)

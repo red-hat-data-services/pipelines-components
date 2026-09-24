@@ -6,7 +6,7 @@
 
 Train AutoGluon models, select the top N, and refit each on the full dataset.
 
-Expects pre-cleaned CSV data from the tabular data loader (infinite values replaced, duplicates removed, missing labels dropped). Reads train/test/extra-train CSVs and validates that the label column exists in each dataset.
+Expects pre-cleaned Parquet data from the tabular data loader (infinite values replaced, duplicates removed, missing labels dropped). Reads train/test/extra-train Parquet files and validates that the label column exists in each dataset.
 
 This component combines the model selection and full-refit stages into a single step. It trains a TabularPredictor on sampled data, ranks all models on the test set, then refits each of the top N models on the full training data in a single ``refit_full`` call. Post-refit work (predict, evaluate,
 feature importance, confusion matrix (via evaluate_predictions detailed_report), classification curves, notebook generation) runs concurrently across all top-N models via ``ThreadPoolExecutor``. The deployment clone (``set_model_best`` + ``clone_for_deployment``) is serialized afterward because it
@@ -19,8 +19,8 @@ mutates predictor state. All artifacts are written under a single output artifac
 | `label_column` | `str` | `None` | Target/label column name in train and test datasets. |
 | `task_type` | `str` | `None` | ML task type: ``"binary"``, ``"multiclass"``, or ``"regression"``. |
 | `top_n` | `int` | `None` | Number of top models to select and refit (1-10). |
-| `train_data_path` | `str` | `None` | Path to the selection-train CSV on the PVC workspace. |
-| `test_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (CSV) used for leaderboard ranking and evaluation. |
+| `train_data_path` | `str` | `None` | Path to the selection-train Parquet file on the PVC workspace. |
+| `test_data` | `dsl.Input[dsl.Dataset]` | `None` | Dataset artifact (Parquet) used for leaderboard ranking and evaluation. |
 | `workspace_path` | `str` | `None` | PVC workspace directory; predictor saved at ``workspace_path/autogluon_predictor``. |
 | `pipeline_name` | `str` | `None` | Pipeline run name; last dash-segment stripped for the notebook. |
 | `run_id` | `str` | `None` | Pipeline run ID written into the generated notebook. |
@@ -31,7 +31,7 @@ mutates predictor state. All artifacts are written under a single output artifac
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
 | `sampling_config` | `Optional[dict]` | `None` | Data sampling config stored in artifact metadata. |
 | `split_config` | `Optional[dict]` | `None` | Data split config stored in artifact metadata. |
-| `extra_train_data_path` | `str` | `""` | Optional path to extra training CSV passed to ``refit_full``. |
+| `extra_train_data_path` | `str` | `""` | Optional path to extra training Parquet file passed to ``refit_full``. |
 | `positive_class` | `str` | `""` | Label value for the positive class in **binary** classification (e.g. ``"1"`` or ``"yes"``). Passed to ``TabularPredictor`` when set. Empty string (default) lets AutoGluon infer the positive class when ``fit`` runs. Ignored for ``multiclass`` and ``regression``. |
 | `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (45-minute selection budget, default) or ``"balanced"`` (180-minute selection budget). |
 | `eval_metric` | `str` | `""` | Metric for model ranking (e.g. ``"r2"``, ``"accuracy"``). Defaults to ``"r2"`` for regression and ``"accuracy"`` otherwise. |
@@ -95,13 +95,13 @@ def my_pipeline():
         label_column="price",
         task_type="regression",
         top_n=3,
-        train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/models_selection_train_dataset.csv",
+        train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/models_selection_train_dataset.parquet",
         test_data=<test_dataset_artifact>,
         workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
         pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,
         run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
         sample_row='[{"bedrooms": 3, "sqft": 1200, "location": "urban"}]',
-        extra_train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/extra_train_dataset.csv",
+        extra_train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/extra_train_dataset.parquet",
     )
 ```
 
@@ -112,7 +112,7 @@ training_task = autogluon_models_training(
     label_column="target",
     task_type="multiclass",
     top_n=5,
-    train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/models_selection_train_dataset.csv",
+    train_data_path=f"{dsl.WORKSPACE_PATH_PLACEHOLDER}/datasets/models_selection_train_dataset.parquet",
     test_data=<test_dataset_artifact>,
     workspace_path=dsl.WORKSPACE_PATH_PLACEHOLDER,
     pipeline_name=dsl.PIPELINE_JOB_RESOURCE_NAME_PLACEHOLDER,

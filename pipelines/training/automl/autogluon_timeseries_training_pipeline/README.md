@@ -14,8 +14,8 @@ Trains AutoGluon TimeSeries models on data loaded from S3, scores candidates on 
 
 Storage strategy:
 
-Train and test CSV splits are produced on the PVC workspace (``PipelineConfig.workspace``) so steps can read shared paths without re-downloading. The per-series test split is also exposed as a dataset artifact. S3 credentials for the initial load are supplied via the Kubernetes secret
-``train_data_secret_name``.
+Train splits (selection-train, extra-train) are written to the PVC workspace (``PipelineConfig.workspace``) as Snappy-compressed Parquet rather than CSV, so steps can read shared paths without re-downloading and the pipeline's own copies stay small. The per-series test split is also exposed as a
+Parquet dataset artifact. S3 credentials for the initial load are supplied via the Kubernetes secret ``train_data_secret_name``.
 
 MLflow logging:
 
@@ -28,7 +28,7 @@ Pipeline stages:
 
 1. **Data loading & splitting** (``timeseries_data_loader``): Loads CSV from S3 (up to 100 MiB for the "speed" preset, up to 1 GiB for "balanced"), replaces ``+/-inf`` with NaN (missing targets stay for AutoGluon), requires parseable timestamps and non-null ids (or injects ``__synthetic_item_id``
 for two-column datasets when ``id_column=""``), deduplicates ``(id_column, timestamp_column)``, then applies a two-stage **per-series temporal** split on ``id_column`` / ``timestamp_column``: default **80/20** train vs test per series, then **30/70** of each series' train rows into
-``models_selection_train_dataset.csv`` and ``extra_train_dataset.csv`` under ``{workspace_path}/datasets/``. The test split is written to the ``sampled_test_dataset`` artifact.
+``models_selection_train_dataset.parquet`` and ``extra_train_dataset.parquet`` under ``{workspace_path}/datasets/``. The test split is written to the ``sampled_test_dataset`` artifact.
 
 2. **Model generation + full refit** (``autogluon_timeseries_models_training``): Trains multiple AutoGluon TimeSeries models on the selection split, picks top ``top_n``, and refits each selected model on the full train portion (**selection + extra** splits). The component writes all refitted models
 to a single combined ``models_artifact``.

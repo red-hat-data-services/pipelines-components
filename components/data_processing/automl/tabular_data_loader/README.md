@@ -10,9 +10,10 @@ Loads tabular (CSV) data from S3 in batches, sampling up to a preset-dependent s
 
 The component reads data in chunks to efficiently handle large files without loading the entire dataset into memory at once. After sampling, it performs a two-stage split:
 
-1. **Primary split** (default 80/20): separates a *test set* (20%, written to the ``sampled_test_dataset`` S3 artifact) from the *train portion* (80%).
+1. **Primary split** (default 80/20): separates a *test set* (20%, written as Parquet to the ``sampled_test_dataset`` artifact) from the *train portion* (80%).
 
-2. **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.csv`` (30%, used for model selection) and ``extra_train_dataset.csv`` (70%, passed to ``refit_full`` as extra data). Both are written to the PVC workspace under ``{workspace_path}/datasets/``.
+2. **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.parquet`` (30%, used for model selection) and ``extra_train_dataset.parquet`` (70%, passed to ``refit_full`` as extra data). Both are written to the PVC workspace under
+``{workspace_path}/datasets/`` as Snappy-compressed Parquet so the workspace never holds a full-size CSV copy of either split.
 
 For **regression** tasks the split is random; for **binary** and **multiclass** tasks the split is **stratified** by the label column by default.
 
@@ -31,7 +32,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 | --------- | ---- | ------- | ----------- |
 | `file_key` | `str` | `None` | S3 object key of the CSV file. |
 | `bucket_name` | `str` | `None` | S3 bucket name containing the file. |
-| `workspace_path` | `str` | `None` | PVC workspace directory where train CSVs will be written. |
+| `workspace_path` | `str` | `None` | PVC workspace directory where train Parquet files will be written. |
 | `label_column` | `str` | `None` | Name of the label/target column in the dataset. |
 | `sampled_test_dataset` | `dsl.Output[dsl.Dataset]` | `None` | Output dataset artifact for the test split. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking for this component. |
@@ -47,7 +48,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| Output | `NamedTuple('outputs', sample_config=dict, split_config=dict, sample_row=str, models_selection_train_data_path=str, extra_train_data_path=str)` | Contains sample config, split config, a sample row, and paths to selection-train and extra-train CSVs. |
+| Output | `NamedTuple('outputs', sample_config=dict, split_config=dict, sample_row=str, models_selection_train_data_path=str, extra_train_data_path=str)` | Contains sample config, split config, a sample row, and paths to selection-train and extra-train Parquet files. |
 
 ## Usage Examples 🧪
 
@@ -136,8 +137,8 @@ The `split_config` dictionary parameter supports:
 
 The `selection_train_size` parameter (default: 0.3) controls the secondary split of the train portion:
 
-- 30% of train data goes to `models_selection_train_data.csv` (used for model selection).
-- 70% of train data goes to `extra_train_dataset.csv` (passed to `refit_full` as extra training data).
+- 30% of train data goes to `models_selection_train_dataset.parquet` (used for model selection).
+- 70% of train data goes to `extra_train_dataset.parquet` (passed to `refit_full` as extra training data).
 
 ## Credentials
 
@@ -164,9 +165,9 @@ def my_pipeline():
         label_column="price",
         task_type="regression",
     )
-    # load_task.outputs["models_selection_train_data_path"] - PVC path for model selection training
-    # load_task.outputs["extra_train_data_path"] - PVC path for extra training data (refit_full)
-    # load_task.outputs["sampled_test_dataset"] - S3 artifact for test evaluation
+    # load_task.outputs["models_selection_train_data_path"] - PVC path (Parquet) for model selection training
+    # load_task.outputs["extra_train_data_path"] - PVC path (Parquet) for extra training data (refit_full)
+    # load_task.outputs["sampled_test_dataset"] - artifact (Parquet) for test evaluation
     # load_task.outputs["sample_row"] - JSON string with one sample row from test set
     return load_task
 ```
@@ -235,7 +236,10 @@ Match stage ids to the tabular pipeline entry in ``component_stage_map.json`` fr
 
 ## Supported formats and limits 📋
 
-- **Format**: CSV only.
+- **Input format**: CSV only (S3 source file, and the optional user-provided test dataset).
+- **Output format**: Snappy-compressed Parquet for all pipeline-owned copies — the two PVC
+  workspace train splits (`models_selection_train_dataset.parquet`, `extra_train_dataset.parquet`)
+  and the `sampled_test_dataset` artifact. No full-size CSV copy of any split is kept.
 - **Size limit**: Preset-dependent size budget in memory (sampled if larger) — ``"speed"``: 100 MB, ``"balanced"``: 1 GB.
 - **Streaming**: Data is read in batches (10k rows per chunk) to handle large files.
 

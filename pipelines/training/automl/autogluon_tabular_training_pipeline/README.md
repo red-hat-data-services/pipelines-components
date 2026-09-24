@@ -12,8 +12,8 @@ This pipeline implements an efficient two-stage training approach for AutoGluon 
 
 **Storage strategy:**
 
-Training datasets are stored on a PVC workspace (not S3 artifacts) so that all pipeline steps sharing the workspace can access them without extra downloads. Only the test dataset is written to an S3 artifact (for use by the leaderboard evaluation component). The workspace is provisioned via
-``PipelineConfig.workspace``.
+Training datasets are stored on a PVC workspace (not S3 artifacts) so that all pipeline steps sharing the workspace can access them without extra downloads. Only the test dataset is written to an S3 artifact (for use by the leaderboard evaluation component). All three (selection-train, extra-train,
+test) are written as Snappy-compressed Parquet rather than CSV to keep the pipeline's own copies small. The workspace is provisioned via ``PipelineConfig.workspace``.
 
 **MLflow logging:**
 
@@ -25,8 +25,8 @@ remove the MLflow configuration from the pipeline server; the training step then
 0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP artifact for dashboards before any data I/O.
 
 1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS credentials configured via Kubernetes secrets. The component samples the data (up to 100 MiB for the "speed" preset, up to 1 GiB for "balanced"), then performs a two-stage split: *Primary
-split** (default 80/20): separates a *test set* (20%, written to an S3 artifact) from the *train portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.csv`` (30%, used for model selection) and ``extra_train_dataset.csv`` (70%, passed to
-``refit_full`` as extra data). Both train CSVs are written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column.
+split** (default 80/20): separates a *test set* (20%, written to an S3 artifact) from the *train portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.parquet`` (30%, used for model selection) and ``extra_train_dataset.parquet`` (70%,
+passed to ``refit_full`` as extra data). Both train Parquet files are written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column.
 
 2. **Model Training & Refitting**: Trains multiple AutoGluon models on the *selection train* data using stacking (1 level) and bagging (4 folds). All models are evaluated on the test set and ranked by performance. The top N models are selected and refitted sequentially on the full training data via
 ``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and optimized for deployment. All model artifacts are stored under a single output artifact, avoiding a ``ParallelFor`` loop in the pipeline.

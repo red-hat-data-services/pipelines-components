@@ -48,8 +48,9 @@ def timeseries_data_loader(
     2. Secondary split (default 30/70 of each series' train rows): early segment to
        selection-train, later segment to extra-train.
 
-    The test set is written to S3 artifact, while train CSVs are written
-    to the PVC workspace for sharing across pipeline steps.
+    The test set is written to an S3 artifact, while train Parquet files (selection-train
+    and extra-train, Snappy-compressed) are written to the PVC workspace for sharing across
+    pipeline steps.
 
     After cleansing, at least **100** valid records must remain; otherwise the component
     fails with a clear error so downstream AutoGluon training does not run on datasets too
@@ -58,7 +59,7 @@ def timeseries_data_loader(
     Args:
         file_key: S3 object key of the CSV file containing time series data.
         bucket_name: S3 bucket name containing the file.
-        workspace_path: PVC workspace directory where train CSVs will be written.
+        workspace_path: PVC workspace directory where train Parquet files will be written.
         target: Name of the target column to forecast.
         id_column: Name of the column identifying each time series (item_id). Pass an empty
             string ("") for single-series two-column datasets (timestamp + target only);
@@ -121,6 +122,7 @@ def timeseries_data_loader(
             logger.debug("Could not compute dataset stats for %s: %s", name, e)
 
     from kfp_components.components.training.automl.shared.component_status import ComponentStatusTracker
+    from kfp_components.components.training.automl.shared.parquet_utils import stringify_mixed_object_columns
     from kfp_components.components.training.automl.shared.user_test_data import (
         raise_if_test_data_empty,
         report_test_data_truncation,
@@ -476,6 +478,7 @@ def timeseries_data_loader(
             )
 
         df = _clean_timeseries_dataframe(df, id_column, timestamp_column, logger)
+        stringify_mixed_object_columns(df)
         _log_dataset_stats("loaded (after cleansing)", df)
 
         n_valid = len(df)
@@ -488,6 +491,9 @@ def timeseries_data_loader(
 
         status.record("prepare_data", "completed", metrics={"rows": n_valid})
         status.record("split_and_export", "started")
+
+        if not sampled_test_dataset.uri or not sampled_test_dataset.uri.endswith(".parquet"):
+            sampled_test_dataset.uri = (sampled_test_dataset.uri or "sampled_test_dataset") + ".parquet"
 
         # Create workspace datasets directory (use validated resolved path)
         datasets_dir = workspace_path_resolved / "datasets"
@@ -617,7 +623,8 @@ def timeseries_data_loader(
                 )
 
             # Write user test data to artifact
-            user_test_df.to_csv(sampled_test_dataset.path, index=False)
+            stringify_mixed_object_columns(user_test_df)
+            user_test_df.to_parquet(sampled_test_dataset.path, index=False)
 
             # Skip primary temporal split -- use ALL data for secondary split
             selection_parts = []
@@ -677,13 +684,13 @@ def timeseries_data_loader(
             if len(selection_train_df) == 0:
                 raise ValueError(
                     "Secondary split produced an empty selection-train dataset; "
-                    "models_selection_train_dataset.csv would be empty and downstream training would fail. "
+                    "models_selection_train_dataset.parquet would be empty and downstream training would fail. "
                     "Increase rows per time series and/or selection_train_size, or reduce test_size so "
                     "each series has enough train rows for the selection segment."
                 )
 
             # Save test dataset to artifact
-            test_df.to_csv(sampled_test_dataset.path, index=False)
+            test_df.to_parquet(sampled_test_dataset.path, index=False)
 
             test_data_for_sample = test_df
 
@@ -699,11 +706,12 @@ def timeseries_data_loader(
             test_data_for_sample,
         )
 
-        # Common post-split: write selection-train and extra-train CSVs to workspace
-        selection_path = datasets_dir / "models_selection_train_dataset.csv"
-        extra_path = datasets_dir / "extra_train_dataset.csv"
-        selection_train_df.to_csv(selection_path, index=False)
-        extra_train_df.to_csv(extra_path, index=False)
+        # Common post-split: write selection-train and extra-train data to workspace as
+        # Snappy-compressed Parquet (typed + compressed, materially smaller on disk than CSV).
+        selection_path = datasets_dir / "models_selection_train_dataset.parquet"
+        extra_path = datasets_dir / "extra_train_dataset.parquet"
+        selection_train_df.to_parquet(selection_path, index=False)
+        extra_train_df.to_parquet(extra_path, index=False)
 
         split_export_metrics = {
             "test_size": split_config_out["test_size"],

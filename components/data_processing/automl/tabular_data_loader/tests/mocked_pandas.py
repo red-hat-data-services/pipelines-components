@@ -10,6 +10,7 @@ import json
 import math
 import random
 from collections import Counter
+from pathlib import Path
 
 
 class MockedDataFrame:
@@ -31,6 +32,19 @@ class MockedDataFrame:
     def empty(self):
         """Return True if there are no rows."""
         return len(self._rows) == 0
+
+    def select_dtypes(self, include=None):
+        """Minimal mock: this mock does not track per-column dtypes, so it reports no matches.
+
+        The component uses this to find ``object``-dtype columns to normalize before
+        writing Parquet. Since ``MockedDataFrame`` stores every cell as-is with no dtype
+        concept, there is nothing to select; the caller's loop over ``.columns`` is a no-op.
+        """
+
+        class _NoColumns:
+            columns: list = []
+
+        return _NoColumns()
 
     def __len__(self):
         """Return the number of rows."""
@@ -223,6 +237,15 @@ class MockedDataFrame:
             writer.writerow(self._columns)
             writer.writerows(self._rows)
 
+    def to_parquet(self, path, index=False, compression="snappy"):
+        """Write the data at the given path using the same CSV serialization as ``to_csv``.
+
+        Real ``pandas.DataFrame.to_parquet`` needs pyarrow, which this mock module
+        deliberately avoids requiring. Tests only need to verify the component's calling
+        convention (path, kwargs) and row/column content, not a byte-identical Parquet file.
+        """
+        self.to_csv(path, index=index)
+
     def to_json(self, orient="records"):
         """Serialize the dataframe to a JSON string."""
         if orient == "records":
@@ -332,6 +355,8 @@ def _read_csv_chunks(text_stream, chunksize):
     """Parse CSV from text_stream and yield MockedDataFrame chunks."""
     if hasattr(text_stream, "read"):
         content = text_stream.read()
+    elif isinstance(text_stream, (str, Path)) and Path(text_stream).is_file():
+        content = Path(text_stream).read_text(encoding="utf-8")
     else:
         content = text_stream
     if isinstance(content, bytes):

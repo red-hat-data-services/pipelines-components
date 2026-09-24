@@ -18,7 +18,7 @@ Refit outputs for all selected models are written under one ``models_artifact``,
 | `target` | `str` | `None` | Name of the target column to forecast. |
 | `id_column` | `str` | `None` | Name of the column identifying each time series (item_id). |
 | `timestamp_column` | `str` | `None` | Name of the timestamp/datetime column. |
-| `train_data_path` | `str` | `None` | Path to the selection training CSV file. |
+| `train_data_path` | `str` | `None` | Path to the selection training Parquet file. |
 | `test_data` | `dsl.Input[dsl.Dataset]` | `None` | Test dataset artifact for evaluation. |
 | `top_n` | `int` | `None` | Number of top models to select for full refit. |
 | `workspace_path` | `str` | `None` | Workspace directory where predictor will be saved. |

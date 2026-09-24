@@ -151,8 +151,8 @@ def _real_pandas_sys_modules():
         sys.modules["pandas"] = saved
 
 
-def _mock_csv_frame(label_column: str = "target", feature_cols: tuple[str, ...] = ("feature1",)):
-    """Minimal ``read_csv`` mock row so cleansing finds ``label_column`` in ``columns``."""
+def _mock_parquet_frame(label_column: str = "target", feature_cols: tuple[str, ...] = ("feature1",)):
+    """Minimal ``read_parquet`` mock row so cleansing finds ``label_column`` in ``columns``."""
     cols = list(feature_cols)
     if label_column not in cols:
         cols.append(label_column)
@@ -238,7 +238,7 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None)
         label_column="target",
         task_type="regression",
         top_n=2,
-        train_data_path="/tmp/train.csv",
+        train_data_path="/tmp/train.parquet",
         test_data=test_data,
         workspace_path=workspace_path,
         pipeline_name=PIPELINE_NAME,
@@ -251,7 +251,7 @@ def _base_call_kwargs(workspace_path, models_artifact, test_data, tmp_path=None)
         html_artifact=html,
         experiment_notebook=experiment_nb,
         component_status=rs,
-        extra_train_data_path="/tmp/extra.csv",
+        extra_train_data_path="/tmp/extra.parquet",
     )
 
 
@@ -287,9 +287,9 @@ class TestAutogluonModelsTrainingUnitTests:
 
     # ── Happy path ─────────────────────────────────────────────────────────────
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_regression_happy_path(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_regression_happy_path(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Full regression flow: fit, select top 2, refit_full batch, per-model artifacts."""
         top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -304,8 +304,8 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"feature1": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_train_df, mock_test_df, mock_extra_df = _mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()
-        mock_read_csv.side_effect = [mock_train_df, mock_test_df, mock_extra_df]
+        mock_train_df, mock_test_df, mock_extra_df = _mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()
+        mock_read_parquet.side_effect = [mock_train_df, mock_test_df, mock_extra_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -315,7 +315,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.path = models_output_dir
         mock_models_artifact.metadata = {}
         mock_test_data = mock.MagicMock()
-        mock_test_data.path = "/tmp/test.csv"
+        mock_test_data.path = "/tmp/test.parquet"
 
         result = autogluon_models_training.python_func(
             **_base_call_kwargs(workspace_path, mock_models_artifact, mock_test_data, tmp_path),
@@ -346,11 +346,11 @@ class TestAutogluonModelsTrainingUnitTests:
         assert all(config["num_threads"] == 4 for config in fit_call[1]["hyperparameters"]["GBM"])
         assert fit_call[1]["excluded_model_types"] == ["CAT"]
 
-        # read_csv: train, test, extra
-        assert mock_read_csv.call_count == 3
-        assert mock_read_csv.call_args_list[0][0][0] == "/tmp/train.csv"
-        assert mock_read_csv.call_args_list[1][0][0] == "/tmp/test.csv"
-        assert mock_read_csv.call_args_list[2][0][0] == "/tmp/extra.csv"
+        # read_parquet: train, test, extra
+        assert mock_read_parquet.call_count == 3
+        assert mock_read_parquet.call_args_list[0][0][0] == "/tmp/train.parquet"
+        assert mock_read_parquet.call_args_list[1][0][0] == "/tmp/test.parquet"
+        assert mock_read_parquet.call_args_list[2][0][0] == "/tmp/extra.parquet"
 
         # leaderboard called with test df
         mock_predictor.leaderboard.assert_called_once_with(mock_test_df)
@@ -447,9 +447,9 @@ class TestAutogluonModelsTrainingUnitTests:
             assert "feature1" in nb_text
             assert "'target'" not in nb_text
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_speed_preset_fit_args(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_speed_preset_fit_args(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Speed preset uses a 45-minute time limit and good_quality AutoGluon preset."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -463,8 +463,8 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_train_df, mock_test_df = _mock_csv_frame(), _mock_csv_frame()
-        mock_read_csv.side_effect = [mock_train_df, mock_test_df]
+        mock_train_df, mock_test_df = _mock_parquet_frame(), _mock_parquet_frame()
+        mock_read_parquet.side_effect = [mock_train_df, mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -478,8 +478,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -504,9 +504,9 @@ class TestAutogluonModelsTrainingUnitTests:
         assert context["model_config"]["preset"] == "speed"
         assert context["model_config"]["time_limit"] == 45 * 60
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_balanced_preset_fit_args(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_balanced_preset_fit_args(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Balanced preset uses 180-minute time limit and high_quality AutoGluon preset."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -520,8 +520,8 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_train_df, mock_test_df = _mock_csv_frame(), _mock_csv_frame()
-        mock_read_csv.side_effect = [mock_train_df, mock_test_df]
+        mock_train_df, mock_test_df = _mock_parquet_frame(), _mock_parquet_frame()
+        mock_read_parquet.side_effect = [mock_train_df, mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -535,8 +535,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -558,9 +558,9 @@ class TestAutogluonModelsTrainingUnitTests:
         assert context["model_config"]["preset"] == "balanced"
         assert context["model_config"]["time_limit"] == 180 * 60
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_without_extra_train_data(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_without_extra_train_data(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Empty extra_train_data_path passes train_data_extra=None to refit_full."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -574,8 +574,8 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_train_df, mock_test_df = _mock_csv_frame(), _mock_csv_frame()
-        mock_read_csv.side_effect = [mock_train_df, mock_test_df]
+        mock_train_df, mock_test_df = _mock_parquet_frame(), _mock_parquet_frame()
+        mock_read_parquet.side_effect = [mock_train_df, mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -589,8 +589,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -604,15 +604,15 @@ class TestAutogluonModelsTrainingUnitTests:
 
         # refit_full gets None for extra data
         mock_predictor_clone.refit_full.assert_called_once_with(model=["LightGBM_BAG_L1"], train_data_extra=None)
-        # read_csv called only twice (train + test, no extra)
-        assert mock_read_csv.call_count == 2
+        # read_parquet called only twice (train + test, no extra)
+        assert mock_read_parquet.call_count == 2
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_binary_explicit_positive_class_passed_to_tabular_predictor(
         self,
         mock_predictor_class,
-        mock_read_csv,
+        mock_read_parquet,
         tmp_path,
     ):
         """Explicit positive_class is forwarded to TabularPredictor for binary tasks."""
@@ -632,7 +632,7 @@ class TestAutogluonModelsTrainingUnitTests:
             "classification_report": {},
         }
 
-        mock_test_df = _mock_csv_frame()
+        mock_test_df = _mock_parquet_frame()
         saved = sys.modules.pop("pandas", None)
         try:
             import importlib
@@ -646,7 +646,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_test_df.__getitem__ = lambda self, key: y_true if key == "target" else mock.MagicMock()
         mock_predictor_clone.predict_proba.return_value = y_proba
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), mock_test_df, _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), mock_test_df, _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -657,7 +657,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.metadata = {}
 
         call_kwargs = _base_call_kwargs(
-            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path
+            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
         )
         call_kwargs["task_type"] = "binary"
         call_kwargs["positive_class"] = "0"
@@ -672,12 +672,12 @@ class TestAutogluonModelsTrainingUnitTests:
             positive_class=0,
         )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_regression_positive_class_is_ignored(
         self,
         mock_predictor_class,
-        mock_read_csv,
+        mock_read_parquet,
         caplog,
         tmp_path,
     ):
@@ -697,7 +697,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -708,7 +708,9 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path),
+            **_base_call_kwargs(
+                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
+            ),
             positive_class="yes",
         )
 
@@ -721,12 +723,12 @@ class TestAutogluonModelsTrainingUnitTests:
         )
         assert "ignored when task_type='regression'" in caplog.text
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_binary_classification_writes_confusion_matrix_and_curves(
         self,
         mock_predictor_class,
-        mock_read_csv,
+        mock_read_parquet,
         tmp_path,
     ):
         """Binary classification uses predict_proba + detailed_report evaluate_predictions."""
@@ -754,7 +756,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 if saved is not None:
                     sys.modules["pandas"] = saved
 
-        mock_test_df = _mock_csv_frame()
+        mock_test_df = _mock_parquet_frame()
         y_true, y_proba = _dataframes_with_real_pandas_for_curves()
         mock_test_df.__getitem__ = lambda self, key: y_true if key == "target" else mock.MagicMock()
         mock_predictor_clone.predict_proba.return_value = y_proba
@@ -767,7 +769,7 @@ class TestAutogluonModelsTrainingUnitTests:
             "classification_report": {"0": {"precision": 1.0}},
         }
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), mock_test_df]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -781,8 +783,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="binary",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -819,12 +821,12 @@ class TestAutogluonModelsTrainingUnitTests:
         assert "roc_curve" in curves_payload
         assert "precision_recall_curve" in curves_payload
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_multiclass_writes_curves_json(
         self,
         mock_predictor_class,
-        mock_read_csv,
+        mock_read_parquet,
         tmp_path,
     ):
         """Multiclass classification writes curves.json with multiclass task_type."""
@@ -855,7 +857,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 if saved is not None:
                     sys.modules["pandas"] = saved
 
-        mock_test_df = _mock_csv_frame()
+        mock_test_df = _mock_parquet_frame()
         y_true = _dataframes_with_real_pandas(lambda pd: pd.Series([0, 1, 2]))
         mock_test_df.__getitem__ = lambda self, key: y_true if key == "target" else mock.MagicMock()
         y_proba = _multiclass_proba()
@@ -865,7 +867,7 @@ class TestAutogluonModelsTrainingUnitTests:
             "confusion_matrix": mock.MagicMock(to_dict=lambda: {"0": {"0": 1}}),
         }
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), mock_test_df]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -879,8 +881,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="multiclass",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -905,12 +907,12 @@ class TestAutogluonModelsTrainingUnitTests:
         cm_path = Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "metrics" / "confusion_matrix.json"
         assert cm_path.exists()
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_multiclass_curves_skips_class_with_no_test_examples(
         self,
         mock_predictor_class,
-        mock_read_csv,
+        mock_read_parquet,
         tmp_path,
     ):
         """OvR curves skip classes absent from test labels but still write curves for others."""
@@ -936,14 +938,14 @@ class TestAutogluonModelsTrainingUnitTests:
                 ),
             )
         )
-        mock_test_df = _mock_csv_frame()
+        mock_test_df = _mock_parquet_frame()
         mock_test_df.__getitem__ = lambda self, key: y_true if key == "target" else mock.MagicMock()
         mock_predictor_clone.predict_proba.return_value = y_proba
         mock_predictor_clone.evaluate_predictions.return_value = {
             "accuracy": 0.75,
             "confusion_matrix": mock.MagicMock(to_dict=lambda: {"1": {"1": 2}}),
         }
-        mock_read_csv.side_effect = [_mock_csv_frame(), mock_test_df]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), mock_test_df]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -957,8 +959,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="multiclass",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -979,9 +981,9 @@ class TestAutogluonModelsTrainingUnitTests:
     # ── Call order and structural invariants ───────────────────────────────────
 
     @mock.patch("shutil.rmtree")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_operations_called_in_correct_order(self, mock_predictor_class, mock_read_csv, mock_rmtree, tmp_path):
+    def test_operations_called_in_correct_order(self, mock_predictor_class, mock_read_parquet, mock_rmtree, tmp_path):
         """Verify call order for a single model: fit → clone → refit_full → Phase A (predict → evaluate → fi) → Phase B (set_model_best → clone_for_deployment) → rmtree.
 
         Phase A (metrics + notebook) runs via ThreadPoolExecutor across models, but within
@@ -1015,7 +1017,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor.label = "target"
         mock_predictor.eval_metric = "r2"
         _mock_leaderboard_top_models(mock_predictor, ["LightGBM_BAG_L1"])
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1029,8 +1031,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1055,9 +1057,9 @@ class TestAutogluonModelsTrainingUnitTests:
         assert call_order[-1] == "rmtree"
 
     @mock.patch("shutil.rmtree")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_work_path_is_on_pvc_and_cleaned_up(self, mock_predictor_class, mock_read_csv, mock_rmtree, tmp_path):
+    def test_work_path_is_on_pvc_and_cleaned_up(self, mock_predictor_class, mock_read_parquet, mock_rmtree, tmp_path):
         """Clone work path is inside workspace_path (PVC), not inside models_artifact (S3)."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1070,7 +1072,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.9}
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1084,8 +1086,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1105,9 +1107,9 @@ class TestAutogluonModelsTrainingUnitTests:
         # is also removed, so there may be more than one rmtree call).
         mock_rmtree.assert_any_call(expected_work_path, ignore_errors=True)
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_refit_full_called_once_with_all_top_models(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_refit_full_called_once_with_all_top_models(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """refit_full is called exactly once with the full list of top models (batch, not per-model)."""
         top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1", "XGBoost_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -1121,7 +1123,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.9}
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1135,8 +1137,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=3,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1151,9 +1153,9 @@ class TestAutogluonModelsTrainingUnitTests:
         # clone also called exactly once (not per model)
         mock_predictor.clone.assert_called_once()
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_context_models_metadata(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_context_models_metadata(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """context['models'] contains one entry per model with correct name, location, and metrics."""
         top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -1175,7 +1177,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.predict.side_effect = lambda df, model: lgbm_preds if "LightGBM" in model else cat_preds
         mock_predictor_clone.evaluate_predictions.side_effect = lambda y_true, y_pred: _metrics_by_pred[id(y_pred)]
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1189,8 +1191,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1243,9 +1245,9 @@ class TestAutogluonModelsTrainingUnitTests:
 
     # ── Propagated errors ──────────────────────────────────────────────────────
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_raises_on_invalid_problem_type(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_raises_on_invalid_problem_type(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """ValueError raised when AutoGluon resolves problem_type to an unsupported value."""
         mock_predictor = mock.MagicMock()
         mock_predictor_class.return_value.fit.return_value = mock_predictor
@@ -1253,7 +1255,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor.problem_type = "quantile"  # unsupported in notebook dispatch
         mock_predictor.label = "target"
         _mock_leaderboard_top_models(mock_predictor, ["LightGBM_BAG_L1"])
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1267,8 +1269,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path=workspace_path,
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1279,9 +1281,9 @@ class TestAutogluonModelsTrainingUnitTests:
                 component_status=_make_component_status_artifact(tmp_path),
             )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_raises_on_refit_failure(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_raises_on_refit_failure(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """ValueError from refit_full propagates to the caller."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1291,7 +1293,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor.problem_type = "regression"
         mock_predictor.label = "target"
         _mock_leaderboard_top_models(mock_predictor, ["LightGBM_BAG_L1"])
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1305,8 +1307,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path=workspace_path,
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1333,8 +1335,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="  ",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1352,8 +1354,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="unsupported",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1372,7 +1374,7 @@ class TestAutogluonModelsTrainingUnitTests:
                 task_type="regression",
                 top_n=1,
                 train_data_path="",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1390,8 +1392,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1409,8 +1411,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=0,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1428,8 +1430,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=11,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1447,8 +1449,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name="",
                 run_id=RUN_ID,
@@ -1466,8 +1468,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id="  ",
@@ -1485,8 +1487,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1504,8 +1506,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1523,8 +1525,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1543,8 +1545,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1563,8 +1565,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1583,8 +1585,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1603,8 +1605,8 @@ class TestAutogluonModelsTrainingUnitTests:
                 label_column="target",
                 task_type="regression",
                 top_n=1,
-                train_data_path="/tmp/train.csv",
-                test_data=mock.MagicMock(path="/tmp/test.csv"),
+                train_data_path="/tmp/train.parquet",
+                test_data=mock.MagicMock(path="/tmp/test.parquet"),
                 workspace_path="/tmp/ws",
                 pipeline_name=PIPELINE_NAME,
                 run_id=RUN_ID,
@@ -1618,9 +1620,9 @@ class TestAutogluonModelsTrainingUnitTests:
 
     # ── eval_metric parameter ─────────────────────────────────────────────────
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_eval_metric_explicit_forwarded_to_predictor(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_eval_metric_explicit_forwarded_to_predictor(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Explicit eval_metric is passed through to TabularPredictor constructor and returned."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1632,7 +1634,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.9}
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1646,8 +1648,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1668,9 +1670,9 @@ class TestAutogluonModelsTrainingUnitTests:
         )
         assert result.eval_metric == "r2"
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_eval_metric_none_regression_resolves_to_r2(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_eval_metric_none_regression_resolves_to_r2(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """eval_metric=None with regression resolves to 'r2'."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1682,7 +1684,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.9}
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1696,8 +1698,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1714,10 +1716,10 @@ class TestAutogluonModelsTrainingUnitTests:
         assert result.eval_metric == "r2"
 
     @mock.patch("autogluon.core.metrics.confusion_matrix")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_eval_metric_none_binary_resolves_to_accuracy(
-        self, mock_predictor_class, mock_read_csv, mock_confusion_matrix, tmp_path
+        self, mock_predictor_class, mock_read_parquet, mock_confusion_matrix, tmp_path
     ):
         """eval_metric=None with binary resolves to 'accuracy'."""
         mock_predictor = mock.MagicMock()
@@ -1731,7 +1733,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
         mock_confusion_matrix.return_value = mock.MagicMock(to_dict=lambda: {"0": {"0": 5}})
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1745,8 +1747,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="binary",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1761,10 +1763,10 @@ class TestAutogluonModelsTrainingUnitTests:
         assert result.eval_metric == "accuracy"
 
     @mock.patch("autogluon.core.metrics.confusion_matrix")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_eval_metric_none_multiclass_resolves_to_accuracy(
-        self, mock_predictor_class, mock_read_csv, mock_confusion_matrix, tmp_path
+        self, mock_predictor_class, mock_read_parquet, mock_confusion_matrix, tmp_path
     ):
         """eval_metric=None with multiclass resolves to 'accuracy'."""
         mock_predictor = mock.MagicMock()
@@ -1778,7 +1780,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
         mock_confusion_matrix.return_value = mock.MagicMock(to_dict=lambda: {"0": {"0": 5}})
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1792,8 +1794,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="multiclass",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1809,9 +1811,9 @@ class TestAutogluonModelsTrainingUnitTests:
 
     # ── Leaderboard phase ──────────────────────────────────────────────────────
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_leaderboard_html_written_and_best_model_returned(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_leaderboard_html_written_and_best_model_returned(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """After Phase A/B the leaderboard HTML is written and best_model_name is returned."""
         top_models = ["LightGBM_BAG_L1", "NeuralNetFastAI_BAG_L1"]
         mock_predictor = mock.MagicMock()
@@ -1829,7 +1831,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1846,8 +1848,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1877,10 +1879,10 @@ class TestAutogluonModelsTrainingUnitTests:
         assert isinstance(data_parsed, list), "parsed data must be a list of records"
         assert all(isinstance(k, str) for record in data_parsed for k in record), "all record keys must be strings"
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_leaderboard_metrics_formatted_with_fixed_four_decimals(
-        self, mock_predictor_class, mock_read_csv, tmp_path
+        self, mock_predictor_class, mock_read_parquet, tmp_path
     ):
         """Leaderboard metric columns render with exactly 4 decimals, trailing zeros included.
 
@@ -1904,7 +1906,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1921,8 +1923,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=2,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1941,9 +1943,9 @@ class TestAutogluonModelsTrainingUnitTests:
         assert {record["r2"] for record in data_parsed} == {"-4.0000", "-16.0000"}
         assert {record["root_mean_squared_error"] for record in data_parsed} == {"-18.3321", "-0.0938"}
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_leaderboard_best_model_name_in_context(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_leaderboard_best_model_name_in_context(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """best_model_name is stored in models_artifact context metadata."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -1956,7 +1958,7 @@ class TestAutogluonModelsTrainingUnitTests:
         mock_predictor_clone.evaluate_predictions.return_value = {"r2": 0.95}
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"f": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -1971,8 +1973,8 @@ class TestAutogluonModelsTrainingUnitTests:
             label_column="target",
             task_type="regression",
             top_n=1,
-            train_data_path="/tmp/train.csv",
-            test_data=mock.MagicMock(path="/tmp/test.csv"),
+            train_data_path="/tmp/train.parquet",
+            test_data=mock.MagicMock(path="/tmp/test.parquet"),
             workspace_path=workspace_path,
             pipeline_name=PIPELINE_NAME,
             run_id=RUN_ID,
@@ -1992,9 +1994,9 @@ class TestAutogluonModelsTrainingUnitTests:
 class TestInferenceBlock:
     """Verify model.json includes inference.input_data_schema and sample_payload."""
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_model_json_includes_inference_block(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_model_json_includes_inference_block(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Regression model.json contains inference with correct fields from feature metadata."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -2014,7 +2016,7 @@ class TestInferenceBlock:
             "location": "object",
         }
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
         models_output_dir = str(tmp_path / "out")
@@ -2024,7 +2026,9 @@ class TestInferenceBlock:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path),
+            **_base_call_kwargs(
+                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
+            ),
         )
 
         model_json = json.loads((Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "model.json").read_text())
@@ -2057,9 +2061,9 @@ class TestInferenceBlock:
         context_model = mock_models_artifact.metadata["context"]["models"][0]
         assert context_model["inference"] == model_json["inference"]
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_inference_block_skipped_on_missing_metadata(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_inference_block_skipped_on_missing_metadata(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """model.json omits inference when predictor metadata is unavailable."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -2074,7 +2078,7 @@ class TestInferenceBlock:
         mock_predictor_clone.predict.return_value = mock.MagicMock()
         mock_predictor_clone.features.side_effect = AttributeError("no features")
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
         models_output_dir = str(tmp_path / "out")
@@ -2084,15 +2088,17 @@ class TestInferenceBlock:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path),
+            **_base_call_kwargs(
+                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
+            ),
         )
 
         model_json = json.loads((Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "model.json").read_text())
         assert "inference" not in model_json
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_inference_boolean_type_mapping(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_inference_boolean_type_mapping(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Boolean AutoGluon types map to 'boolean' schema datatype."""
         mock_predictor = mock.MagicMock()
         mock_predictor_clone = mock.MagicMock()
@@ -2108,7 +2114,7 @@ class TestInferenceBlock:
         mock_predictor_clone.features.return_value = ["flag", "cat_col"]
         mock_predictor_clone.feature_metadata_in.type_map_raw = {"flag": "bool", "cat_col": "category"}
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
         models_output_dir = str(tmp_path / "out")
@@ -2118,7 +2124,9 @@ class TestInferenceBlock:
         mock_models_artifact.metadata = {}
 
         autogluon_models_training.python_func(
-            **_base_call_kwargs(workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path),
+            **_base_call_kwargs(
+                workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
+            ),
         )
 
         model_json = json.loads((Path(models_output_dir) / "LightGBM_BAG_L1_FULL" / "model.json").read_text())
@@ -2130,9 +2138,9 @@ class TestInferenceBlock:
 class TestComponentStatusOutput:
     """Verify the component writes meaningful component_status.json content."""
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
-    def test_regression_writes_component_status_json(self, mock_predictor_class, mock_read_csv, tmp_path):
+    def test_regression_writes_component_status_json(self, mock_predictor_class, mock_read_parquet, tmp_path):
         """Happy path persists component_id and completed stages to component_status.json."""
         from kfp_components.components.training.automl.shared.component_status import (
             COMPONENT_STATUS_FILENAME,
@@ -2151,7 +2159,7 @@ class TestComponentStatusOutput:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"feature1": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -2165,7 +2173,7 @@ class TestComponentStatusOutput:
         Path(status_artifact.path).mkdir(parents=True, exist_ok=True)
 
         call_kwargs = _base_call_kwargs(
-            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path
+            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
         )
         call_kwargs["component_status"] = status_artifact
         autogluon_models_training.python_func(**call_kwargs)
@@ -2182,10 +2190,10 @@ class TestComponentStatusOutput:
         assert mlflow_status["state"] == "completed"
         assert "disabled" in mlflow_status["message"]["text"].lower()
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.tabular.TabularPredictor")
     def test_broken_mlflow_is_reported_as_warning_not_success(
-        self, mock_predictor_class, mock_read_csv, tmp_path, monkeypatch
+        self, mock_predictor_class, mock_read_parquet, tmp_path, monkeypatch
     ):
         """MLflow configured but unreachable: the stage warns instead of claiming success."""
         from kfp_components.components.training.automl.shared.component_status import load_component_status
@@ -2218,7 +2226,7 @@ class TestComponentStatusOutput:
         mock_predictor_clone.feature_importance.return_value = mock.MagicMock(to_dict=lambda: {"feature1": 0.1})
         mock_predictor_clone.predict.return_value = mock.MagicMock()
 
-        mock_read_csv.side_effect = [_mock_csv_frame(), _mock_csv_frame(), _mock_csv_frame()]
+        mock_read_parquet.side_effect = [_mock_parquet_frame(), _mock_parquet_frame(), _mock_parquet_frame()]
 
         workspace_path = str(tmp_path / "ws")
         Path(workspace_path).mkdir()
@@ -2232,7 +2240,7 @@ class TestComponentStatusOutput:
         Path(status_artifact.path).mkdir(parents=True, exist_ok=True)
 
         call_kwargs = _base_call_kwargs(
-            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.csv"), tmp_path
+            workspace_path, mock_models_artifact, mock.MagicMock(path="/tmp/test.parquet"), tmp_path
         )
         call_kwargs["component_status"] = status_artifact
         with mock.patch.dict(sys.modules, {"mlflow": broken_mlflow}):

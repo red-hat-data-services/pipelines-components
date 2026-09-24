@@ -76,10 +76,11 @@ def _mock_boto3_and_pandas(get_object_return=None, get_object_side_effect=None):
             yield mock_s3
 
 
-def _make_test_artifact(tmp_path, name="sampled_test.csv"):
+def _make_test_artifact(tmp_path, name="sampled_test.parquet"):
     """Create a simple artifact-like object for sampled_test_dataset."""
     art = mock.MagicMock()
     art.path = str(tmp_path / name)
+    art.uri = "/artifacts/test"
     return art
 
 
@@ -190,7 +191,12 @@ class TestTimeseriesDataLoaderUnitTests:
         body_stream = io.BytesIO(_timeseries_csv().encode("utf-8"))
         sampled_test = _make_test_artifact(tmp_path)
 
-        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3:
+        with (
+            _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3,
+            mock.patch.object(
+                MockedDataFrame, "to_parquet", autospec=True, side_effect=MockedDataFrame.to_parquet
+            ) as mock_to_parquet,
+        ):
             result = timeseries_data_loader.python_func(
                 file_key="timeseries/train.csv",
                 bucket_name="my-bucket",
@@ -203,6 +209,10 @@ class TestTimeseriesDataLoaderUnitTests:
 
             mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="timeseries/train.csv")
 
+        # Parquet is actually written (not just filenames ending in .parquet with CSV
+        # content underneath): one call each for test, selection-train, extra-train.
+        assert mock_to_parquet.call_count == 3
+
         selection_rows = _read_csv_rows(result.models_selection_train_data_path)
         extra_rows = _read_csv_rows(result.extra_train_data_path)
         test_rows = _read_csv_rows(sampled_test.path)
@@ -212,6 +222,11 @@ class TestTimeseriesDataLoaderUnitTests:
         assert len(test_rows) == 20
         assert selection_rows[0]["target"] == "0"
         assert extra_rows[0]["target"] == "24"
+
+        # Train/test splits are written as Parquet, not CSV (RHOAIENG-96416).
+        assert result.models_selection_train_data_path.endswith(".parquet")
+        assert result.extra_train_data_path.endswith(".parquet")
+        assert sampled_test.uri == "/artifacts/test.parquet"
         assert test_rows[0]["target"] == "80"
 
         assert result.sample_config["sampling_method"] == "first_n_rows"

@@ -71,7 +71,7 @@ def mock_artifacts():
         models_artifact.metadata = {}
         Path(models_artifact.path).mkdir(parents=True, exist_ok=True)
 
-        extra_train_path = str(Path(tmpdir) / "extra_train.csv")
+        extra_train_path = str(Path(tmpdir) / "extra_train.parquet")
         Path(extra_train_path).touch()
 
         html_artifact = _make_html_artifact(Path(tmpdir))
@@ -138,7 +138,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert callable(autogluon_timeseries_models_training)
         assert hasattr(autogluon_timeseries_models_training, "python_func")
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -147,7 +147,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Happy path returns top models, config, and predictor path with full refit."""
@@ -176,16 +176,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_concat.return_value = mock.MagicMock()
 
         train_df, test_df = mock.MagicMock(), mock.MagicMock()
-        mock_read_csv.side_effect = [train_df, test_df]
+        mock_read_parquet.side_effect = [train_df, test_df]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         result = autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=2,
             workspace_path="/tmp/workspace",
@@ -202,8 +202,8 @@ class TestTimeseriesModelsTrainingUnitTests:
             component_status=_DEFAULT_COMPONENT_STATUS,
         )
 
-        mock_read_csv.assert_any_call("/tmp/train.csv")
-        mock_read_csv.assert_any_call("/tmp/test.csv")
+        mock_read_parquet.assert_any_call("/tmp/train.parquet")
+        mock_read_parquet.assert_any_call("/tmp/test.parquet")
         mock_ts_df_cls.from_data_frame.assert_any_call(train_df, id_column="item_id", timestamp_column="timestamp")
         mock_ts_df_cls.from_data_frame.assert_any_call(test_df, id_column="item_id", timestamp_column="timestamp")
         mock_ts_df_cls.from_path.assert_called_once_with(
@@ -243,7 +243,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert "kfp_components" not in experiment_nb_source
         assert "experiment_notebook" not in models_artifact.metadata["context"]
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -252,7 +252,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Balanced preset uses medium_quality and 60-minute time limit."""
@@ -271,16 +271,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         result = autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -300,7 +300,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert result.model_config["presets"] == "balanced"
         assert result.model_config["time_limit"] == 60 * 60
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -309,7 +309,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Known covariates are passed to predictor ctor and returned in model_config."""
@@ -329,16 +329,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         covariates = ["is_holiday", "promo_flag"]
         result = autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -362,14 +362,14 @@ class TestTimeseriesModelsTrainingUnitTests:
         )
         mock_concat.assert_called_once()
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_top_n_greater_than_available_models_raises(
         self,
         mock_predictor_cls,
         mock_ts_df_cls,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """top_n exceeding trained model count raises ValueError."""
@@ -379,9 +379,9 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor.leaderboard.return_value = _mock_leaderboard(["DeepAR", "AutoARIMA"])
         mock_predictor_cls.return_value = mock_predictor
         mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with pytest.raises(
             ValueError,
@@ -391,7 +391,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=3,
                 workspace_path="/tmp/workspace",
@@ -408,13 +408,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """top_n must be in range (0, TOP_N_MAX] (see component TOP_N_MAX)."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match=r"top_n must be an integer in the range \(0, 7\]; got 0\."):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=0,
                 workspace_path="/tmp/workspace",
@@ -431,13 +431,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """top_n above TOP_N_MAX is rejected before training."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match=r"top_n must be an integer in the range \(0, 7\]; got 8\."):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=8,
                 workspace_path="/tmp/workspace",
@@ -454,13 +454,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """prediction_length must be a positive integer."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match="prediction_length must be greater than 0"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -478,13 +478,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """Preset must be one of the valid AutoGluon quality tiers."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match="preset must be one of"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -498,14 +498,14 @@ class TestTimeseriesModelsTrainingUnitTests:
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_training_failure_is_wrapped(
         self,
         mock_predictor_cls,
         mock_ts_df_cls,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Training errors are wrapped in ValueError with component-specific message."""
@@ -515,16 +515,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor.fit.side_effect = RuntimeError("boom")
         mock_predictor_cls.return_value = mock_predictor
         mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with pytest.raises(ValueError, match=r"TimeSeriesPredictor training failed: boom"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=2,
                 workspace_path="/tmp/workspace",
@@ -537,14 +537,14 @@ class TestTimeseriesModelsTrainingUnitTests:
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_leaderboard_failure_is_wrapped(
         self,
         mock_predictor_cls,
         mock_ts_df_cls,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Leaderboard errors are wrapped in ValueError with component-specific message."""
@@ -554,16 +554,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor.leaderboard.side_effect = RuntimeError("no leaderboard")
         mock_predictor_cls.return_value = mock_predictor
         mock_ts_df_cls.from_data_frame.return_value = _mock_ts_df()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with pytest.raises(ValueError, match=r"Failed to generate leaderboard: no leaderboard"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=2,
                 workspace_path="/tmp/workspace",
@@ -576,7 +576,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -585,7 +585,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
         caplog,
     ):
@@ -612,9 +612,9 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         # With error isolation, NaN eval metric error is caught and all models fail
         with caplog.at_level("ERROR"):
@@ -623,7 +623,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                     target="sales",
                     id_column="item_id",
                     timestamp_column="timestamp",
-                    train_data_path="/tmp/train.csv",
+                    train_data_path="/tmp/train.parquet",
                     test_data=test_data,
                     top_n=1,
                     workspace_path="/tmp/workspace",
@@ -641,7 +641,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         assert any("NaN" in r.message and "DeepAR_FULL" in r.message for r in error_records)
         assert any("Refit failed" in r.message and "DeepAR" in r.message for r in error_records)
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -650,7 +650,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
         caplog,
     ):
@@ -679,16 +679,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with caplog.at_level("WARNING"):
             result = autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=3,
                 workspace_path="/tmp/workspace",
@@ -715,7 +715,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert any("TFT" in r.message and "failed refit" in r.message for r in warning_records)
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -724,7 +724,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """When all models fail refit, component raises RuntimeError."""
@@ -748,16 +748,16 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with pytest.raises(RuntimeError, match="All models failed refit. No artifacts written."):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=2,
                 workspace_path="/tmp/workspace",
@@ -776,13 +776,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """eval_metric must be a non-empty string."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(TypeError, match="eval_metric must be a non-empty string"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -800,13 +800,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """eval_metric not in METRIC_ALIASES raises ValueError before training."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match="eval_metric must be one of"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -824,13 +824,13 @@ class TestTimeseriesModelsTrainingUnitTests:
         """'sql' is in AVAILABLE_METRICS but not METRIC_ALIASES; passes through normalization and fails validation."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
         with pytest.raises(ValueError, match="eval_metric must be one of"):
             autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -844,7 +844,7 @@ class TestTimeseriesModelsTrainingUnitTests:
                 component_status=_DEFAULT_COMPONENT_STATUS,
             )
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -853,7 +853,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """MASE (old default) is silently normalized to mean_absolute_scaled_error."""
@@ -874,15 +874,15 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         result = autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -902,7 +902,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         for call in mock_predictor_cls.call_args_list:
             assert call.kwargs["eval_metric"] == "mean_absolute_scaled_error"
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -911,7 +911,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
     ):
         """Custom eval_metric is passed to both TimeSeriesPredictor constructors, stored in model_config, and returned."""  # noqa: E501
@@ -933,15 +933,15 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         result = autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -967,7 +967,7 @@ class TestMetricsJsonSignConvention:
     """Tests for metrics.json sign convention (raw AutoGluon, leaderboard-compatible)."""
 
     @mock.patch("kfp_components.components.training.automl.shared.back_testing.build_back_testing_json")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -976,7 +976,7 @@ class TestMetricsJsonSignConvention:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_build_back_testing_json,
         mock_artifacts,  # noqa: F811
     ):
@@ -1000,15 +1000,15 @@ class TestMetricsJsonSignConvention:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1032,7 +1032,7 @@ class TestBackTestingArtifactFailure:
     """Tests for best-effort back_testing.json generation in the component."""
 
     @mock.patch("kfp_components.components.training.automl.shared.back_testing.build_back_testing_json")
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -1041,7 +1041,7 @@ class TestBackTestingArtifactFailure:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_build_back_testing_json,
         mock_artifacts,  # noqa: F811
         caplog,
@@ -1064,16 +1064,16 @@ class TestBackTestingArtifactFailure:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         with caplog.at_level("WARNING"):
             result = autogluon_timeseries_models_training.python_func(
                 target="sales",
                 id_column="item_id",
                 timestamp_column="timestamp",
-                train_data_path="/tmp/train.csv",
+                train_data_path="/tmp/train.parquet",
                 test_data=test_data,
                 top_n=1,
                 workspace_path="/tmp/workspace",
@@ -1112,7 +1112,7 @@ class TestLeaderboardPhase:
         sys.modules["pandas"].DataFrame.return_value.sort_values.return_value = mock_sorted_df
         return mock_sorted_df
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -1121,7 +1121,7 @@ class TestLeaderboardPhase:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
         tmp_path,
     ):
@@ -1140,9 +1140,9 @@ class TestLeaderboardPhase:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         html_artifact = mock.MagicMock()
         html_artifact.path = str(tmp_path / "leaderboard.html")
@@ -1152,7 +1152,7 @@ class TestLeaderboardPhase:
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1184,7 +1184,7 @@ class TestLeaderboardPhase:
         data_parsed = json.loads(data_raw)
         assert isinstance(data_parsed, list)
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -1193,7 +1193,7 @@ class TestLeaderboardPhase:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
         tmp_path,
     ):
@@ -1219,9 +1219,9 @@ class TestLeaderboardPhase:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         html_artifact = mock.MagicMock()
         html_artifact.path = str(tmp_path / "leaderboard3.html")
@@ -1231,7 +1231,7 @@ class TestLeaderboardPhase:
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1251,7 +1251,7 @@ class TestLeaderboardPhase:
         assert formatter(-4) == "-4.0000"
         assert formatter(-18.33214157590419) == "-18.3321"
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
@@ -1260,7 +1260,7 @@ class TestLeaderboardPhase:
         mock_predictor_cls,
         mock_ts_df_cls,
         mock_concat,
-        mock_read_csv,
+        mock_read_parquet,
         mock_artifacts,  # noqa: F811
         tmp_path,
     ):
@@ -1279,9 +1279,9 @@ class TestLeaderboardPhase:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         html_artifact = mock.MagicMock()
         html_artifact.path = str(tmp_path / "leaderboard2.html")
@@ -1291,7 +1291,7 @@ class TestLeaderboardPhase:
             target="sales",
             id_column="item_id",
             timestamp_column="timestamp",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1313,12 +1313,12 @@ class TestLeaderboardPhase:
 class TestPredictorMetadata:
     """Verify predictor_metadata.json is written for each refit model."""
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_predictor_metadata_json_written(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """predictor/predictor_metadata.json exists and captures selected-model config."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1336,16 +1336,16 @@ class TestPredictorMetadata:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="product_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1375,12 +1375,12 @@ class TestPredictorMetadata:
             "uses_synthetic_id": False,
         }
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_predictor_metadata_includes_known_covariates(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """predictor_metadata.json records the covariate columns the model was trained with."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1398,16 +1398,16 @@ class TestPredictorMetadata:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = _mock_ts_df()
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="product_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1430,12 +1430,12 @@ class TestPredictorMetadata:
 class TestTimeseriesInferenceBlock:
     """Verify model.json includes inference.input_data_schema and sample_payload."""
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_model_json_includes_inference_block(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """model.json contains inference with instances fields for id, timestamp, target."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1456,16 +1456,16 @@ class TestTimeseriesInferenceBlock:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="product_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1501,12 +1501,12 @@ class TestTimeseriesInferenceBlock:
         assert payload == {"instances": [{"product_id": "<string>", "date": "<string>", "sales": "<number>"}]}
         assert "known_covariates" not in payload
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_inference_block_with_known_covariates(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """Inference block includes known_covariates when model has covariate columns."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1533,16 +1533,16 @@ class TestTimeseriesInferenceBlock:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="product_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1608,12 +1608,12 @@ class TestTimeseriesInferenceBlock:
             {"product_id": "<string>", "date": "<string>", "promo": "<integer>", "temperature": "<number>"}
         ]
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_inference_block_excludes_synthetic_item_id(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """model.json inference block excludes __synthetic_item_id from schema and payload."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1634,16 +1634,16 @@ class TestTimeseriesInferenceBlock:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="__synthetic_item_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
@@ -1683,12 +1683,12 @@ class TestTimeseriesInferenceBlock:
         pred_metadata = json.loads(pred_metadata_path.read_text())
         assert pred_metadata["uses_synthetic_id"] is True
 
-    @mock.patch("pandas.read_csv")
+    @mock.patch("pandas.read_parquet")
     @mock.patch("pandas.concat")
     @mock.patch("autogluon.timeseries.TimeSeriesDataFrame")
     @mock.patch("autogluon.timeseries.TimeSeriesPredictor")
     def test_inference_block_skipped_on_metadata_failure(
-        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_csv, mock_artifacts
+        self, mock_predictor_cls, mock_ts_df_cls, mock_concat, mock_read_parquet, mock_artifacts
     ):
         """model.json omits inference when covariate dtype lookup fails during schema build."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
@@ -1710,16 +1710,16 @@ class TestTimeseriesInferenceBlock:
         mock_ts_df_cls.from_path.return_value = _mock_ts_df()
         mock_ts_df_cls.return_value = full_train_ts
         mock_concat.return_value = mock.MagicMock()
-        mock_read_csv.side_effect = [mock.MagicMock(), mock.MagicMock()]
+        mock_read_parquet.side_effect = [mock.MagicMock(), mock.MagicMock()]
 
         test_data = mock.MagicMock()
-        test_data.path = "/tmp/test.csv"
+        test_data.path = "/tmp/test.parquet"
 
         autogluon_timeseries_models_training.python_func(
             target="sales",
             id_column="product_id",
             timestamp_column="date",
-            train_data_path="/tmp/train.csv",
+            train_data_path="/tmp/train.parquet",
             test_data=test_data,
             top_n=1,
             workspace_path="/tmp/workspace",
