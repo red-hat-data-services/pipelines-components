@@ -209,6 +209,9 @@ filelock==3.32.6 \
 filetype==1.2.0 \
     --hash=sha256:f9967f322d3dea1ce261f66de88e32ffad755239b13dc3b093c240330b4c4e91
     # via docling-slim
+flatbuffers==25.12.19 \
+    --hash=sha256:60915b8477a6e28d44166a597c72b14042f4fd986818f2206bfe7760d6a648d1
+    # via onnxruntime
 frozenlist==1.8.0 \
     --hash=sha256:25cc97274d43add7842ecf7279a64f4567dc362f250e6074971fbfbf6f251005 \
     --hash=sha256:28cd1e39bf5a8cbe5fe4d7279a97ca15ab3aa0f90e792aa4986ab56c042d011e \
@@ -533,6 +536,7 @@ numpy==2.5.3 \
     #   langchain-community
     #   milvus-lite
     #   numba
+    #   onnxruntime
     #   openai-whisper
     #   opencv-python
     #   pandas
@@ -559,6 +563,12 @@ olefile==0.47 \
 omegaconf==2.3.1 \
     --hash=sha256:e662f1c0660e1b9185dd8f400ba244384e1e1f6a7372d88f4d95466c101770c5
     # via rapidocr
+onnxruntime==1.25.0 \
+    --hash=sha256:6f9a0e367872b164b96bde07ab0411c564e729858e894d14a108cd22b350519d \
+    --hash=sha256:b07e318ac11a6aed1e96004c7870351d390484e3e19d83fd85b78b18a42faebb \
+    --hash=sha256:cef48b2d4263ae900ad3daa70d2262ca4c058658f5564db7d9cfd7f5f908cbc4 \
+    --hash=sha256:eeee14eaff8ff09d7ef95f8d65f54775ae0da28889cffab73af4e0ca49c61ecd
+    # via -r requirements.in
 openai==2.53.0 \
     --hash=sha256:57cc1b518ad2a65147b61957095d139195eebf5031c1d8696808d2f00eb6db57
     # via
@@ -607,6 +617,7 @@ packaging==26.3 \
     #   langchain-core
     #   langsmith
     #   marshmallow
+    #   onnxruntime
     #   transformers
 pandas==2.2.3 \
     --hash=sha256:374b8b38ada3d578f3bb18bd88fc1b139a64fb1028a12adcd1a8b23ce455e826 \
@@ -673,6 +684,7 @@ protobuf==6.33.6 \
     #   googleapis-common-protos
     #   kfp
     #   kfp-pipeline-spec
+    #   onnxruntime
     #   proto-plus
     #   pymilvus
 psutil==7.2.2 \
