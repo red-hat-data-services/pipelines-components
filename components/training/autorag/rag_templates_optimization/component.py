@@ -23,6 +23,7 @@ def rag_templates_optimization(
     input_data_secret_name: str,
     input_data_bucket_name: str,
     leaderboard: dsl.Output[dsl.HTML],
+    starter_kit: dsl.Output[dsl.Artifact],
     embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     optimization_settings: Optional[dict] = None,
     input_data_keys: Optional[list[str]] = None,
@@ -54,6 +55,8 @@ def rag_templates_optimization(
         input_data_bucket_name: S3 bucket containing input documents.
         leaderboard: Output HTML artifact; the leaderboard table is written to
             leaderboard_html.path (single file).
+        starter_kit: Output ZIP artifact named ``starter_kit.zip``; currently an
+            empty placeholder.
         component_status: Output artifact containing stage-level progress tracking.
         embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
         optimization_settings: Additional experiment settings.
@@ -75,6 +78,7 @@ def rag_templates_optimization(
     import logging
     import os
     from pathlib import Path
+    from zipfile import ZipFile
 
     import pandas as pd
     from ai4rag import handler
@@ -433,6 +437,27 @@ def rag_templates_optimization(
                 test_data_key=test_data_key,
                 indexing_pipeline_params=indexing_pipeline_params,
             )
+
+            # Keep the ZIP in the task artifact directory, next to the
+            # leaderboard and executor logs. ``rag_patterns`` is the
+            # directory-shaped output in that directory, so its parent is
+            # the stable task-artifact root. The default path assigned to
+            # the starter-kit output may point to a separate output directory.
+            rag_patterns_path = Path(rag_patterns.path)
+            starter_kit_path = rag_patterns_path.parent / "starter_kit" / "starter_kit.zip"
+            starter_kit_path.parent.mkdir(parents=True, exist_ok=True)
+
+            rag_patterns_uri = str(rag_patterns.uri).rstrip("/")
+            artifact_root_uri = rag_patterns_uri.rsplit("/", 1)[0] if "/" in rag_patterns_uri else rag_patterns_uri
+            starter_kit.uri = f"{artifact_root_uri}/starter_kit/starter_kit.zip"
+            starter_kit.set_path(str(starter_kit_path))
+
+            # Keep the output contract available before ai4rag ships its
+            # starter-kit generator. The empty archive is intentionally a
+            # valid ZIP so clients can download it already.
+            with ZipFile(starter_kit_path, "w"):
+                pass
+            starter_kit.metadata["display_name"] = "starter_kit.zip"
 
             status.record(
                 "optimize_templates",

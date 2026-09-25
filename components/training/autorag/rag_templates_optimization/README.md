@@ -22,6 +22,7 @@ Runs search-space construction, evaluator setup, and the optimization experiment
 | `input_data_secret_name` | `str` | `None` | Name of the K8s secret with S3 credentials for input data. |
 | `input_data_bucket_name` | `str` | `None` | S3 bucket containing input documents. |
 | `leaderboard` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to leaderboard_html.path (single file). |
+| `starter_kit` | `dsl.Output[dsl.Artifact]` | `None` | Output ZIP artifact named ``starter_kit.zip``; currently an empty placeholder. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
 | `optimization_settings` | `Optional[dict]` | `None` | Additional experiment settings. |
 | `input_data_keys` | `Optional[list[str]]` | `None` | Paths to documents dirs within bucket. Only the first entry is used for the generated indexing notebook; the full list is propagated to the indexing pipeline blueprint. |
