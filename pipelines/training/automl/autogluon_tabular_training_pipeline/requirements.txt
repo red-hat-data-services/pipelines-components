@@ -3,8 +3,8 @@
 absl-py==2.5.0 \
     --hash=sha256:a33193fb2c4127d2e5b707814c37a4e63851d2b8ed02487fc3d547f436d8407e
     # via tensorboard
-accelerate==1.14.0 \
-    --hash=sha256:d39aacabf33ce9a0f9313e5d085752b1232db66a7dcdbd5a8cc0a64a86e8cd9d
+accelerate==1.15.0 \
+    --hash=sha256:a775688e6dfcddb92686d2c7d67efdc65e4531cbf7926905e799bb81e8783bd0
     # via
     #   autogluon-timeseries
     #   chronos-forecasting
@@ -325,8 +325,8 @@ hf-xet==1.5.2 \
 httpcore==1.0.9 \
     --hash=sha256:fc0ea63671089523efc6fe94ec49d0b10c9660460cbca6172fc972c1c5f9c0ac
     # via httpx
-httpcore2==2.7.0 \
-    --hash=sha256:586c0f25ee49a5a78bbe193a347cef7966bc72c51ab1f778dd8fe2e1ce4c0dce
+httpcore2==2.13.0 \
+    --hash=sha256:8192c0ee59758a5af6e14b33c72b4639a5a1c77bcfa94f448a358be1ccc8ac78
     # via httpx2
 httptools==0.8.0 \
     --hash=sha256:0d87c67fcf648e1b77acdd1eb0178be0a1252e3aeeec5985a9a7a87ae63dc05f \
@@ -339,8 +339,8 @@ httpx==0.28.1 \
     # via
     #   huggingface-hub
     #   weasel
-httpx2==2.7.0 \
-    --hash=sha256:509c40d7ca223de952f6a62574fe103ea082c14617fc1cc0c0cadefd623f4f32
+httpx2==2.13.0 \
+    --hash=sha256:7f3ea80140b4eb6c470e7e55474605307375c61432bebf251b4415ff8ebbdffa
     # via python-fasthtml
 huggingface-hub==1.23.0 \
     --hash=sha256:02a6f0907297162b84f172e438459418d4fa1fd282270941d40da74b73be55a0
