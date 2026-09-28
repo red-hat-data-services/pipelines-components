@@ -10,10 +10,6 @@ explicit API URL or token required.
 from kfp import dsl
 from kfp_components.utils.consts import RAY_RAG_BASE_IMAGE  # pyright: ignore[reportMissingImports]
 
-_VLLM_IMAGE = (
-    "registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:094db84a1da5e8a575d0c9eade114fa30f4a2061064a338e3e032f3578f8082a"
-)
-
 
 @dsl.component(
     base_image=RAY_RAG_BASE_IMAGE,
@@ -67,6 +63,13 @@ def model_deployment(
 
     from kubernetes import client as kclient
     from kubernetes import config
+
+    # KFP embeds the function source in the executor and does not include
+    # module-level globals.
+    _VLLM_IMAGE = (
+        "registry.redhat.io/rhaiis/vllm-cuda-rhel9@sha256:"
+        "094db84a1da5e8a575d0c9eade114fa30f4a2061064a338e3e032f3578f8082a"
+    )
 
     config.load_incluster_config()
     custom_api = kclient.CustomObjectsApi()

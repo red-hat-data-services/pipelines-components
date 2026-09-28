@@ -108,6 +108,14 @@ def test_component_signature():
     assert expected == input_names
 
 
+def test_vllm_image_is_defined_inside_embedded_component():
+    """The embedded executor source must not depend on module globals."""
+    command = " ".join(model_deployment.component_spec.implementation.container.command)
+
+    assert "_VLLM_IMAGE = (" in command
+    assert '"image": _VLLM_IMAGE' in command
+
+
 # ---------------------------------------------------------------------------
 # Logic tests -- mock kubernetes client
 # ---------------------------------------------------------------------------
