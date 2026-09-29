@@ -27,7 +27,7 @@ deployment settings), executable notebooks, and evaluation results.
 | `generation_models` | `list[str]` | `None` | List of foundation/generation model identifiers to use in the search space. Required: MaaS exposes no metadata to distinguish model types, so generation models can no longer be inferred and must be declared explicitly. |
 | `input_data_keys` | `list[str]` | `[]` | Up to ten object-key prefixes for input documents in the input data bucket. Every location is discovered and merged into one deduplicated corpus. |
 | `optimization_metric` | `str` | `overall_score` | Quality metric used to rank RAG patterns. Use an evaluator-qualified value such as ``"unitxt:faithfulness"``, ``"ragas:context_precision"``, or ``"custom:overall_score"`` (default). The ``speed`` preset supports Unitxt and custom metrics; ``balanced`` also supports RAGAS metrics. ``custom:overall_score`` aggregates Unitxt outputs for ``speed`` and Unitxt plus RAGAS outputs for ``balanced``. |
-| `optimization_max_rag_patterns` | `int` | `8` | Maximum number of RAG patterns to generate. Passed to ai4rag (max_number_of_rag_patterns). Defaults to 8. |
+| `optimization_max_rag_patterns` | `int` | `5` | Maximum number of optimization iterations and published RAG patterns (4-10, default 5). |
 | `preset` | `str` | `speed` | Pipeline quality tier. "speed" (default) uses recursive chunking, no table structure parsing, and no contextual enrichment. "balanced" enables Docling table layout parsing, hybrid chunking, and LLM contextual enrichment. Both presets use the same resource tier. |
 
 ## Metadata 🗂️

@@ -53,7 +53,7 @@ def documents_rag_optimization_pipeline(
     generation_models: list[str],
     input_data_keys: list[str] = [],
     optimization_metric: str = "overall_score",
-    optimization_max_rag_patterns: int = 8,
+    optimization_max_rag_patterns: int = 5,
     preset: str = "speed",
 ):
     """Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications.
@@ -100,8 +100,8 @@ def documents_rag_optimization_pipeline(
             The ``speed`` preset supports Unitxt and custom metrics; ``balanced`` also
             supports RAGAS metrics. ``custom:overall_score`` aggregates Unitxt outputs
             for ``speed`` and Unitxt plus RAGAS outputs for ``balanced``.
-        optimization_max_rag_patterns: Maximum number of RAG patterns to generate. Passed to ai4rag
-            (max_number_of_rag_patterns). Defaults to 8.
+        optimization_max_rag_patterns: Maximum number of optimization iterations
+            and published RAG patterns (4-10, default 5).
         preset: Pipeline quality tier. "speed" (default) uses recursive chunking,
             no table structure parsing, and no contextual enrichment. "balanced"
             enables Docling table layout parsing, hybrid chunking, and LLM
