@@ -59,7 +59,9 @@ def rag_templates_optimization(
             empty placeholder.
         component_status: Output artifact containing stage-level progress tracking.
         embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
-        optimization_settings: Additional experiment settings.
+        optimization_settings: Additional experiment settings. The
+            ``max_number_of_rag_patterns`` setting (4-10, default 5) limits
+            optimization iterations and published patterns.
         input_data_keys: Paths to documents dirs within bucket, 1-10 of them. The full list
             is propagated both to the generated indexing notebook and to the indexing
             pipeline blueprint, so either route reingests the same corpus.
@@ -103,17 +105,23 @@ def rag_templates_optimization(
 
     DEFAULT_METRIC = Metrics.OVERALL_SCORE.name
 
-    DEFAULT_MAX_RAG_PATTERNS = 8
-    MIN_MAX_RAG_PATTERNS_RANGE = (4, 20)
+    DEFAULT_MAX_RAG_PATTERNS = 5
+    MIN_MAX_RAG_PATTERNS_RANGE = (4, 10)
 
-    VALID_PRESETS = {"speed", "balanced"}
     # custom:overall_score aggregates the outputs of the evaluators enabled for the preset.
     PRESET_EVALUATORS = {
         "speed": frozenset({"unitxt", "custom"}),
         "balanced": frozenset({"unitxt", "ragas", "custom"}),
     }
     LEGACY_METRIC_PREFERENCES = {"faithfulness": "ragas"}
-    PRESET_INFERENCE_MAX_THREADS = {"speed": 10, "balanced": 4}
+    PRESET_SETTINGS = {
+        "speed": {"inference_max_threads": 10, "warm_start_strategy": "greedy"},
+        "balanced": {
+            "inference_max_threads": 4,
+            "warm_start_strategy": "balanced",
+            "fields_to_balance": ["foundation_model", "embedding_model", "chunking_method"],
+        },
+    }
 
     def _build_evaluators(
         foundation_models: list[OpenAIFoundationModel],
@@ -213,16 +221,19 @@ def rag_templates_optimization(
         """Validate and normalize optimization settings.
 
         Returns:
-            Validated settings dictionary (empty dict when input is ``None``).
+            Validated settings dictionary, including the default evaluation limit
+            when input is ``None``.
 
         Raises:
             TypeError: If settings or ``max_number_of_rag_patterns`` have
                 wrong types.
-            ValueError: If ``max_number_of_rag_patterns`` is out of the
-                allowed range or cannot be parsed as an integer.
+            ValueError: If ``max_number_of_rag_patterns`` cannot be parsed as
+                an integer or is outside its allowed range.
         """
         if optimization_settings is None:
-            return {}
+            return {
+                "max_number_of_rag_patterns": DEFAULT_MAX_RAG_PATTERNS,
+            }
 
         if not isinstance(optimization_settings, dict):
             raise TypeError("optimization_settings must be a dictionary.")
@@ -246,7 +257,10 @@ def rag_templates_optimization(
                 f"{MIN_MAX_RAG_PATTERNS_RANGE[0]} to {MIN_MAX_RAG_PATTERNS_RANGE[1]}."
             )
 
-        return optimization_settings
+        return {
+            **optimization_settings,
+            "max_number_of_rag_patterns": max_rag_patterns,
+        }
 
     def _get_optimization_metric(metric_id: str | None, *, active_evaluators: frozenset[str]) -> RAGMetric:
         """Resolve a preset-supported ``evaluator:metric`` ID to a ``RAGMetric``.
@@ -302,11 +316,12 @@ def rag_templates_optimization(
     # Component logic starts here
     # -------------------------------------------------------------------------
 
-    if preset not in VALID_PRESETS:
-        raise ValueError(f"preset must be one of {VALID_PRESETS}; got {preset!r}.")
+    if preset not in PRESET_SETTINGS:
+        raise ValueError(f"preset must be one of {set(PRESET_SETTINGS)}; got {preset!r}.")
 
     active_evaluators = PRESET_EVALUATORS[preset]
-    inference_max_threads = PRESET_INFERENCE_MAX_THREADS[preset]
+    preset_cfg = PRESET_SETTINGS[preset]
+    inference_max_threads = preset_cfg["inference_max_threads"]
     logging.info("Preset %r: inference_max_threads=%d", preset, inference_max_threads)
 
     if component_status is None:
@@ -405,10 +420,16 @@ def rag_templates_optimization(
             )
 
             # --- Configure experiment ---
-            max_rag_patterns = settings.get("max_number_of_rag_patterns", DEFAULT_MAX_RAG_PATTERNS)
-            if isinstance(max_rag_patterns, str):
-                max_rag_patterns = int(max_rag_patterns.strip())
-            optimizer_settings = GAMOptSettings(max_evals=max_rag_patterns)
+            max_rag_patterns = settings["max_number_of_rag_patterns"]
+            # In the worst balanced-preset case, 3 embedding models, 2 LLMs, and
+            # 2 chunking methods require 12 warm-start evaluations. Reserve the
+            # maximum allowed number of RAG patterns (10) beyond those evaluations.
+            optimizer_settings = GAMOptSettings(
+                max_evals=12 + MIN_MAX_RAG_PATTERNS_RANGE[1],
+                max_iterations=max_rag_patterns,
+                warm_start_strategy=preset_cfg["warm_start_strategy"],
+                fields_to_balance=preset_cfg.get("fields_to_balance"),
+            )
 
             event_handler = KFPEventHandler()
 
@@ -432,7 +453,7 @@ def rag_templates_optimization(
             output_dir.mkdir(parents=True, exist_ok=True)
 
             patterns = _generate_output_artifacts(
-                patterns_raw=event_handler.patterns,
+                patterns_raw=event_handler.patterns[:max_rag_patterns],
                 output_dir=output_dir,
                 input_data_keys=input_data_keys or [],
                 test_data_key=test_data_key,

@@ -24,7 +24,7 @@ Runs search-space construction, evaluator setup, and the optimization experiment
 | `leaderboard` | `dsl.Output[dsl.HTML]` | `None` | Output HTML artifact; the leaderboard table is written to leaderboard_html.path (single file). |
 | `starter_kit` | `dsl.Output[dsl.Artifact]` | `None` | Output ZIP artifact named ``starter_kit.zip``; currently an empty placeholder. |
 | `embedded_artifact` | `dsl.EmbeddedInput[dsl.Dataset]` | `None` | Embedded ``autorag.shared`` helpers injected by KFP at runtime. |
-| `optimization_settings` | `Optional[dict]` | `None` | Additional experiment settings. |
+| `optimization_settings` | `Optional[dict]` | `None` | Additional experiment settings. The ``max_number_of_rag_patterns`` setting (4-10, default 5) limits optimization iterations and published patterns. |
 | `input_data_keys` | `Optional[list[str]]` | `None` | Paths to documents dirs within bucket, 1-10 of them. The full list is propagated both to the generated indexing notebook and to the indexing pipeline blueprint, so either route reingests the same corpus. |
 | `component_status` | `dsl.Output[dsl.Artifact]` | `None` | Output artifact containing stage-level progress tracking. |
 | `preset` | `str` | `speed` | Pipeline quality tier. "speed" (default) uses 10 benchmark query threads. "balanced" uses 4 threads (reduced due to larger per-request context). |
