@@ -30,14 +30,17 @@ RUN ORIGIN_FILE="$(python -c 'import inspect; from docling_core.types.doc.common
 ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-artifacts/models
 USER root
 RUN mkdir -p /opt/app-root/docling-artifacts/models
+RUN curl -fsSL \
+    -o /opt/app-root/docling-artifacts/models/tiny.pt \
+    https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/tiny.pt && \
+    echo "65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9  /opt/app-root/docling-artifacts/models/tiny.pt" | sha256sum -c -
 COPY --from=docling-ogx-modelcar \
      /models/docling/models/ \
      /opt/app-root/docling-artifacts/models/
 COPY --from=whisper-modelcar \
      /models/ \
      /opt/app-root/docling-artifacts/models/
-RUN chown -R 1001:0 /opt/app-root/docling-artifacts && \
-    chmod -R g+rw /opt/app-root/docling-artifacts
+RUN chown -R 1001:0 /opt/app-root/docling-artifacts
 USER default
 
 LABEL com.redhat.component="odh-autorag-container" \
