@@ -13,7 +13,7 @@ COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements
      /tmp/
 
 ## TODO: Ensure build isolation
-RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.6-EA2/cpu-ubi9-test/simple/ --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Temporary workaround for docling-core versions that reject the MIME type
 # emitted by Docling's M4A ASR path. Remove when the upstream fix is available.
