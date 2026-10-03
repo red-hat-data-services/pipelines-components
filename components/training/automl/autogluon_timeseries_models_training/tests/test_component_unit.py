@@ -315,7 +315,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         mock_read_csv,
         mock_artifacts,  # noqa: F811
     ):
-        """Quality uses high_quality with a two-hour selection budget."""
+        """Quality uses best_quality with a two-hour selection budget."""
         models_artifact, extra_train_path, html_artifact, experiment_notebook = mock_artifacts
 
         mock_predictor = mock.MagicMock()
@@ -352,7 +352,7 @@ class TestTimeseriesModelsTrainingUnitTests:
         )
 
         fit_call = mock_predictor.fit.call_args
-        assert fit_call[1]["presets"] == "high_quality"
+        assert fit_call[1]["presets"] == "best_quality"
         assert fit_call[1]["time_limit"] == 120 * 60
         assert result.model_config["presets"] == "quality"
         assert result.model_config["time_limit"] == 120 * 60

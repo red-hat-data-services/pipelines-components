@@ -22,6 +22,12 @@ MLflow logging:
 Results are logged to MLflow only when the platform injects ``KFP_MLFLOW_CONFIG`` into the step (configured on the Data Science Pipelines / KFP pipeline server, not via a pipeline parameter). To disable MLflow logging, run the pipeline on a server without MLflow configured, or have the cluster admin
 remove the MLflow configuration from the pipeline server; the training step then skips all tracking and runs unchanged.
 
+The KFP run identity is tagged on the parent run under a single canonical key set. When the platform MLflow integration is active it owns the ``kfp.*`` namespace (``kfp.pipeline_run_id``, ``kfp.pipeline_run_url``, ``kfp.pipeline_id``, ``kfp.pipeline_version_id``) and this pipeline does not add its
+own ``kfp_run_id`` / ``kfp_run_name`` duplicates; those are only written when the integration is absent and the identity would otherwise be lost.
+
+Known limitation: the platform integration also creates one nested MLflow child run per KFP task, so the parent's child-run list includes graph nodes (``condition-*``, ``timeseries-data-loader``, ``publish-component-stage-map``) alongside the AutoGluon model trials. Those are created and owned by
+the platform, not by this pipeline. Filter the child runs by the ``run_type=model`` tag to see only model trials.
+
 Pipeline stages:
 
 0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP artifact for dashboards before data loading.
@@ -47,7 +53,7 @@ to a single combined ``models_artifact``.
 | `prediction_length` | `int` | `1` | Number of time steps to forecast (horizon length). Positive integer (default: 1). |
 | `top_n` | `int` | `3` | Number of top models to select for the leaderboard and output (default: 3). |
 | `eval_metric` | `str` | `mean_absolute_scaled_error` | Metric for model ranking in snake_case (e.g. ``"mean_absolute_scaled_error"``, ``"weighted_quantile_loss"``) or legacy uppercase acronym form. Defaults to ``"mean_absolute_scaled_error"``. |
-| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB), ``"balanced"`` (8 vCPU / 32 GiB), or ``"quality"`` (two-hour selection budget, 16 vCPU / 64 GiB). |
+| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB), ``"balanced"`` (8 vCPU / 32 GiB), or ``"quality"`` (two-hour selection budget, 16 vCPU / 64 GiB, AutoGluon ``best_quality``). |
 | `test_data_bucket_name` | `str` | `""` | Optional S3-compatible bucket name for a user-provided test dataset. Default: empty string (use the per-series holdout split from training data). |
 | `test_data_file_key` | `str` | `""` | Optional S3 object key for a user-provided test CSV file. Default: empty string (use the per-series holdout split from training data). |
 

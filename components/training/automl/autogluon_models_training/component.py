@@ -79,7 +79,7 @@ def autogluon_models_training(
             Ignored for ``multiclass`` and ``regression``.
         preset: Training quality tier. ``"speed"`` (45-minute selection budget, default),
             ``"balanced"`` (180-minute selection budget), or ``"quality"`` (six-hour
-            selection budget with AutoGluon ``best_quality``, default hyperparameters,
+            selection budget with AutoGluon ``best_quality``, the broad ``zeroshot`` portfolio,
             and bagging/stacking).
         eval_metric: Metric for model ranking (e.g. ``"r2"``, ``"accuracy"``). Defaults
             to ``"r2"`` for regression and ``"accuracy"`` otherwise.
@@ -111,7 +111,6 @@ def autogluon_models_training(
     import logging
     import math
     import shutil
-    import tempfile
     import time
     from concurrent.futures import ThreadPoolExecutor
     from copy import deepcopy
@@ -131,10 +130,10 @@ def autogluon_models_training(
     VALID_PRESETS = {"speed", "balanced", "quality"}
     PRESET_TIME_LIMITS = {"speed": 45 * 60, "balanced": 180 * 60, "quality": 360 * 60}
     PRESET_AG_NAMES = {"speed": "good_quality", "balanced": "high_quality", "quality": "best_quality"}
-    # The quality tier uses AutoGluon's standard portfolio rather than the deliberately
-    # constrained light portfolio used for speed. This makes its larger data and time
-    # budgets available to the full set of suitable model configurations.
-    PRESET_HYPERPARAMETERS = {"speed": "light", "balanced": "zeroshot", "quality": "default"}
+    # Quality must use the same broad portfolio as balanced. ``default`` overrides
+    # best_quality's normal portfolio with a much smaller candidate set and causes a
+    # quality run to finish early despite its larger resource/time budget.
+    PRESET_HYPERPARAMETERS = {"speed": "light", "balanced": "zeroshot", "quality": "zeroshot"}
     # Keep AutoGluon's scheduler and every model family within the resources reserved
     # by the pipeline for each tier. memory_limit is expressed in GiB by AutoGluon.
     PRESET_NUM_CPUS = {"speed": 4, "balanced": 8, "quality": 16}
@@ -148,8 +147,9 @@ def autogluon_models_training(
     PRESET_FIT_KWARGS = {
         "speed": {},
         "balanced": {},
-        # AutoGluon recommends ~5-10 bag folds and stacking when time allows.
-        "quality": {"num_bag_folds": 5, "num_stack_levels": 1},
+        # Match balanced's eight folds so quality does not trade ensemble stability
+        # for its larger data and time budgets.
+        "quality": {"num_bag_folds": 8, "num_stack_levels": 1},
     }
     TOP_N_MAX = 10
 
@@ -303,6 +303,7 @@ def autogluon_models_training(
             )
             # Non-secret dataset identity for the parent run; credentials stay in the K8s secret.
             dataset_uri = f"s3://{train_data_bucket_name}/{train_data_file_key}" if train_data_bucket_name else ""
+            test_dataset_uri = f"s3://{test_data_bucket_name}/{test_data_file_key}" if test_data_bucket_name else ""
             run_logger.log_header(
                 pipeline_name=pipeline_name,
                 kfp_run_id=run_id,
@@ -311,6 +312,7 @@ def autogluon_models_training(
                 top_n=top_n,
                 data_config={"sampling_config": sampling_config, "split_config": split_config},
                 dataset_uri=dataset_uri,
+                test_dataset_uri=test_dataset_uri,
             )
             progress_callback = run_logger.build_progress_callback()
 
@@ -782,39 +784,6 @@ def autogluon_models_training(
             # Build ordered models_metadata (preserves top-N ranking order).
             inference_block = _build_tabular_inference_block(predictor_clone)
 
-            # The notebook rendered into models_artifact embeds real customer sample rows, so
-            # it must never reach the MLflow tracking server. Render a separate, sanitized
-            # notebook (typed placeholders instead of real values) for MLflow upload only.
-            def _sanitized_sample_row() -> list[dict[str, str]]:
-                try:
-                    features = predictor_clone.features()
-                    type_map = predictor_clone.feature_metadata_in.type_map_raw
-                    return [{feat: f"<{_ag_type_to_datatype(type_map.get(feat, 'object'))}>" for feat in features}]
-                except Exception as e:
-                    logger.warning("Could not read predictor metadata for sanitized notebook: %s", e)
-                    # Fail safe: use column names only, never real values.
-                    return [{col: "<value>" for col in row} for row in sample_row_formatted]
-
-            sanitized_sample_row = _sanitized_sample_row()
-            mlflow_notebook_dir = Path(tempfile.mkdtemp(prefix="mlflow-sanitized-nb-"))
-
-            def _render_sanitized_notebook(model_name_full: str) -> Path:
-                with (shared_automl_dir() / "notebook_templates" / notebook_file).open("r", encoding="utf-8") as f:
-                    sanitized_notebook = json.load(f)
-                sanitized_notebook = replace_placeholder_in_notebook(
-                    sanitized_notebook,
-                    {
-                        "<REPLACE_RUN_ID>": run_id,
-                        "<REPLACE_PIPELINE_NAME>": pipeline_name_trimmed,
-                        "<REPLACE_MODEL_NAME>": model_name_full,
-                        "<REPLACE_SAMPLE_ROW>": str(sanitized_sample_row),
-                    },
-                )
-                sanitized_notebook_path = mlflow_notebook_dir / f"{model_name_full}.ipynb"
-                with sanitized_notebook_path.open("w", encoding="utf-8") as f:
-                    json.dump(sanitized_notebook, f)
-                return sanitized_notebook_path
-
             models_metadata = []
             for model_name_full in model_names_full:
                 eval_results = eval_results_by_model[model_name_full]
@@ -838,23 +807,15 @@ def autogluon_models_training(
 
                 # Log this model to MLflow as a nested child run as soon as it is finalized, so
                 # the experiment updates live. Kept sequential (out of the ThreadPoolExecutor
-                # above) because the MLflow fluent API is not thread-safe. Best-effort: notebook
-                # rendering and child-run logging must never fail the training step.
+                # above) because the MLflow fluent API is not thread-safe.
                 try:
-                    sanitized_notebook_path = (
-                        _render_sanitized_notebook(model_name_full) if run_logger.enabled else None
-                    )
                     run_logger.log_model(
                         model_name=model_name_full,
-                        model_dir=Path(models_artifact.path) / model_name_full,
                         model_uri=f"{models_artifact.uri.rstrip('/')}/{model_name_full}",
                         metrics={"test_data": eval_results},
-                        notebook_path=sanitized_notebook_path,
                     )
                 except Exception:
                     logger.exception("MLflow logging failed for model %s; continuing.", model_name_full)
-
-            shutil.rmtree(mlflow_notebook_dir, ignore_errors=True)
 
             status.record(
                 "refit_and_evaluate",
@@ -965,8 +926,6 @@ def autogluon_models_training(
             # Best-effort: never fails the training step.
             status.record("log_mlflow_results", "started")
             run_logger.finalize(
-                html_artifact_path=html_artifact.path,
-                model_names=model_names_full,
                 total_fit_time_seconds=total_fit_time_seconds,
             )
             logged_to_mlflow, mlflow_tracking_info = run_logger.result()

@@ -79,7 +79,7 @@ def automl_data_loader(  # noqa: D417
         sampling_method: "first_n_rows", "stratified", or "random"; if None, derived from task_type.
         task_type: "binary", "multiclass", or "regression" (default); used when sampling_method is None.
         split_config: Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool).
-        selection_train_size: Fraction of the train portion used for model selection (default 0.3).
+        selection_train_size: Model-selection fraction (default 0.3).
         test_data_bucket_name: S3 bucket name for user-provided test dataset (default: empty string).
         test_data_file_key: S3 object key of the user-provided test CSV (default: empty string).
         preset: Training quality tier controlling the sampling size budget. ``"speed"``
@@ -142,6 +142,11 @@ def automl_data_loader(  # noqa: D417
             )
         except Exception as e:  # noqa: BLE001 - stats logging must never break the run
             logger.debug("Could not compute dataset stats for %s: %s", name, e)
+
+    def _memory_usage_bytes(data):
+        """Return pandas DataFrame or Series deep-memory usage as an integer."""
+        memory_usage = data.memory_usage(deep=True)
+        return int(memory_usage.sum() if hasattr(memory_usage, "sum") else memory_usage)
 
     VALID_PRESETS = {"speed", "balanced", "quality"}
     # Sampling budget per quality tier: "speed" stays small for fast runs,
@@ -837,6 +842,9 @@ def automl_data_loader(  # noqa: D417
             test_sample_df.to_parquet(sampled_test_dataset.path, index=False)
             effective_test_size = test_size
 
+        eligible_train_rows = len(selection_X)
+        eligible_train_bytes = _memory_usage_bytes(selection_X) + _memory_usage_bytes(selection_y)
+
         X_sel, X_extra, y_sel, y_extra = train_test_split(
             selection_X,
             selection_y,
@@ -880,6 +888,8 @@ def automl_data_loader(  # noqa: D417
         split_export_metrics = {
             "test_size": split_config_out["test_size"],
             "selection_train_size": selection_train_size,
+            "eligible_train_rows": eligible_train_rows,
+            "eligible_train_in_memory_bytes": eligible_train_bytes,
             "stratify": stratify_effective,
             "selection_train_rows": len(X_y_sel),
             "extra_train_rows": len(X_y_extra),

@@ -20,13 +20,20 @@ test) are written as Snappy-compressed Parquet rather than CSV to keep the pipel
 Results are logged to MLflow only when the platform injects ``KFP_MLFLOW_CONFIG`` into the step (configured on the Data Science Pipelines / KFP pipeline server, not via a pipeline parameter). To disable MLflow logging, run the pipeline on a server without MLflow configured, or have the cluster admin
 remove the MLflow configuration from the pipeline server; the training step then skips all tracking and runs unchanged.
 
+The KFP run identity is tagged on the parent run under a single canonical key set. When the platform MLflow integration is active it owns the ``kfp.*`` namespace (``kfp.pipeline_run_id``, ``kfp.pipeline_run_url``, ``kfp.pipeline_id``, ``kfp.pipeline_version_id``) and this pipeline does not add its
+own ``kfp_run_id`` / ``kfp_run_name`` duplicates; those are only written when the integration is absent and the identity would otherwise be lost.
+
+Known limitation: the platform integration also creates one nested MLflow child run per KFP task, so the parent's child-run list includes graph nodes (``condition-*``, ``automl-data-loader``, ``publish-component-stage-map``) alongside the AutoGluon model trials. Those are created and owned by the
+platform, not by this pipeline. Filter the child runs by the ``run_type=model`` tag to see only model trials.
+
 **Pipeline Stages:**
 
 0. **Component stage map**: Publishes the static component-to-stage-to-step map as a KFP artifact for dashboards before any data I/O.
 
 1. **Data Loading & Splitting**: Loads tabular (CSV) data from an S3-compatible object storage bucket using AWS credentials configured via Kubernetes secrets. The component samples the data (up to 100 MiB for the "speed" preset, up to 1 GiB for "balanced", and up to 10 GiB for "quality"), then
 performs a two-stage split: *Primary split** (default 80/20): separates a *test set* (20%, written to an S3 artifact) from the *train portion* (80%). **Secondary split** (default 30/70 of the train portion): produces ``models_selection_train_dataset.parquet`` (30%, used for model selection) and
-``extra_train_dataset.parquet`` (70%, passed to ``refit_full`` as extra data). Both train Parquet files are written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column.
+``extra_train_dataset.parquet`` (70%, passed to ``refit_full`` as extra data). Both train Parquet files are written to the PVC workspace under ``{workspace_path}/datasets/``. For classification tasks the splits are stratified by the label column. For ``quality``, selection is capped at 30% of the
+balanced 1 GiB budget; remaining rows are used for final refit.
 
 2. **Model Training & Refitting**: Trains multiple AutoGluon models on the *selection train* data using stacking (1 level) and bagging (4 folds). All models are evaluated on the test set and ranked by performance. The top N models are selected and refitted sequentially on the full training data via
 ``refit_full``. Each refitted model is saved with a ``_FULL`` suffix and optimized for deployment. All model artifacts are stored under a single output artifact, avoiding a ``ParallelFor`` loop in the pipeline.
