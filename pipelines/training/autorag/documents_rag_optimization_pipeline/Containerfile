@@ -10,8 +10,10 @@ FROM ${BASE_IMAGE}
 
 COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt /tmp/
 
-## TODO: Ensure build isolation
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+## kfp==2.17.0 pins requests==2.33.0 while ai4rag's Docling dependency requires
+## requests>=2.34.2. Match the lockfile's explicit override by using pip's
+## legacy resolver for this intentionally incompatible dependency set.
+RUN pip install --no-cache-dir --use-deprecated=legacy-resolver -r /tmp/requirements.txt
 
 # Temporary workaround for docling-core versions that reject the MIME type
 # emitted by Docling's M4A ASR path. Remove when the upstream fix is available.
