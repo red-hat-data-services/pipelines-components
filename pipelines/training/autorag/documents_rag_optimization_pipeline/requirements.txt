@@ -5,8 +5,8 @@ accelerate==1.15.0 \
     # via
     #   docling-ibm-models
     #   docling-slim
-ai4rag==0.20.0 \
-    --hash=sha256:4a7132e2e23034057bf6dc8f9137a642ae027b3fe35b70e82c7c9d60d216a625
+ai4rag==0.21.0 \
+    --hash=sha256:8735e1e80685da673c3999236c98c6ace1bfb639c2edbbab975cad3aec960637
     # via -r requirements.in
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:6c06961fde24f3f847939e288b8e6398973752c358a58cdc067115f8fe87a35d
@@ -197,8 +197,8 @@ faiss-cpu==1.12.0 \
 faker==40.40.0 \
     --hash=sha256:0235873b073fea2a66d08eca30df597969a556a56cd84c7339f5f1e42bc63293
     # via polyfactory
-filelock==4.0.10 \
-    --hash=sha256:bcb1be2d5a4e6e15abfba0137b7e92195cdffdaed781a1a6c48073894fd7560a
+filelock==4.0.9 \
+    --hash=sha256:df357b7d1be816b2a63d97bdeafc7595a9471c9fa7ae45d22cb5330035d79421
     # via
     #   datasets
     #   huggingface-hub
@@ -374,7 +374,9 @@ kubernetes==36.0.3 \
     # via kfp
 langchain==1.4.3 \
     --hash=sha256:70d0ff49aef8a902888dabbcca13b21ec46d9100aa42581d6bc4d14e662203ed
-    # via ragas
+    # via
+    #   ai4rag
+    #   ragas
 langchain-classic==1.0.8 \
     --hash=sha256:6d8b23864e0792f98b01f806e9aef2730ba5edbb93cfd8bf44c8a8036e6628d2
     # via langchain-community
@@ -398,7 +400,9 @@ langchain-core==1.6.6 \
     #   ragas
 langchain-openai==1.6.7 \
     --hash=sha256:092c1f19ae5a3d6ef651bdce3988d0d0ef6bacdac8d91fa9c7ad7037f45ddd8d
-    # via ragas
+    # via
+    #   ai4rag
+    #   ragas
 langchain-protocol==0.0.19 \
     --hash=sha256:ac3653c4273b6cde3f061569286b704ffaf1e27a9df184fb6ad5af0db0fdf917
     # via
@@ -793,8 +797,8 @@ python-pptx==1.0.2 \
 python-utils==4.1.0 \
     --hash=sha256:e4faec87cc0fd5d165e6aaedfd898215d114352879ba81ea55577b46234d0928
     # via progressbar2
-pytz==2026.5 \
-    --hash=sha256:16fd4b52bac878d0e56e23092876cbfb78de5b85394f9de9143d7bf1c1fe8e64
+pytz==2026.4 \
+    --hash=sha256:8db66040cfeed1bee696dff20219047d4a20ab6c7685ffc8ca08c9b7ff7dfe52
     # via
     #   neo4j
     #   pandas
@@ -1130,8 +1134,8 @@ typing-inspection==0.4.4 \
     # via
     #   pydantic
     #   pydantic-settings
-tzdata==2026.5 \
-    --hash=sha256:333c339e0d7faeac79097158da067e246e3993179a43f6cb25e4ab43298145cf
+tzdata==2026.4 \
+    --hash=sha256:8f1403031de5d6c9bfe9a3acbc387061e3c6b31246b5a7d794f6fe59b251ea0a
     # via pandas
 unitxt==1.26.10 \
     --hash=sha256:a8b876094d4c37d0aded85ebcfd2fbdaa67fe078044c22514446edf921bb65c4
