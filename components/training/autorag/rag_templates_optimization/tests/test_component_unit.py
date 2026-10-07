@@ -198,6 +198,7 @@ def _pattern_payload(name: str, optimization_score: float | None = None) -> dict
         "settings": {
             "store_binding": {"provider_type": "milvus", "collection_name": f"{name}-collection"},
             "embedding": {"model_id": "em-0", "embedding_params": {}},
+            "generation": {"model_id": "fm-0", "temperature": 0.2, "max_completion_tokens": 2048},
             "chunking": {"method": "recursive", "chunk_size": 512, "chunk_overlap": 64},
         },
     }
@@ -393,20 +394,19 @@ class TestRagTemplatesOptimizationMetricResolution:
     """Metric resolution enforces the evaluator policy for each preset."""
 
     @pytest.mark.parametrize(
-        ("preset", "metric_id", "expected_evaluator"),
+        ("preset", "metric_id", "expected_evaluator", "expects_ragas"),
         [
-            ("speed", "unitxt:faithfulness", "unitxt"),
-            ("speed", "faithfulness", "unitxt"),
-            ("speed", "custom:overall_score", "custom"),
-            ("balanced", "unitxt:faithfulness", "unitxt"),
-            ("balanced", "ragas:faithfulness", "ragas"),
-            ("balanced", "faithfulness", "ragas"),
-            ("balanced", "ragas:context_precision", "ragas"),
-            ("balanced", "custom:overall_score", "custom"),
+            ("speed", "unitxt:faithfulness", "unitxt", False),
+            ("speed", "faithfulness", "unitxt", False),
+            ("speed", "custom:overall_score", "custom", False),
+            ("balanced", "unitxt:faithfulness", "unitxt", True),
+            ("balanced", "faithfulness", "ragas", True),
+            ("balanced", "ragas:context_precision", "ragas", True),
+            ("balanced", "custom:overall_score", "custom", True),
         ],
     )
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_resolves_to_expected_evaluator(self, tmp_path, preset, metric_id, expected_evaluator):
+    def test_resolves_to_expected_evaluator(self, tmp_path, preset, metric_id, expected_evaluator, expects_ragas):
         """The resolved RAGMetric is the one this component actually optimizes for."""
         mocks = _make_ai4rag_mocks()
         search_space_path = _write_search_space_report(tmp_path)
@@ -431,10 +431,13 @@ class TestRagTemplatesOptimizationMetricResolution:
         resolved_metric = mocks.AI4RAGExperiment.call_args.kwargs["optimization_metric"]
         assert resolved_metric.evaluator == expected_evaluator
         mocks.UnitxtEvaluator.assert_called_once_with()
-        if preset == "speed":
-            mocks.RagasEvaluator.assert_not_called()
+        if expects_ragas:
+            mocks.RagasEvaluator.assert_called_once_with(
+                model=mocks.get_foundation_models.return_value[0],
+                embedding_model=mocks.get_embedding_models.return_value[0],
+            )
         else:
-            mocks.RagasEvaluator.assert_called_once()
+            mocks.RagasEvaluator.assert_not_called()
 
         # The evaluator must travel with the name, or the leaderboard can't tell apart
         # metrics that collide across evaluators (e.g. unitxt vs RAGAS "faithfulness")
@@ -527,6 +530,7 @@ class TestRagTemplatesOptimizationRun:
         exp_kwargs = mocks.AI4RAGExperiment.call_args.kwargs
         assert exp_kwargs["evaluators"] == [mocks.UnitxtEvaluator.return_value]
         assert exp_kwargs["optimization_metric"].name == "overall_score"
+        assert exp_kwargs["kg_extraction_config"] == {"mode": "constrained"}
         mocks.AI4RAGExperiment.return_value.search.assert_called_once()
 
         pattern_dir = Path(rag_patterns.path) / "pattern_a"
@@ -547,12 +551,19 @@ class TestRagTemplatesOptimizationRun:
             "data/manuals/",
         ]
         assert pattern_json["indexing"]["pipeline_spec"]["pipeline_name"] == "documents-indexing-pipeline"
+        assert pattern_json["indexing"]["pipeline_spec"]["parameters"]["foundation_model_id"] == "fm-0"
+        assert pattern_json["indexing"]["pipeline_spec"]["parameters"]["foundation_model_params"] == {
+            "temperature": 0.2,
+            "max_completion_tokens": 2048,
+        }
+        assert pattern_json["indexing"]["pipeline_spec"]["parameters"]["kg_extraction_config"] == {
+            "mode": "constrained"
+        }
         indexing_notebook_call = next(
             call for call in mocks.generate_notebook_from_template.call_args_list if call.args[0] == "maas_indexing"
         )
         assert indexing_notebook_call.kwargs["input_data_keys"] == ["data/docs/", "data/manuals/"]
         assert indexing_notebook_call.kwargs["test_data_key"] == "data/test.json"
-
         assert rag_patterns.metadata["name"] == "rag_patterns_artifact"
         assert rag_patterns.metadata["uri"] == "gs://bucket/rag_patterns"
         assert rag_patterns.metadata["metadata"]["patterns"][0]["name"] == "pattern_a"
@@ -560,6 +571,40 @@ class TestRagTemplatesOptimizationRun:
         mocks.build_leaderboard_html.assert_called_once()
         assert Path(leaderboard_html.path).read_text(encoding="utf-8") == "<html></html>"
         assert leaderboard_html.metadata["display_name"] == "autorag_leaderboard"
+
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_balanced_preset_uses_free_capped_kg_extraction(self, tmp_path):
+        """Balanced uses free-form KG extraction capped at five nodes and edges per chunk."""
+        mocks = _make_ai4rag_mocks()
+        mocks.get_vector_store_config.return_value = mock.MagicMock(name="vector_store_config")
+        search_space_path = _write_search_space_report(tmp_path)
+        rag_patterns, leaderboard_html = _artifacts(tmp_path)
+
+        with mock.patch.dict("sys.modules", mocks.modules):
+            rag_templates_optimization.python_func(
+                extracted_text=str(tmp_path / "extracted"),
+                test_data=str(tmp_path / "test_data.json"),
+                search_space_mps_report=search_space_path,
+                rag_patterns=rag_patterns,
+                test_data_key="data/test.json",
+                maas_secret_name="maas-connection",
+                db_secret_name="vector-db-connection",
+                input_data_secret_name="s3-input-connection",
+                input_data_bucket_name="customer-docs",
+                leaderboard=leaderboard_html,
+                preset="balanced",
+            )
+
+        assert mocks.AI4RAGExperiment.call_args.kwargs["kg_extraction_config"] == {
+            "mode": "free",
+            "max_entities_per_chunk": 5,
+            "max_relationships_per_chunk": 5,
+        }
+        assert mocks.AI4RAGExperiment.call_args.kwargs["graph_retrieval_config"] == {
+            "entity_pivot_limit": 3,
+            "entity_relationship_hops": 2,
+            "relationship_neighbor_limit": 5,
+        }
 
     @mock.patch.dict(
         "os.environ",
@@ -591,6 +636,85 @@ class TestRagTemplatesOptimizationRun:
             )
 
         mocks.get_vector_store_config.assert_called_once_with("pgvector")
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "MAAS_BASE_URL": "https://maas.example.com/v1",
+            "MAAS_API_KEY": "test-api-key",
+            "NEO4J_URI": "neo4j://neo4j.example.com:7687",
+            "NEO4J_PASSWORD": "s3cr3t",
+        },
+        clear=True,
+    )
+    def test_neo4j_provider_detected_from_env(self, tmp_path):
+        """Neo4j patterns use graph notebooks when no MILVUS_* or PGVECTOR_* keys are set."""
+        mocks = _make_ai4rag_mocks()
+        mocks.create_maas_client.return_value = mock.MagicMock()
+        search_space_path = _write_search_space_report(tmp_path)
+        neo4j_pattern = _pattern_payload("pattern_a")
+        neo4j_pattern["settings"]["store_binding"]["provider_type"] = "neo4j"
+        mocks.KFPEventHandler.return_value.patterns = [
+            {"payload": neo4j_pattern, "evaluation_results": []},
+        ]
+        rag_patterns, leaderboard_html = _artifacts(tmp_path)
+
+        with mock.patch.dict("sys.modules", mocks.modules):
+            rag_templates_optimization.python_func(
+                extracted_text=str(tmp_path / "ext"),
+                test_data=str(tmp_path / "td.json"),
+                search_space_mps_report=search_space_path,
+                rag_patterns=rag_patterns,
+                test_data_key="key.json",
+                maas_secret_name="maas-secret",
+                db_secret_name="vector-db-secret",
+                input_data_secret_name="s3-secret",
+                input_data_bucket_name="bucket",
+                leaderboard=leaderboard_html,
+            )
+
+        mocks.get_vector_store_config.assert_called_once_with("neo4j")
+        assert [call.args[0] for call in mocks.generate_notebook_from_template.call_args_list] == [
+            "mass_creating_knowledge_graph",
+            "mass_inference_knowledge_graph",
+        ]
+
+    def test_missing_vector_db_env_raises_value_error(self, tmp_path):
+        """Absent MILVUS_*/PGVECTOR_* env vars raise a descriptive ValueError."""
+        mocks = _make_ai4rag_mocks()
+        mocks.create_maas_client.return_value = mock.MagicMock()
+
+        rag_patterns = mock.MagicMock()
+        rag_patterns.path = str(tmp_path / "out")
+        rag_patterns.metadata = {}
+
+        leaderboard_html = mock.MagicMock()
+        leaderboard_html.path = str(tmp_path / "leaderboard.html")
+        leaderboard_html.metadata = {}
+
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "MAAS_BASE_URL": "https://maas.example.com/v1",
+                "MAAS_API_KEY": "test-api-key",
+                "NEO4J_HOME": "/opt/neo4j",
+            },
+            clear=True,
+        ):
+            with mock.patch.dict("sys.modules", mocks.modules):
+                with pytest.raises(ValueError, match="No vector database configuration found"):
+                    rag_templates_optimization.python_func(
+                        extracted_text=str(tmp_path / "ext"),
+                        test_data=str(tmp_path / "td.json"),
+                        search_space_mps_report=str(tmp_path / "r.yml"),
+                        rag_patterns=rag_patterns,
+                        test_data_key="key.json",
+                        maas_secret_name="maas-secret",
+                        db_secret_name="vector-db-secret",
+                        input_data_secret_name="s3-secret",
+                        input_data_bucket_name="bucket",
+                        leaderboard=leaderboard_html,
+                    )
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
     def test_none_input_data_keys_defaults_to_empty_list(self, tmp_path):

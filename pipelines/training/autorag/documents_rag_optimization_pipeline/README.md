@@ -9,7 +9,7 @@ Automated system for building and optimizing Retrieval-Augmented Generation (RAG
 The Documents RAG Optimization Pipeline is an automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications within Red Hat OpenShift AI. It leverages Kubeflow Pipelines to orchestrate the optimization workflow, using the ai4rag optimization engine to systematically
 explore RAG configurations and identify the best performing parameter settings based on an upfront-specified quality metric.
 
-The system integrates with MaaS (Models-as-a-Service) for inference and a vector database (Milvus or PGVector) for retrieval, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. Each optimized pattern contains a ``pattern.json`` (with
+The system integrates with MaaS (Models-as-a-Service) for inference and a vector database (Milvus, PGVector, or Neo4j) for retrieval, producing optimized RAG patterns as artifacts that can be deployed and used for production RAG applications. Each optimized pattern contains a ``pattern.json`` (with
 deployment settings), executable notebooks, and evaluation results.
 
 ## Inputs 📥
@@ -22,7 +22,7 @@ deployment settings), executable notebooks, and evaluation results.
 | `input_data_secret_name` | `str` | `None` | Name of the Kubernetes secret holding S3-compatible credentials for input document data access. The following environment variables are required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_ENDPOINT. AWS_DEFAULT_REGION is optional. |
 | `input_data_bucket_name` | `str` | `None` | S3 (or compatible) bucket name for the input documents. |
 | `maas_secret_name` | `str` | `None` | Name of the Kubernetes secret for the MaaS inference connection. The secret must define: MAAS_BASE_URL, MAAS_API_KEY. |
-| `db_secret_name` | `str` | `None` | Name of the Kubernetes secret carrying the database configuration. The env-var prefix selects the backend: ``MILVUS_*`` keys (at least ``MILVUS_URI``) select Milvus, ``PGVECTOR_*`` keys select PGVector. |
+| `db_secret_name` | `str` | `None` | Name of the Kubernetes secret carrying the database configuration. The env-var prefix selects the backend: ``MILVUS_*`` keys (at least ``MILVUS_URI``) select Milvus, ``PGVECTOR_*`` keys select PGVector, ``NEO4J_*`` keys (at least ``NEO4J_URI`` and ``NEO4J_PASSWORD``) select Neo4j. |
 | `embedding_models` | `list[str]` | `None` | List of embedding model identifiers to use in the search space. Required: MaaS exposes no metadata to distinguish model types, so embedding models can no longer be inferred and must be declared explicitly. |
 | `generation_models` | `list[str]` | `None` | List of foundation/generation model identifiers to use in the search space. Required: MaaS exposes no metadata to distinguish model types, so generation models can no longer be inferred and must be declared explicitly. |
 | `input_data_keys` | `list[str]` | `[]` | Up to ten object-key prefixes for input documents in the input data bucket. Every location is discovered and merged into one deduplicated corpus. |
@@ -50,7 +50,7 @@ deployment settings), executable notebooks, and evaluation results.
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-09-15 00:00:00+00:00
+- **Last Verified**: 2026-10-05 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
@@ -147,7 +147,7 @@ RAG templates with optimal parameter values, which are referred to as RAG Patter
 
 ### Infrastructure Components
 
-- **Vector Databases**: Milvus, PGVector
+- **Vector Databases**: Milvus, PGVector, Neo4j
 - **LLM Provider**: MaaS (Models-as-a-Service, OpenAI-compatible inference)
 - **Experiment Tracking**: MLFlow (optional) - For experiment tracking, metrics logging, and
   artifact management

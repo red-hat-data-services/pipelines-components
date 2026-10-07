@@ -25,7 +25,9 @@ aiosignal==1.4.0 \
     # via aiohttp
 annotated-doc==0.0.5 \
     --hash=sha256:6060b21cc31c7caecc01f9b833fe49d81294c14e1fcc80362546126939167155
-    # via typer
+    # via
+    #   fastapi
+    #   typer
 annotated-types==0.8.0 \
     --hash=sha256:20c363a73ef38607a829a6697a8d43dfb355b71bdd2d3f2fe03e0a4f5c53b7be
     # via pydantic
@@ -38,7 +40,9 @@ anyio==4.15.1 \
     #   httpx
     #   httpx2
     #   langsmith
+    #   mlflow-skinny
     #   openai
+    #   starlette
 appdirs==1.4.4 \
     --hash=sha256:75ca3ec031f13969bb0817c7280570345180f778dae67560ededfefd8918f77e
     # via ragas
@@ -74,7 +78,9 @@ botocore==1.43.108 \
     #   s3transfer
 cachetools==7.2.0 \
     --hash=sha256:18cf3ffd81b6bcb7e23d8b4b6cfdbd28367cc26f33cc25695273d831f25887dc
-    # via pymilvus
+    # via
+    #   mlflow-skinny
+    #   pymilvus
 certifi==2026.7.22 \
     --hash=sha256:e5fe15bb588e1de8f8caef013fbcf10c5e61c7f2a96ecba518df6c4d9acbdd7b
     # via
@@ -101,13 +107,17 @@ click==8.5.0 \
     #   huggingface-hub
     #   instructor
     #   kfp
+    #   mlflow-skinny
     #   python-oxmsg
+    #   uvicorn
 click-option-group==0.5.7 \
     --hash=sha256:b8ed713b032279c71ed8a62084848f56df8703a62f8435e3cb67459d53cf1009
     # via kfp
 cloudpickle==3.1.2 \
     --hash=sha256:61e739b078e5be0694878bb530e91781a5de84833e6ed4f20c24efa275631ab9
-    # via joblib
+    # via
+    #   joblib
+    #   mlflow-skinny
 colorlog==6.12.0 \
     --hash=sha256:fb1979669bb239872bd4b091012be12e0183534675317b686ff6f867a7958ae4
     # via rapidocr
@@ -123,6 +133,9 @@ ctranslate2==4.8.2 \
     --hash=sha256:64406ff5201f1d3dbe5df49db7fc78180e77c754f7b8874884afe1adbb366f10 \
     --hash=sha256:826ca81e3c78905c6dafce6d2b0fefabd5226aae7b3886b26ddb00d92f742be0
     # via whisper-s2t-reborn
+databricks-sdk==0.146.0 \
+    --hash=sha256:e03dc0007d26d8a9b6aca8d34d87d9ace7de9dcc634de8791861448406f0dc98
+    # via mlflow-skinny
 dataclasses-json==0.6.7 \
     --hash=sha256:2b6dbf6190a132695ca5e6c78e8a090059ecb184ea7bf547bafbe2de3aaaf015
     # via langchain-community
@@ -197,6 +210,9 @@ faiss-cpu==1.12.0 \
 faker==40.40.0 \
     --hash=sha256:0235873b073fea2a66d08eca30df597969a556a56cd84c7339f5f1e42bc63293
     # via polyfactory
+fastapi==0.142.2 \
+    --hash=sha256:e9b99ab80fab51f6f7436d98d6090083baf6c625cc357619b43597078a9d3eab
+    # via mlflow-skinny
 filelock==4.0.9 \
     --hash=sha256:df357b7d1be816b2a63d97bdeafc7595a9471c9fa7ae45d22cb5330035d79421
     # via
@@ -225,6 +241,12 @@ fsspec==2026.6.0 \
     #   huggingface-hub
     #   neo4j-graphrag
     #   torch
+gitdb==4.0.12 \
+    --hash=sha256:84e61ca83cc78d8c1a7f2aaf1863a3745c4c6a8cb3da2608b2bcd208f383bf9b
+    # via gitpython
+gitpython==3.2.0 \
+    --hash=sha256:02b006cc2f5ec3715408336ae027f3eadf74b4171bfb598d63454c24f7d45676
+    # via mlflow-skinny
 google-api-core==2.40.0 \
     --hash=sha256:f1ecad875e165582ffc83cfe3f77132a50a6169d461e1d0fa2e5337283e5b8ab
     # via
@@ -234,6 +256,7 @@ google-api-core==2.40.0 \
 google-auth==2.59.1 \
     --hash=sha256:ca30deb10f89cca7dc86285530cfdd33144284b5999df59c642d2d0342cb42d9
     # via
+    #   databricks-sdk
     #   google-api-core
     #   google-cloud-core
     #   google-cloud-storage
@@ -268,6 +291,7 @@ h11==0.16.0 \
     # via
     #   httpcore
     #   httpcore2
+    #   uvicorn
 hf-xet==1.6.0 \
     --hash=sha256:a241d72da3649b6b904a25f08833327bb863939a645ef8c6d4995e2e5c331131 \
     --hash=sha256:c57b75539cf126a41394254640393f926bb60efbfa624e1185de0eaeedcf3dc2 \
@@ -315,6 +339,9 @@ idna==3.20 \
     #   instructor
     #   requests
     #   yarl
+importlib-metadata==9.0.1 \
+    --hash=sha256:d7e9f0febcff74e3f9000abe34d51ad4c59c70907989a1a09fc6af313e8b902d
+    # via mlflow-skinny
 instructor==1.17.0 \
     --hash=sha256:7d3e3607162683c6561eb8827bea33549ffef4aba2649c51df00d6d1fef9574a
     # via ragas
@@ -476,6 +503,9 @@ mdurl==0.1.2 \
 milvus-lite==3.2.1 \
     --hash=sha256:0ad51708a520e02c01bca97a3fff6e76649379fad22924f9f64a6d9981f22cca
     # via pymilvus
+mlflow-skinny==3.16.1 \
+    --hash=sha256:a109a3f3cdcb5b76edc6951862895dc5ef57d7728c97d061c7483d401ee1e8d1
+    # via -r requirements.in
 more-itertools==11.1.0 \
     --hash=sha256:97499fb9dca8ef4f23be8724fe3b1bb846b464933d4e4fde7d2f7ffda99c38a7
     # via openai-whisper
@@ -598,7 +628,21 @@ openpyxl==3.1.5 \
     # via docling-slim
 opentelemetry-api==1.45.0 \
     --hash=sha256:3005d74e317692baa2d327aebe28df94bc69ecc8c581a676d1811e4207e99b89
-    # via google-api-core
+    # via
+    #   fastapi
+    #   google-api-core
+    #   mlflow-skinny
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-proto==1.45.0 \
+    --hash=sha256:f2bbd04971d7f7254f3542c7c4797d934eebfd1e4e9bd8799426c4a73c2c3e7e
+    # via mlflow-skinny
+opentelemetry-sdk==1.45.0 \
+    --hash=sha256:eaea4bb295a802ab3fef824ddf3b1368d41e92e0c5a6295d094e4c7d8cd82eab
+    # via mlflow-skinny
+opentelemetry-semantic-conventions==0.66b0 \
+    --hash=sha256:62c0737b3286e94fc2c5f50a212dcf9864fd828d6fa6ecc1fc8266617f0049cf
+    # via opentelemetry-sdk
 orjson==3.12.0 \
     --hash=sha256:1f40dcb910fad2147761e9903972343065f4e458c6fa33988ca3a9674a9bec74 \
     --hash=sha256:6cabb3a0db05224193f27c18b421fa0c5b5376da1211b7614a09664773da6f1a \
@@ -625,6 +669,7 @@ packaging==26.3 \
     #   langchain-core
     #   langsmith
     #   marshmallow
+    #   mlflow-skinny
     #   onnxruntime
     #   transformers
 pandas==2.2.3 \
@@ -684,11 +729,14 @@ protobuf==6.33.6 \
     --hash=sha256:a704ed669beb8cefc620b80eb210130e018daaa688549d21208d88d571576530 \
     --hash=sha256:d74d4f517dd7b1cf0ad827759a0c3772c15b9ecc677f6f7334e15c9165614d73
     # via
+    #   databricks-sdk
     #   google-api-core
     #   googleapis-common-protos
     #   kfp
     #   kfp-pipeline-spec
+    #   mlflow-skinny
     #   onnxruntime
+    #   opentelemetry-proto
     #   proto-plus
     #   pymilvus
 psutil==7.2.2 \
@@ -728,12 +776,14 @@ pydantic==2.11.10 \
     #   docling-ibm-models
     #   docling-parse
     #   docling-slim
+    #   fastapi
     #   instructor
     #   langchain
     #   langchain-classic
     #   langchain-core
     #   langgraph
     #   langsmith
+    #   mlflow-skinny
     #   neo4j-graphrag
     #   openai
     #   pydantic-settings
@@ -786,6 +836,7 @@ python-dotenv==1.2.4 \
     --hash=sha256:9aced3d11822fc2dbb9db1bffc1decd0564c838f3dff136992e1aa883baf9561
     # via
     #   docling-slim
+    #   mlflow-skinny
     #   pydantic-settings
     #   pymilvus
 python-oxmsg==0.0.2 \
@@ -797,8 +848,8 @@ python-pptx==1.0.2 \
 python-utils==4.1.0 \
     --hash=sha256:e4faec87cc0fd5d165e6aaedfd898215d114352879ba81ea55577b46234d0928
     # via progressbar2
-pytz==2026.4 \
-    --hash=sha256:8db66040cfeed1bee696dff20219047d4a20ab6c7685ffc8ca08c9b7ff7dfe52
+pytz==2026.5 \
+    --hash=sha256:16fd4b52bac878d0e56e23092876cbfb78de5b85394f9de9143d7bf1c1fe8e64
     # via
     #   neo4j
     #   pandas
@@ -818,6 +869,7 @@ pyyaml==6.0.3 \
     #   langchain-classic
     #   langchain-community
     #   langchain-core
+    #   mlflow-skinny
     #   neo4j-graphrag
     #   omegaconf
     #   rapidocr
@@ -845,6 +897,7 @@ regex==2026.9.29 \
 requests==2.33.0 \
     --hash=sha256:9d249b163a9972460737e6e34c88bd0579ee646ba5c43d8b385dd28c2c4b0101
     # via
+    #   databricks-sdk
     #   datasets
     #   docling-slim
     #   evaluate
@@ -856,6 +909,7 @@ requests==2.33.0 \
     #   langchain-classic
     #   langchain-community
     #   langsmith
+    #   mlflow-skinny
     #   pymilvus
     #   rapidocr
     #   requests-oauthlib
@@ -951,6 +1005,9 @@ six==1.17.0 \
     #   kubernetes
     #   python-dateutil
     #   rapidocr
+smmap==5.0.3 \
+    --hash=sha256:faf20e17f5de60395902397651f2db22790e31718725c40f8e77524fc08323d7
+    # via gitdb
 sniffio==1.3.1 \
     --hash=sha256:9555de26e08b8b92348ba58da34d1000e8788871a58c50f475e3d6a3b74aec58
     # via
@@ -967,6 +1024,14 @@ sqlalchemy==2.1.3 \
     # via
     #   langchain-classic
     #   langchain-community
+sqlparse==0.6.0 \
+    --hash=sha256:40572d4c4e2a83fec7d24a3cb588811e087c81fd0a2d6d492efba61a9cd27a65
+    # via mlflow-skinny
+starlette==1.7.0 \
+    --hash=sha256:6e81708175f4528cb1c6f966e6a4aa1cd37674c704677edc6e23a5d1b9ba19ca
+    # via
+    #   fastapi
+    #   mlflow-skinny
 sympy==1.14.0 \
     --hash=sha256:81dbea23f327bb7d1eeee8331d441a023a7cb718ebdbda97a25a22c93b31025d
     # via torch
@@ -1105,15 +1170,19 @@ typing-extensions==4.16.0 \
     #   anyio
     #   beautifulsoup4
     #   docling-core
+    #   fastapi
     #   grpcio
     #   httpx2
     #   huggingface-hub
     #   langchain-core
     #   langchain-protocol
     #   langsmith
+    #   mlflow-skinny
     #   odfdo
     #   openai
     #   opentelemetry-api
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
     #   polyfactory
     #   pydantic
     #   pydantic-core
@@ -1123,6 +1192,7 @@ typing-extensions==4.16.0 \
     #   python-utils
     #   referencing
     #   sqlalchemy
+    #   starlette
     #   torch
     #   typing-inspect
     #   typing-inspection
@@ -1132,10 +1202,11 @@ typing-inspect==0.9.0 \
 typing-inspection==0.4.4 \
     --hash=sha256:b6eb66af055e575c1a9d77cce4dbc972399c9de3fbcacdae65e35d03c25a6cee
     # via
+    #   fastapi
     #   pydantic
     #   pydantic-settings
-tzdata==2026.4 \
-    --hash=sha256:8f1403031de5d6c9bfe9a3acbc387061e3c6b31246b5a7d794f6fe59b251ea0a
+tzdata==2026.5 \
+    --hash=sha256:333c339e0d7faeac79097158da067e246e3993179a43f6cb25e4ab43298145cf
     # via pandas
 unitxt==1.26.10 \
     --hash=sha256:a8b876094d4c37d0aded85ebcfd2fbdaa67fe078044c22514446edf921bb65c4
@@ -1144,6 +1215,7 @@ urllib3==2.7.0 \
     --hash=sha256:74da65bbe2a901ff75d9f311b70c3476d0b2257c830ed6bb2ae09b24ad221d20
     # via
     #   botocore
+    #   databricks-sdk
     #   instructor
     #   kfp
     #   kfp-server-api
@@ -1157,6 +1229,9 @@ uuid-utils==0.17.1 \
     # via
     #   langchain-core
     #   langsmith
+uvicorn==0.54.0 \
+    --hash=sha256:eaa39c36fbbe4eed3442f8aa762c37be8f0302d4cbd707cbfec2e8773b3bc5b9
+    # via mlflow-skinny
 websocket-client==1.9.2 \
     --hash=sha256:c57703d3a3fa729ac9815fcc96a394aab71c132a3e225f43b64f24b901c9b19e
     # via kubernetes
@@ -1191,6 +1266,9 @@ yarl==1.25.1 \
     --hash=sha256:4bab4682e60b3f10095bcf98d0545c0e1156480db48cc84f8a0f77774678f5c8 \
     --hash=sha256:7ed7a23a71123c566393068331379494d1a90d84ce3702b8ca78c8a679b2acd2
     # via aiohttp
+zipp==4.1.1 \
+    --hash=sha256:546483fd16e875fb8eab006cf189066e205808657e7e48cdc16ccf979da694bf
+    # via importlib-metadata
 zstandard==0.25.0 \
     --hash=sha256:7a6269e04ae9d86d74e6893f3abc027ce7ec4a25803122e67fb19746921f8db2 \
     --hash=sha256:92d3b37a325a245a3fc786a1a11032953b3dfeca4913c77e6648a6299d295718 \

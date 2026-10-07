@@ -96,6 +96,8 @@ class TestDocumentsIndexingPipelineUnit:
         assert "componentInputParameter: chunk_size" in content
         assert "componentInputParameter: chunk_overlap" in content
         assert "componentInputParameter: embedding_model_id" in content
+        assert "componentInputParameter: foundation_model_id" in content
+        assert "componentInputParameter: foundation_model_params" in content
         assert "componentInputParameter: collection_name" in content
         assert "comp-documents-indexing:" in content
 
@@ -133,6 +135,7 @@ class TestDocumentsIndexingPipelineUnit:
         # Union of vector-DB backends is mapped as optional env vars.
         assert "MILVUS_URI" in content
         assert "PGVECTOR_HOST" in content
+        assert "NEO4J_URI" in content
 
     def test_compiled_pipeline_declares_component_resource_tiers(self):
         """All indexing pipeline steps declare the workload CPU/memory tier."""
