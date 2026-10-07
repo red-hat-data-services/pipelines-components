@@ -32,7 +32,7 @@ langchain-protocol==0.0.16
 jsonpatch==1.33
 langsmith==0.7.22
 latex2mathml==3.79.0
-lxml==6.0.2
+lxml==6.1.1
 kfp==2.15.2
 marko==2.2.2
 openai==2.23.0
@@ -83,7 +83,7 @@ datasets==4.8.4
 dill==0.4.1
 fsspec==2026.2.0
 multiprocess==0.70.16
-aiohttp==3.13.3
+aiohttp==3.14.3
 multidict==6.7.1
 yarl==1.23.0
 aiohappyeyeballs==2.6.1
