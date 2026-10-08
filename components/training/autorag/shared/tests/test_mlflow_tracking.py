@@ -366,7 +366,7 @@ class TestMlflowPatternLogger:
     def test_pattern_artifacts_are_not_copied_to_mlflow(self, logger_and_mlflow):
         """KFP/S3 owns output artifacts; MLflow receives params and metrics only."""
         run_logger, fake = logger_and_mlflow
-        run_logger.log_pattern(_pattern_payload(), [{"question": "q", "answer": "a"}])
+        run_logger.log_pattern(_pattern_payload())
         assert fake.child_runs()[0]["artifacts"] == []
 
     def test_logs_kfp_artifact_pointers_on_child_run(self, logger_and_mlflow):
@@ -378,62 +378,6 @@ class TestMlflowPatternLogger:
         assert params["kfp.pattern_json_uri"] == "s3://bucket/run/rag_patterns/rag_pattern_1/pattern.json"
         assert params["kfp.evaluation_results_uri"].endswith("/evaluation_results.json")
         assert fake.child_runs()[0]["artifacts"] == []
-
-    def test_logs_per_record_manual_traces(self):
-        """Each evaluation record creates semantic RAG spans under its child run."""
-        fake = FakeMlflow()
-        config = MlflowConfig("kfp", TRACKING_URI, experiment_id="7")
-        run_logger = MlflowPatternLogger(fake, config)
-        record = {
-            "question": "q",
-            "correct_answers": ["a"],
-            "answer": "a",
-            "answer_contexts": {"text": "retrieved chunk", "source": "reading-club"},
-            "score": 0.9,
-        }
-        second_record = {"question": "q2", "answer": "a2", "score": 0.8}
-        with fake.start_run(run_id="parent-run-1") as parent:
-            run_logger.bind_parent_run(parent)
-            run_logger.log_pattern(_pattern_payload(), [record, second_record])
-        assert [span["name"] for span in fake.spans] == [
-            "benchmark_request",
-            "retrieval",
-            "generation",
-            "evaluation",
-        ] * 2
-        child_run_id = next(run_id for run_id, run in fake.runs.items() if run["tags"].get("run_type") == "rag_pattern")
-        assert fake.spans[0]["run_id"] == child_run_id
-        assert fake.spans[0]["inputs"] == {"question": "q", "correct_answers": ["a"]}
-        assert fake.spans[0]["outputs"] == {
-            "answer": "a",
-            # Survives on root Response when artifact-backed RETRIEVER spans cannot upload.
-            "retrieved_documents": [{"page_content": "retrieved chunk", "metadata": {"source": "reading-club"}}],
-        }
-        assert fake.spans[1]["inputs"] == {"query": "q"}
-        assert fake.spans[1]["outputs"] == [{"page_content": "retrieved chunk", "metadata": {"source": "reading-club"}}]
-        assert fake.spans[2]["inputs"] == {
-            "question": "q",
-            "contexts": [{"page_content": "retrieved chunk", "metadata": {"source": "reading-club"}}],
-        }
-        assert fake.spans[2]["outputs"] == {"answer": "a"}
-        assert fake.spans[3]["inputs"] == {"question": "q", "correct_answers": ["a"]}
-        assert fake.spans[3]["outputs"] == record
-        assert [span["parent_id"] for span in fake.spans if span["parent_id"]] == [fake.spans[0]["span_id"]] * 3 + [
-            fake.spans[4]["span_id"]
-        ] * 3
-
-    def test_trace_failures_do_not_fail_pattern_logging(self):
-        """Tracing is best-effort, independently of the child-run metrics and params."""
-        fake = FakeMlflow()
-        config = MlflowConfig("kfp", TRACKING_URI, experiment_id="7")
-        run_logger = MlflowPatternLogger(fake, config)
-        with fake.start_run(run_id="parent-run-1") as parent:
-            run_logger.bind_parent_run(parent)
-            fake.start_span = mock.Mock(side_effect=RuntimeError("trace unavailable"))
-            run_logger.log_pattern(_pattern_payload(), [{"question": "q"}])
-        assert len(fake.child_runs()) == 1
-        _, info = run_logger.result()
-        assert "trace unavailable" in info["mlflow_trace_errors"]
 
     def test_falls_back_to_create_run_when_nesting_unsupported(self):
         """A server rejecting nested runs still gets children linked to the parent."""
@@ -457,7 +401,6 @@ class TestMlflowPatternLogger:
     def test_finalize_reports_best_pattern(self, logger_and_mlflow):
         """The best score seen across patterns is summarized on the parent run."""
         run_logger, fake = logger_and_mlflow
-        fake.flush_trace_async_logging = mock.Mock()
         run_logger.log_pattern(_pattern_payload(name="p1"))
         high = _pattern_payload(name="p2")
         high["evaluation"]["metrics"][1]["scores"]["mean"] = 0.91
@@ -468,7 +411,6 @@ class TestMlflowPatternLogger:
         assert parent["metrics"]["best_pattern_score"] == 0.91
         assert parent["metrics"]["rag_pattern_count"] == 2.0
         assert parent["params"]["best_pattern_name"] == "p2"
-        fake.flush_trace_async_logging.assert_called_once_with()
 
     def test_finalize_does_not_copy_leaderboard(self, logger_and_mlflow):
         """The leaderboard remains in the KFP-managed artifact store."""
@@ -499,7 +441,7 @@ class TestMlflowPatternEventHandler:
         handler.on_pattern_creation(payload=payload, evaluation_results=["r"])
 
         inner.on_pattern_creation.assert_called_once_with(payload=payload, evaluation_results=["r"])
-        run_logger.log_pattern.assert_called_once_with(payload, ["r"])
+        run_logger.log_pattern.assert_called_once_with(payload)
         assert handler.patterns == [{"payload": "p"}]
 
     def test_forwards_status_changes(self):

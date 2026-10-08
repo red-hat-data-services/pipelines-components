@@ -66,59 +66,6 @@ MAX_PARAM_VALUE_CHARS = 5000
 _UNSAFE_KEY_CHARS = re.compile(r"[^A-Za-z0-9_\-. /]")
 
 
-def _rag_trace_payloads(
-    record: Any,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
-    """Build MLflow's RAG trace payloads from one ai4rag evaluation record.
-
-    MLflow recognizes a retriever only when its output is a list of document mappings
-    with ``page_content``.  ai4rag exposes those documents as ``answer_contexts``;
-    the other fields describe the benchmark request and generated answer.
-    """
-    values = record if isinstance(record, dict) else {}
-    question = values.get("question")
-    correct_answers = values.get("correct_answers")
-    answer = values.get("answer")
-    documents = _retriever_documents(values.get("answer_contexts"))
-
-    trace_inputs = _non_null_fields(question=question, correct_answers=correct_answers)
-    # Temporary fallback for experiments with a local ``/mlflow`` artifact root.
-    # TODO: Remove once platform experiments use ``mlflow-artifacts:`` and persist child spans.
-    trace_outputs = _non_null_fields(answer=answer, retrieved_documents=documents or None)
-    retrieval_inputs = _non_null_fields(query=question)
-    generation_inputs = _non_null_fields(question=question, contexts=documents)
-    generation_outputs = _non_null_fields(answer=answer)
-    return trace_inputs, trace_outputs, retrieval_inputs, documents, generation_inputs, generation_outputs
-
-
-def _retriever_documents(answer_contexts: Any) -> list[dict[str, Any]]:
-    """Convert ai4rag answer contexts to MLflow retriever-document output."""
-    if answer_contexts is None:
-        return []
-    contexts = answer_contexts if isinstance(answer_contexts, list) else [answer_contexts]
-    documents: list[dict[str, Any]] = []
-    for context in contexts:
-        if isinstance(context, dict):
-            content_key = next(
-                (key for key in ("page_content", "text", "content") if context.get(key) is not None), None
-            )
-            if content_key is None:
-                page_content = json.dumps(context, default=str, sort_keys=True)
-                metadata: dict[str, Any] = {}
-            else:
-                page_content = str(context[content_key])
-                metadata = {key: value for key, value in context.items() if key != content_key}
-            documents.append({"page_content": page_content, "metadata": metadata})
-        else:
-            documents.append({"page_content": str(context), "metadata": {}})
-    return documents
-
-
-def _non_null_fields(**values: Any) -> dict[str, Any]:
-    """Avoid writing absent fields as misleading JSON nulls to a trace."""
-    return {key: value for key, value in values.items() if value is not None}
-
-
 @dataclass(frozen=True)
 class MlflowConfig:
     """Resolved MLflow settings for the current pod, parsed from ``KFP_MLFLOW_CONFIG``."""
@@ -643,8 +590,6 @@ class MlflowPatternLogger:
         self._child_run_ids: list[str] = []
         self._child_run_ids_by_pattern: dict[str, str] = {}
         self._child_run_errors: list[str] = []
-        self._trace_count = 0
-        self._trace_errors: list[str] = []
         self._header_logged = False
         self._finalize_logged = False
         self._tracking_errors: list[str] = []
@@ -737,7 +682,7 @@ class MlflowPatternLogger:
             self.record_tracking_error(f"log_header: {exc}")
             logger.exception("MLflow parent header logging failed; continuing.")
 
-    def log_pattern(self, payload: dict[str, Any], evaluation_results: Any = None) -> None:
+    def log_pattern(self, payload: dict[str, Any]) -> None:
         """Open and close a nested child run for one evaluated RAG pattern.
 
         Called from :class:`MlflowPatternEventHandler` the moment ai4rag finishes
@@ -789,7 +734,6 @@ class MlflowPatternLogger:
                 if child_run_id:
                     self._child_run_ids.append(child_run_id)
                     self._child_run_ids_by_pattern[name] = child_run_id
-                    self._log_evaluation_traces(name, child_run_id, evaluation_results)
         except Exception as exc:
             self._child_run_errors.append(f"{name}: {exc}")
             logger.exception("MLflow logging failed for pattern %s; continuing.", name)
@@ -822,54 +766,12 @@ class MlflowPatternLogger:
                 self.record_tracking_error(f"log_pattern_artifact_pointers({name}): {exc}")
                 logger.exception("MLflow artifact-pointer logging failed for pattern %s; continuing.", name)
 
-    def _log_evaluation_traces(self, pattern_name: str, child_run_id: str, evaluation_results: Any) -> None:
-        """Log one best-effort, manually constructed MLflow trace per evaluation record."""
-        if evaluation_results is None:
-            return
-        records = evaluation_results if isinstance(evaluation_results, list) else [evaluation_results]
-        for index, record in enumerate(records):
-            try:
-                attributes = {"pattern_name": pattern_name, "evaluation_record_index": index}
-                (
-                    trace_inputs,
-                    trace_outputs,
-                    retrieval_inputs,
-                    retrieval_outputs,
-                    generation_inputs,
-                    generation_outputs,
-                ) = _rag_trace_payloads(record)
-                with self._mlflow.start_span(
-                    name="benchmark_request",
-                    span_type="CHAIN",
-                    attributes=attributes,
-                    run_id=child_run_id,
-                ) as root_span:
-                    root_span.set_inputs(trace_inputs)
-                    for span_name, span_type, inputs, outputs in (
-                        ("retrieval", "RETRIEVER", retrieval_inputs, retrieval_outputs),
-                        ("generation", "LLM", generation_inputs, generation_outputs),
-                        # Keep the full record on the evaluator span: it is the evaluation
-                        # payload, rather than pretending the retriever or LLM emitted it.
-                        ("evaluation", "EVALUATOR", trace_inputs, record),
-                    ):
-                        with self._mlflow.start_span(name=span_name, span_type=span_type) as span:
-                            span.set_inputs(inputs)
-                            span.set_outputs(outputs)
-                    root_span.set_outputs(trace_outputs)
-                self._trace_count += 1
-            except Exception as exc:
-                self._trace_errors.append(f"{pattern_name}[{index}]: {exc}")
-                logger.exception(
-                    "MLflow trace logging failed for pattern %s record %s; continuing.", pattern_name, index
-                )
-
     def finalize(self) -> None:
         """Log job-level aggregates without copying KFP artifacts to MLflow."""
         if not self.enabled:
             return
         try:
             metrics: dict[str, float] = {"rag_pattern_count": float(self._pattern_count)}
-            metrics["mlflow_trace_count"] = float(self._trace_count)
             if self._max_rag_patterns > 0:
                 extras = max(0, self._pattern_count - self._max_rag_patterns)
                 metrics["published_pattern_count"] = float(min(self._pattern_count, self._max_rag_patterns))
@@ -882,12 +784,6 @@ class MlflowPatternLogger:
             if self._best_pattern_name:
                 self._mlflow.log_param("best_pattern_name", self._best_pattern_name)
                 self._mlflow.set_tag("best_pattern_name", self._best_pattern_name)
-            # MLflow exports traces asynchronously by default in non-notebook workloads.
-            # This component is short-lived, so drain the exporter before its pod exits; without
-            # this, the root trace can reach MLflow while its child RAG spans remain queued.
-            flush_traces = getattr(self._mlflow, "flush_trace_async_logging", None)
-            if callable(flush_traces):
-                flush_traces()
             self._finalize_logged = True
         except Exception as exc:
             self.record_tracking_error(f"finalize: {exc}")
@@ -916,15 +812,12 @@ class MlflowPatternLogger:
             "tracking_mode": self._config.mode,
             "mlflow_child_run_ids": ",".join(self._child_run_ids),
             "mlflow_child_run_count": str(len(self._child_run_ids)),
-            "mlflow_trace_count": str(self._trace_count),
         }
         run_url = build_mlflow_run_url(self._config.tracking_uri, self.experiment_id, run_id_for_url)
         if run_url:
             tracking_info["mlflow_run_url"] = run_url
         if self._child_run_errors:
             tracking_info["mlflow_child_run_errors"] = json.dumps(self._child_run_errors)
-        if self._trace_errors:
-            tracking_info["mlflow_trace_errors"] = json.dumps(self._trace_errors)
         if not persisted:
             reasons = self._tracking_errors + self._child_run_errors
             tracking_info["mlflow_tracking_error"] = "; ".join(reasons) or "no MLflow write succeeded"
@@ -961,7 +854,7 @@ class MlflowPatternEventHandler:
         """Forward an evaluated pattern to the wrapped handler, then log it to MLflow."""
         self._inner.on_pattern_creation(payload=payload, evaluation_results=evaluation_results, **kwargs)
         try:
-            self._run_logger.log_pattern(payload, evaluation_results)
+            self._run_logger.log_pattern(payload)
         except Exception:
             # log_pattern is already best-effort; this guard covers programming errors in
             # the mapping helpers so optimization never fails because of tracking.

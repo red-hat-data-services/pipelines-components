@@ -167,9 +167,9 @@ class TestPublishComponentStageMapMlflow:
         assert document["mlflow"] == {"tracking_enabled": False}
         assert component_stage_map_artifact.metadata["mlflow_tracking_enabled"] == "False"
 
-    def test_template_declares_mlflow_stage(self, component_stage_map_artifact, monkeypatch):
-        """The optimization component advertises its MLflow stage to the dashboard."""
+    def test_template_omits_mlflow_stage(self, component_stage_map_artifact, monkeypatch):
+        """MLflow bookkeeping is not presented as an optimization stage."""
         monkeypatch.delenv("KFP_MLFLOW_CONFIG", raising=False)
         document = self._publish(component_stage_map_artifact)
         optimization = next(c for c in document["components"] if c["id"] == "rag_templates_optimization")
-        assert [s["id"] for s in optimization["stages"]][-1] == "log_mlflow_results"
+        assert "log_mlflow_results" not in {stage["id"] for stage in optimization["stages"]}
