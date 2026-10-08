@@ -65,7 +65,7 @@ def documents_rag_optimization_pipeline(
     settings based on an upfront-specified quality metric.
 
     The system integrates with MaaS (Models-as-a-Service) for inference and a vector database
-    (Milvus or PGVector) for retrieval, producing optimized RAG patterns as artifacts that can
+    (Milvus, PGVector, or Neo4j) for retrieval, producing optimized RAG patterns as artifacts that can
     be deployed and used for production RAG applications. Each optimized pattern contains a
     ``pattern.json`` (with deployment settings), executable notebooks, and evaluation results.
 
@@ -85,7 +85,8 @@ def documents_rag_optimization_pipeline(
             The secret must define: MAAS_BASE_URL, MAAS_API_KEY.
         db_secret_name: Name of the Kubernetes secret carrying the database
             configuration. The env-var prefix selects the backend: ``MILVUS_*`` keys (at least
-            ``MILVUS_URI``) select Milvus, ``PGVECTOR_*`` keys select PGVector.
+            ``MILVUS_URI``) select Milvus, ``PGVECTOR_*`` keys select PGVector,
+            ``NEO4J_*`` keys (at least ``NEO4J_URI`` and ``NEO4J_PASSWORD``) select Neo4j.
         embedding_models: List of embedding model identifiers to use in the search space.
             Required: MaaS exposes no metadata to distinguish model types, so embedding
             models can no longer be inferred and must be declared explicitly.
@@ -106,6 +107,15 @@ def documents_rag_optimization_pipeline(
             no table structure parsing, and no contextual enrichment. "balanced"
             enables Docling table layout parsing, hybrid chunking, and LLM
             contextual enrichment. Both presets use the same resource tier.
+    MLflow logging:
+        Runs are tracked in MLflow automatically when the cluster's MLflow integration
+        is enabled; there is no parameter to turn it on. The platform injects the
+        tracking endpoint, workspace, experiment, and parent run into every step, and
+        authentication uses the pod's ServiceAccount token, so no connection secret is
+        needed. Optimization parameters and results land on the pipeline's parent run,
+        and each discovered RAG pattern gets a nested child run written *as the
+        optimizer evaluates it*, so the experiment fills in live during the run. When
+        MLflow is not enabled, the pipeline behaves exactly as before.
     """
     component_stage_map_task = publish_component_stage_map(
         pipeline_id=PIPELINE_NAME,
@@ -182,6 +192,9 @@ def documents_rag_optimization_pipeline(
         test_data_key=test_data_key,
         input_data_keys=input_data_keys,
         preset=preset,
+        pipeline_name=PIPELINE_NAME,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
     )
 
     rag_optimization_task.set_caching_options(False)
@@ -228,21 +241,23 @@ def documents_rag_optimization_pipeline(
     use_secret_as_env(models_pre_selector_task, maas_secret_name, MAAS_SECRET_KEYS)
     use_secret_as_env(rag_optimization_task, maas_secret_name, MAAS_SECRET_KEYS)
 
-    use_secret_as_env(
-        rag_optimization_task,
-        db_secret_name,
-        secret_key_to_env={
-            "MILVUS_URI": "MILVUS_URI",
-            "MILVUS_TOKEN": "MILVUS_TOKEN",
-            "MILVUS_SERVER_CERT": "MILVUS_SERVER_CERT",
-            "PGVECTOR_HOST": "PGVECTOR_HOST",
-            "PGVECTOR_PORT": "PGVECTOR_PORT",
-            "PGVECTOR_DB": "PGVECTOR_DB",
-            "PGVECTOR_USER": "PGVECTOR_USER",
-            "PGVECTOR_PASSWORD": "PGVECTOR_PASSWORD",
-        },
-        optional=True,
-    )
+    _VECTOR_DB_SECRET_KEYS = {
+        "MILVUS_URI": "MILVUS_URI",
+        "MILVUS_TOKEN": "MILVUS_TOKEN",
+        "MILVUS_CA_CERT": "MILVUS_CA_CERT",
+        "PGVECTOR_HOST": "PGVECTOR_HOST",
+        "PGVECTOR_PORT": "PGVECTOR_PORT",
+        "PGVECTOR_DB": "PGVECTOR_DB",
+        "PGVECTOR_USER": "PGVECTOR_USER",
+        "PGVECTOR_PASSWORD": "PGVECTOR_PASSWORD",
+        "PGVECTOR_CA_CERT": "PGVECTOR_CA_CERT",
+        "NEO4J_URI": "NEO4J_URI",
+        "NEO4J_USERNAME": "NEO4J_USERNAME",
+        "NEO4J_PASSWORD": "NEO4J_PASSWORD",
+        "NEO4J_DATABASE": "NEO4J_DATABASE",
+    }
+    use_secret_as_env(search_space_preparation_task, db_secret_name, _VECTOR_DB_SECRET_KEYS, optional=True)
+    use_secret_as_env(rag_optimization_task, db_secret_name, _VECTOR_DB_SECRET_KEYS, optional=True)
 
 
 if __name__ == "__main__":
