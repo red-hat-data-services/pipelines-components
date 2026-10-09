@@ -11,8 +11,13 @@ from unittest import mock
 
 
 def autorag_shared_dir() -> Path:
-    """Path to ``components/training/autorag/shared`` embedded in training components."""
+    """Path to ``components/training/autorag/shared``."""
     return Path(__file__).resolve().parent / "shared"
+
+
+def autorag_runtime_embed_dir() -> Path:
+    """Path to the KFP-embedable helper directory under ``shared/runtime_embed``."""
+    return autorag_shared_dir() / "runtime_embed"
 
 
 def wrap_component_python_func(
@@ -25,8 +30,9 @@ def wrap_component_python_func(
     """Inject embedded-artifact and component-status mocks omitted by unit tests."""
     original = component.python_func
     signature = inspect.signature(original)
-    shared_dir = autorag_shared_dir()
-    embed_root = embedded_path or str(shared_dir)
+    # Default to runtime_embed so file-based loads get the real modules, not the
+    # package re-export stubs at shared/{component_status,mlflow_tracking}.py.
+    embed_root = embedded_path or str(autorag_runtime_embed_dir())
 
     def wrapper(*args, **kwargs):
         bound = signature.bind_partial(*args, **kwargs)
@@ -72,45 +78,6 @@ class FakeRun:
         self.info = FakeRunInfo(run_id, experiment_id)
 
 
-class FakeSpan:
-    """In-memory MLflow span used by tracing tests."""
-
-    def __init__(self, record: dict, on_enter=None, on_exit=None) -> None:
-        """Keep a mutable trace record that mirrors MLflow's span setters."""
-        self._record = record
-        self._on_enter = on_enter
-        self._on_exit = on_exit
-
-    def __enter__(self):
-        """Make this span active for context-managed tracing tests."""
-        if self._on_enter:
-            self._on_enter()
-        return self
-
-    def __exit__(self, *_exc_info) -> None:
-        """Clear the test trace context when the span scope ends."""
-        if self._on_exit:
-            self._on_exit()
-
-    @property
-    def trace_id(self) -> str:
-        """Return the trace identifier assigned by the fake client."""
-        return self._record["trace_id"]
-
-    @property
-    def span_id(self) -> str:
-        """Return the span identifier assigned by the fake client."""
-        return self._record["span_id"]
-
-    def set_inputs(self, value) -> None:
-        """Record the value passed as span inputs."""
-        self._record["inputs"] = value
-
-    def set_outputs(self, value) -> None:
-        """Record the value passed as span outputs."""
-        self._record["outputs"] = value
-
-
 class FakeMlflow:
     """In-memory MLflow double recording everything written to the active run.
 
@@ -128,12 +95,8 @@ class FakeMlflow:
         self.started: list[dict] = []
         self.runs: dict[str, dict] = {}
         self.terminated: list[str] = []
-        self.spans: list[dict] = []
         self._stack: list[str] = []
         self._counter = 0
-        self._trace_counter = 0
-        self._span_counter = 0
-        self._span_stack: list[dict] = []
 
     # -- API surface used by the tracking module -------------------------
 
@@ -179,79 +142,6 @@ class FakeMlflow:
             },
         )
         return self._run_scope(run_id)
-
-    def start_trace(
-        self,
-        name: str,
-        span_type: str = "",
-        inputs=None,
-        attributes: dict | None = None,
-        run_id: str = "",
-    ) -> FakeSpan:
-        """Create an explicit root trace span, like ``MlflowClient.start_trace``."""
-        self._trace_counter += 1
-        self._span_counter += 1
-        record = {
-            "name": name,
-            "span_type": span_type,
-            "attributes": attributes or {},
-            "run_id": run_id,
-            "inputs": inputs,
-            "trace_id": f"trace-{self._trace_counter}",
-            "span_id": f"span-{self._span_counter}",
-            "parent_id": None,
-        }
-        self.spans.append(record)
-        return FakeSpan(record)
-
-    def start_span(
-        self,
-        name: str,
-        trace_id: str | None = None,
-        parent_id: str | None = None,
-        span_type: str = "",
-        inputs=None,
-        attributes: dict | None = None,
-        run_id: str = "",
-    ) -> FakeSpan:
-        """Create a client child span or a context-managed fluent span."""
-        if trace_id is None:
-            parent = self._span_stack[-1] if self._span_stack else None
-            if parent is None:
-                self._trace_counter += 1
-                trace_id = f"trace-{self._trace_counter}"
-                parent_id = None
-            else:
-                trace_id = parent["trace_id"]
-                parent_id = parent["span_id"]
-        self._span_counter += 1
-        record = {
-            "name": name,
-            "span_type": span_type,
-            "attributes": attributes or {},
-            "inputs": inputs,
-            "run_id": run_id,
-            "trace_id": trace_id,
-            "span_id": f"span-{self._span_counter}",
-            "parent_id": parent_id,
-        }
-        self.spans.append(record)
-        if parent_id is None or self._span_stack:
-            return FakeSpan(record, lambda: self._span_stack.append(record), self._span_stack.pop)
-        return FakeSpan(record)
-
-    def end_span(self, trace_id: str, span_id: str, outputs=None, **_kwargs) -> None:
-        """Record child span output, like ``MlflowClient.end_span``."""
-        self._span(trace_id, span_id)["outputs"] = outputs
-
-    def end_trace(self, trace_id: str, outputs=None, **_kwargs) -> None:
-        """Record root span output, like ``MlflowClient.end_trace``."""
-        root = next(span for span in self.spans if span["trace_id"] == trace_id and span["parent_id"] is None)
-        root["outputs"] = outputs
-
-    def _span(self, trace_id: str, span_id: str) -> dict:
-        """Find one recorded span by its trace and span identifiers."""
-        return next(span for span in self.spans if span["trace_id"] == trace_id and span["span_id"] == span_id)
 
     @property
     def _active(self) -> dict:
