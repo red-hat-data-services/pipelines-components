@@ -33,7 +33,7 @@ def automl_data_loader(  # noqa: D417
     """AutoML Data Loader component.
 
     Loads tabular (CSV) data from S3 in batches, sampling up to a preset-dependent
-    size budget (``"speed"``: 100 MB, ``"balanced"``: 1 GB), then splits the sampled
+    size budget (``"speed"``: 100 MiB, ``"balanced"``: 1 GiB, ``"quality"``: 10 GiB), then splits the sampled
     data into test, selection-train, and extra-train sets.
 
     The component reads data in chunks to efficiently handle large files without
@@ -79,12 +79,13 @@ def automl_data_loader(  # noqa: D417
         sampling_method: "first_n_rows", "stratified", or "random"; if None, derived from task_type.
         task_type: "binary", "multiclass", or "regression" (default); used when sampling_method is None.
         split_config: Split configuration dictionary. Available keys: "test_size" (float), "random_state" (int), "stratify" (bool).
-        selection_train_size: Fraction of the train portion used for model selection (default 0.3).
+        selection_train_size: Model-selection fraction (default 0.3).
         test_data_bucket_name: S3 bucket name for user-provided test dataset (default: empty string).
         test_data_file_key: S3 object key of the user-provided test CSV (default: empty string).
         preset: Training quality tier controlling the sampling size budget. ``"speed"``
-            (default) samples up to 100 MB; ``"balanced"`` samples up to 1 GB. The cap for
-            user-provided test datasets (50 MB) is unaffected by this setting.
+            (default) samples up to 100 MiB; ``"balanced"`` samples up to 1 GiB; and
+            ``"quality"`` samples up to 10 GiB. User-provided test datasets are capped at
+            50 MiB, 100 MiB, and 1 GiB respectively.
 
     Raises:
         ValueError: If sampling_method, task_type, or preset is invalid, if required parameters are missing,
@@ -132,7 +133,7 @@ def automl_data_loader(  # noqa: D417
             n_cols = df.shape[1] if hasattr(df, "shape") else len(df.columns)
             n_bytes = int(df.memory_usage(deep=True).sum())
             logger.info(
-                "Dataset stats [%s]: rows=%s, columns=%s, size=%s bytes (%.2f MB)",
+                "Dataset stats [%s]: rows=%s, columns=%s, size=%s bytes (%.2f MiB)",
                 name,
                 n_rows,
                 n_cols,
@@ -142,14 +143,24 @@ def automl_data_loader(  # noqa: D417
         except Exception as e:  # noqa: BLE001 - stats logging must never break the run
             logger.debug("Could not compute dataset stats for %s: %s", name, e)
 
-    VALID_PRESETS = {"speed", "balanced"}
+    def _memory_usage_bytes(data):
+        """Return pandas DataFrame or Series deep-memory usage as an integer."""
+        memory_usage = data.memory_usage(deep=True)
+        return int(memory_usage.sum() if hasattr(memory_usage, "sum") else memory_usage)
+
+    VALID_PRESETS = {"speed", "balanced", "quality"}
     # Sampling budget per quality tier: "speed" stays small for fast runs,
     # "balanced" allows the full supported dataset size.
     PRESET_MAX_SIZE_BYTES = {
-        "speed": 100 * 1024 * 1024,  # 100 MB
-        "balanced": 1024 * 1024 * 1024,  # 1 GB
+        "speed": 100 * 1024 * 1024,  # 100 MiB
+        "balanced": 1024 * 1024 * 1024,  # 1 GiB
+        "quality": 10 * 1024 * 1024 * 1024,  # 10 GiB
     }
-    TEST_DATA_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB — smaller cap for user-provided holdout sets
+    PRESET_TEST_DATA_MAX_SIZE_BYTES = {
+        "speed": 50 * 1024 * 1024,  # 50 MiB
+        "balanced": 100 * 1024 * 1024,  # 100 MiB
+        "quality": 1024 * 1024 * 1024,  # 1 GiB
+    }
     MIN_VALID_RECORDS_AFTER_CLEANSING = 100
     PANDAS_CHUNK_SIZE = 10000  # Rows per batch for streaming read
     SAMPLE_COMPACTION_CHUNKS = 10
@@ -167,6 +178,7 @@ def automl_data_loader(  # noqa: D417
     if preset not in VALID_PRESETS:
         raise ValueError(f"preset must be one of {sorted(VALID_PRESETS)}; got {preset!r}.")
     MAX_SIZE_BYTES = PRESET_MAX_SIZE_BYTES[preset]
+    TEST_DATA_MAX_SIZE_BYTES = PRESET_TEST_DATA_MAX_SIZE_BYTES[preset]
 
     # Input validation
     for param, value in (
@@ -207,7 +219,7 @@ def automl_data_loader(  # noqa: D417
         status.record("prepare_data", "started")
 
         logger.info(
-            "Sampling size budget: preset=%s, max_size=%s bytes (%.0f MB)",
+            "Sampling size budget: preset=%s, max_size=%s bytes (%.0f MiB)",
             preset,
             MAX_SIZE_BYTES,
             MAX_SIZE_BYTES / (1024**2),
@@ -689,6 +701,7 @@ def automl_data_loader(  # noqa: D417
         )
         stringify_mixed_object_columns(sampled_dataframe)
         _log_dataset_stats("loaded (after cleansing)", sampled_dataframe)
+        sampled_in_memory_bytes = int(sampled_dataframe.memory_usage(deep=True).sum())
         status.record(
             "prepare_data",
             "completed",
@@ -696,6 +709,10 @@ def automl_data_loader(  # noqa: D417
                 "rows": n_samples,
                 "duplicates_dropped": n_dup_dropped,
                 "labels_dropped": n_dropped,
+                "source_rows_scanned": load_metrics.get("source_rows_read", 0),
+                "sampled_rows": n_samples,
+                "sampled_in_memory_bytes": sampled_in_memory_bytes,
+                "sample_cap_bytes": MAX_SIZE_BYTES,
                 "cleansing_seconds": round(time.monotonic() - cleansing_started, 3),
                 **load_metrics,
             },
@@ -714,6 +731,9 @@ def automl_data_loader(  # noqa: D417
 
         split_config = split_config or {}
         test_size = split_config.get("test_size", DEFAULT_TEST_SIZE)
+        if test_size is None:
+            # sklearn used 0.25 when an explicit None reached train_test_split.
+            test_size = 0.25
         random_state = split_config.get("random_state", DEFAULT_SPLIT_RANDOM_STATE)
 
         if not sampled_test_dataset.uri or not sampled_test_dataset.uri.endswith(".parquet"):
@@ -723,6 +743,86 @@ def automl_data_loader(  # noqa: D417
         datasets_dir = Path(workspace_path) / "datasets"
         datasets_dir.mkdir(parents=True, exist_ok=True)
         stratify_effective = task_type != "regression" and split_config.get("stratify", True)
+
+        def _assert_stratified_split_viable(y, *, test_size, stage):
+            """Check sklearn's class and split-size requirements before splitting."""
+            if not stratify_effective:
+                return
+
+            class_counts = {label: int(count) for label, count in y.value_counts(dropna=False).items()}
+            n_classes = len(class_counts)
+            # sklearn rounds a fractional test_size up before allocating classes.
+            test_rows = math.ceil(len(y) * test_size)
+            train_rows = len(y) - test_rows
+            min_per_class = 2
+            class_sizes = sorted(class_counts.values(), reverse=True)
+            failing_class_counts = sorted(count for count in class_sizes if count < min_per_class)
+            viable = not failing_class_counts and train_rows >= n_classes and test_rows >= n_classes
+            logger.info(
+                "Stratified split viability [%s]: class_counts=%s, test_size=%s, "
+                "selection_train_size=%s, minimum_per_class=%s, n_classes=%s, "
+                "train_rows=%s, test_rows=%s, viable=%s",
+                stage,
+                class_sizes,
+                test_size,
+                selection_train_size,
+                min_per_class,
+                n_classes,
+                train_rows,
+                test_rows,
+                viable,
+            )
+            if not viable:
+                raise ValueError(
+                    f"Stratified {stage} split is not viable: class_counts={class_sizes}, "
+                    f"test_size={test_size}, selection_train_size={selection_train_size}, "
+                    f"minimum_per_class={min_per_class}, n_classes={n_classes}, "
+                    f"train_rows={train_rows}, test_rows={test_rows}, "
+                    f"failing_class_counts={failing_class_counts}. "
+                    "Add data or increase rare-class counts, "
+                    "or set split_config.stratify=false explicitly."
+                )
+            return class_counts
+
+        def _assert_stratified_split_coverage(class_counts, first_y, second_y, *, test_size, stage, sides):
+            """Check the classes actually allocated by the stratified split."""
+            if not stratify_effective:
+                return
+
+            first_counts = {label: int(count) for label, count in first_y.value_counts(dropna=False).items()}
+            second_counts = {label: int(count) for label, count in second_y.value_counts(dropna=False).items()}
+            failing_allocations = [
+                {
+                    "class_count": count,
+                    sides[0]: first_counts.get(label, 0),
+                    sides[1]: second_counts.get(label, 0),
+                }
+                for label, count in class_counts.items()
+                if not first_counts.get(label, 0) or not second_counts.get(label, 0)
+            ]
+            class_sizes = sorted(class_counts.values(), reverse=True)
+            first_sizes = sorted(first_counts.values(), reverse=True)
+            second_sizes = sorted(second_counts.values(), reverse=True)
+            logger.info(
+                "Stratified split allocation [%s]: n_classes=%s, %s_class_counts=%s, %s_class_counts=%s, viable=%s",
+                stage,
+                len(class_counts),
+                sides[0],
+                first_sizes,
+                sides[1],
+                second_sizes,
+                not failing_allocations,
+            )
+            if failing_allocations:
+                raise ValueError(
+                    f"Stratified {stage} split is not viable after allocation: "
+                    f"class_counts={class_sizes}, test_size={test_size}, "
+                    f"selection_train_size={selection_train_size}, "
+                    f"{sides[0]}_class_counts={first_sizes}, {sides[1]}_class_counts={second_sizes}, "
+                    f"failing_class_allocations={failing_allocations}. "
+                    "Each class needs at least one row on both sides. "
+                    "Add data or increase rare-class counts, or set split_config.stratify=false explicitly."
+                )
 
         has_user_test_data = bool(test_data_file_key)
 
@@ -811,12 +911,16 @@ def automl_data_loader(  # noqa: D417
             X = sampled_dataframe.drop(columns=[label_column], inplace=False)
             y = sampled_dataframe[label_column]
 
+            class_counts = _assert_stratified_split_viable(y, test_size=test_size, stage="holdout")
             X_train, X_test, y_train, y_test = train_test_split(
                 X,
                 y,
                 test_size=test_size,
                 stratify=(y if stratify_effective else None),
                 random_state=random_state,
+            )
+            _assert_stratified_split_coverage(
+                class_counts, y_train, y_test, test_size=test_size, stage="holdout", sides=("train", "test")
             )
 
             selection_X = X_train
@@ -825,12 +929,27 @@ def automl_data_loader(  # noqa: D417
             test_sample_df.to_parquet(sampled_test_dataset.path, index=False)
             effective_test_size = test_size
 
+        eligible_train_rows = len(selection_X)
+        eligible_train_bytes = _memory_usage_bytes(selection_X) + _memory_usage_bytes(selection_y)
+
+        selection_extra_test_size = 1 - selection_train_size
+        class_counts = _assert_stratified_split_viable(
+            selection_y, test_size=selection_extra_test_size, stage="selection_extra"
+        )
         X_sel, X_extra, y_sel, y_extra = train_test_split(
             selection_X,
             selection_y,
-            test_size=(1 - selection_train_size),
+            test_size=selection_extra_test_size,
             stratify=(selection_y if stratify_effective else None),
             random_state=random_state,
+        )
+        _assert_stratified_split_coverage(
+            class_counts,
+            y_sel,
+            y_extra,
+            test_size=selection_extra_test_size,
+            stage="selection_extra",
+            sides=("selection", "extra"),
         )
 
         X_y_sel = pd.concat([X_sel, y_sel], axis=1)
@@ -868,7 +987,14 @@ def automl_data_loader(  # noqa: D417
         split_export_metrics = {
             "test_size": split_config_out["test_size"],
             "selection_train_size": selection_train_size,
+            "eligible_train_rows": eligible_train_rows,
+            "eligible_train_in_memory_bytes": eligible_train_bytes,
             "stratify": stratify_effective,
+            "selection_train_rows": len(X_y_sel),
+            "extra_train_rows": len(X_y_extra),
+            "test_rows": len(test_sample_df),
+            "selection_train_disk_bytes": Path(models_selection_train_data_path).stat().st_size,
+            "extra_train_disk_bytes": Path(extra_train_data_path).stat().st_size,
             "split_and_export_seconds": round(time.monotonic() - split_export_started, 3),
         }
         if has_user_test_data:
