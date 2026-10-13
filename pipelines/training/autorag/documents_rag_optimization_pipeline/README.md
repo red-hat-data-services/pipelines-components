@@ -1,7 +1,5 @@
 # Documents Rag Optimization Pipeline ✨
 
-> ⚠️ **Stability: beta** — This asset is not yet stable and may change.
-
 ## Overview 🧾
 
 Automated system for building and optimizing Retrieval-Augmented Generation (RAG) applications.
@@ -33,13 +31,13 @@ deployment settings), executable notebooks, and evaluation results.
 ## Metadata 🗂️
 
 - **Name**: documents-rag-optimization-pipeline
-- **Stability**: beta
+- **Stability**: stable
 - **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
     - Name: Pipelines, Version: 2.17.0
   - External Services:
-    - Name: ai4rag, Version: ~=0.21.0
+    - Name: ai4rag, Version: ~=0.22.0
     - Name: MaaS, Version: >=1.0.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
@@ -50,7 +48,7 @@ deployment settings), executable notebooks, and evaluation results.
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-10-05 00:00:00+00:00
+- **Last Verified**: 2026-10-13 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

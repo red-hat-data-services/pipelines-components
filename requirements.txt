@@ -63,8 +63,8 @@ pyasn1==0.6.4 \
     --hash=sha256:0f3a354d4507457cdf2d74898feecc959e6d1d040d8afda77fb1857de742eb88
 pyasn1-modules==0.4.2 \
     --hash=sha256:2797cbeecc67dcad8618013f9685a8705c863cddc553c3271703bcef736eb67f
-pycparser==3.1 \
-    --hash=sha256:c232e2cdeedfcd2bf205c2e7187d2e0668adb3a7f0c32a63abdd619e5f717827
+pycparser==3.11 \
+    --hash=sha256:257403a3b6f5fde41f6e39ebde5ebbe937c2ab0b9545324446f1d2f1e26094f4
 python-dateutil==2.9.0.post0 \
     --hash=sha256:21ac874bb106a90ff80ef341dd135141d989618b441d0e51a82f32fb075b6b4c
 pyyaml==6.0.3 \
