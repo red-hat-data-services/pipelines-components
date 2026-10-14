@@ -2,6 +2,15 @@
 
 A comprehensive LLM evaluation component using EleutherAI's lm-evaluation-harness.
 Supports both standard benchmark evaluation and custom holdout evaluation.
+
+Note: The default base image (ubi9/python-311) does not include the CUDA toolkit.
+vLLM's JIT-compiled attention kernels require nvcc at runtime. If you encounter
+CUDA compilation errors, either:
+  1. Override the base image at compile time or via post-compile YAML patching
+     to a CUDA-capable image (e.g. the RHOAI training-hub CUDA image), or
+  2. Set enforce_eager=True in model_args to disable CUDA graph compilation,
+     and set environment variables VLLM_ATTENTION_BACKEND=FLASH_ATTN,
+     VLLM_USE_FLASHINFER_SAMPLER=0 on the task.
 """
 
 import kfp
@@ -38,6 +47,7 @@ def universal_llm_evaluator(
     verbosity: str = "INFO",
     # --- Custom Eval Options ---
     custom_eval_max_tokens: int = 256,
+    enforce_eager: bool = False,
 ):
     """A Universal LLM Evaluator component using EleutherAI's lm-evaluation-harness.
 
@@ -61,6 +71,9 @@ def universal_llm_evaluator(
         log_samples: Whether to log individual evaluation samples.
         verbosity: Logging verbosity level (DEBUG, INFO, WARNING, ERROR).
         custom_eval_max_tokens: Max tokens for generation in custom eval (default: 256).
+        enforce_eager: Disable CUDA graph compilation in vLLM. Set to True when
+            the base image lacks the CUDA toolkit (nvcc). Also auto-configures
+            vLLM environment variables for compatibility.
     """
     import json
     import logging
@@ -75,6 +88,13 @@ def universal_llm_evaluator(
     # and the env var for vLLM's internal process spawning.
     multiprocessing.set_start_method("spawn", force=True)
     os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+
+    # When enforce_eager is set, configure vLLM env vars to avoid JIT
+    # compilation failures on images without the CUDA toolkit (nvcc).
+    if enforce_eager:
+        os.environ.setdefault("VLLM_ATTENTION_BACKEND", "FLASH_ATTN")
+        os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
+        os.environ.setdefault("FLASHINFER_ENABLE_AOT", "1")
 
     import torch
 
@@ -529,6 +549,8 @@ def universal_llm_evaluator(
             "gpu_memory_utilization": 0.8,
             "dtype": "auto",
         }
+        if enforce_eager:
+            vllm_model_args["enforce_eager"] = True
         vllm_model_args.update(m_args)
 
         model_class = get_model("vllm")
