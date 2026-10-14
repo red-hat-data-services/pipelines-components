@@ -219,9 +219,11 @@ def rag_templates_optimization(
             patt_dir.mkdir(parents=True, exist_ok=True)
 
             pattern_data = pattern.get("payload")
+            settings = pattern_data["settings"]
+            store_binding = settings["store_binding"]
+            is_graph_pattern = store_binding["provider_type"] == "neo4j"
+            pattern_data["template_id"] = "agentic_graph_rag" if is_graph_pattern else "agentic_rag"
             if indexing_pipeline_params:
-                settings = pattern_data["settings"]
-                store_binding = settings["store_binding"]
                 pattern_data["indexing"] = {
                     "pipeline_spec": {
                         "pipeline_name": indexing_pipeline_params.get("pipeline_name", "documents-indexing-pipeline"),
@@ -244,7 +246,6 @@ def rag_templates_optimization(
                             "chunking_method": settings["chunking"]["method"],
                             "chunk_size": settings["chunking"]["chunk_size"],
                             "chunk_overlap": settings["chunking"]["chunk_overlap"],
-                            "kg_extraction_config": indexing_pipeline_params.get("kg_extraction_config"),
                         },
                         "overrides_allowed": [
                             "input_data_secret_name",
@@ -255,12 +256,16 @@ def rag_templates_optimization(
                         ],
                     }
                 }
+                if is_graph_pattern:
+                    pattern_data["indexing"]["pipeline_spec"]["parameters"]["graph_extraction_config"] = settings[
+                        "graph_extraction"
+                    ]
 
             # Neo4j patterns build and query a knowledge graph, rather than a
             # plain embedding index.  Their notebooks therefore need the graph
             # construction and graph-retrieval flows; other providers retain
             # the standard MaaS notebook pair.
-            is_knowledge_graph_pattern = store_binding["provider_type"] == "neo4j"
+            is_knowledge_graph_pattern = is_graph_pattern
             indexing_notebook_template = (
                 "mass_creating_knowledge_graph" if is_knowledge_graph_pattern else "maas_indexing"
             )
@@ -287,6 +292,11 @@ def rag_templates_optimization(
 
             with (patt_dir / "evaluation_results.json").open("w", encoding="utf-8") as f:
                 json.dump(pattern.get("evaluation_results", []), f, indent=2, ensure_ascii=False)
+
+            conversations = pattern.get("conversations")
+            if conversations:
+                with (patt_dir / "conversations.json").open("w", encoding="utf-8") as f:
+                    json.dump(conversations, f, indent=2, ensure_ascii=False)
 
             patterns.append(pattern_data)
 
@@ -492,7 +502,6 @@ def rag_templates_optimization(
                 "input_data_bucket_name": input_data_bucket_name,
                 "input_data_keys": input_data_keys or [],
                 "batch_size": 20,
-                "kg_extraction_config": kg_extraction_config,
             }
 
             if (

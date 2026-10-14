@@ -9,10 +9,14 @@ on output content without needing a real pyarrow-backed Parquet writer/reader.
 import csv
 import io
 import json
+import math
+import shutil
 import sys
 import types
+from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -31,6 +35,7 @@ from .mocked_pandas import (
 
 TAXI_TRIP_PRICING_SAMPLE = Path(__file__).resolve().parent / "data" / "taxi_trip_pricing_sample.csv"
 MIN_VALID_RECORDS = 100
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def _pad_tabular_csv(csv_content: str, min_rows: int = MIN_VALID_RECORDS + 1) -> str:
@@ -207,6 +212,135 @@ def _make_test_artifact(tmp_path, name="test_output.parquet"):
     art.path = str(tmp_path / name)
     art.uri = "/artifacts/test"
     return art
+
+
+@pytest.fixture(params=[None, "first_n_rows"], ids=["default-sampling", "streaming"])
+def csv_split_loader(request, tmp_path, monkeypatch):
+    """Run the loader with mocked packages and predetermined class allocations."""
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "local-test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "local-test")
+    monkeypatch.setenv("AWS_S3_ENDPOINT", "http://localhost:9000")
+
+    test_artifact = SimpleNamespace(path=str(tmp_path / "test.parquet"), uri="/artifacts/test.parquet")
+    status_artifact = SimpleNamespace(path=str(tmp_path / "component_status"), metadata={})
+    pending_allocations = []
+
+    def split(X, y, *, test_size, stratify, random_state):
+        if not pending_allocations:
+            return _mock_train_test_split(X, y, test_size=test_size, stratify=stratify, random_state=random_state)
+        first_counts = Counter({str(label): count for label, count in pending_allocations.pop(0).items()})
+        first_indices, second_indices = [], []
+        for index, row in enumerate(y._rows):
+            label = row[0]
+            if first_counts[label]:
+                first_indices.append(index)
+                first_counts[label] -= 1
+            else:
+                second_indices.append(index)
+        assert not +first_counts, "Requested split allocation exceeds the available class counts"
+        assert len(first_indices) == len(y) - math.ceil(len(y) * test_size)
+        return (
+            MockedDataFrame(X._columns, [X._rows[index] for index in first_indices]),
+            MockedDataFrame(X._columns, [X._rows[index] for index in second_indices]),
+            MockedDataFrame(y._columns, [y._rows[index] for index in first_indices]),
+            MockedDataFrame(y._columns, [y._rows[index] for index in second_indices]),
+        )
+
+    split_spy = mock.Mock(side_effect=split)
+
+    def get_object(*, Bucket, Key):
+        data = (DATA_DIR / Key).read_bytes()
+        return {"Body": io.BytesIO(data), "ContentLength": len(data)}
+
+    def download_file(bucket, key, filename, **kwargs):
+        shutil.copyfile(DATA_DIR / key, filename)
+
+    def run(filename, *, allocations=(), task_type="binary", selection_train_size=0.3, stratify=True, test_filename=""):
+        pending_allocations.extend(allocations)
+        return automl_data_loader.python_func(
+            file_key=filename,
+            bucket_name="local",
+            workspace_path=str(tmp_path),
+            label_column="target",
+            sampled_test_dataset=test_artifact,
+            component_status=status_artifact,
+            sampling_method=request.param,
+            task_type=task_type,
+            split_config={"test_size": 0.2, "random_state": 42, "stratify": stratify},
+            selection_train_size=selection_train_size,
+            test_data_bucket_name="local" if test_filename else "",
+            test_data_file_key=test_filename,
+            preset="speed",
+        )
+
+    with _mock_boto3_pandas_custom_train_test_split(split_spy, get_object_side_effect=get_object) as s3:
+        s3.head_object.side_effect = lambda *, Bucket, Key: {"ContentLength": (DATA_DIR / Key).stat().st_size}
+        s3.download_file.side_effect = download_file
+        yield SimpleNamespace(
+            run=run,
+            split_spy=split_spy,
+            test_path=Path(test_artifact.path),
+            status_path=Path(status_artifact.path) / "component_status.json",
+            datasets_dir=tmp_path / "datasets",
+        )
+
+
+def _assert_csv_split_status(csv_split_loader, state):
+    status = json.loads(csv_split_loader.status_path.read_text(encoding="utf-8"))
+    split_stage = next(stage for stage in status["stages"] if stage["id"] == "split_and_export")
+    assert split_stage["status"]["state"] == state
+
+
+def _read_fixture_records(path):
+    with Path(path).open(newline="", encoding="utf-8") as stream:
+        return list(csv.DictReader(stream))
+
+
+def _fixture_class_counts(rows):
+    return Counter(int(row["target"]) for row in rows)
+
+
+def _read_csv_split_exports(csv_split_loader, output):
+    return {
+        "test": _read_fixture_records(csv_split_loader.test_path),
+        "selection": _read_fixture_records(output.models_selection_train_data_path),
+        "extra": _read_fixture_records(output.extra_train_data_path),
+    }
+
+
+def _assert_csv_rows_preserved(source, splits):
+    combined = [row for rows in splits.values() for row in rows]
+    assert len({row["feature_1"] for row in combined}) == len(combined)
+    assert sorted(combined, key=lambda row: int(row["feature_1"])) == sorted(
+        source, key=lambda row: int(row["feature_1"])
+    )
+
+
+def _assert_csv_split_failure(
+    csv_split_loader, filename, source_counts, options, stage, after_allocation, split_calls, failure_details
+):
+    """Check the error stage, message, exports, and absence of an unstratified fallback."""
+    source = _read_fixture_records(DATA_DIR / filename)
+    assert _fixture_class_counts(source) == source_counts
+
+    expected_message = f"Stratified {stage} split is not viable"
+    with pytest.raises(ValueError, match=expected_message) as exc_info:
+        csv_split_loader.run(filename, **options)
+
+    message = str(exc_info.value)
+    assert ("after allocation" in message) == after_allocation
+    for fragment in ["class_counts=", "test_size=", "selection_train_size=", "split_config.stratify=false"]:
+        assert fragment in message
+    for fragment in failure_details:
+        assert fragment in message
+    assert csv_split_loader.split_spy.call_count == split_calls
+    assert all(call.kwargs["stratify"] is not None for call in csv_split_loader.split_spy.call_args_list)
+    if stage == "holdout":
+        assert not csv_split_loader.test_path.exists()
+    else:
+        assert csv_split_loader.test_path.exists()
+    assert not list(csv_split_loader.datasets_dir.glob("*.parquet"))
+    _assert_csv_split_status(csv_split_loader, "failed")
 
 
 class TestComponentStatusArtifact:
@@ -950,6 +1084,23 @@ class TestAutomlDataLoaderUnitTests:
 class TestUserProvidedTestData:
     """Tests for user-provided test dataset feature."""
 
+    def test_external_csv_validates_selection_without_holdout(self, csv_split_loader):
+        """Skip holdout and reject missing selection classes with an external test CSV."""
+        _assert_csv_split_failure(
+            csv_split_loader,
+            "external_train.csv",
+            {0: 100, 1: 2, 2: 2, 3: 2},
+            {
+                "task_type": "multiclass",
+                "test_filename": "external_test.csv",
+                "allocations": [{0: 29, 1: 1, 2: 1}],
+            },
+            "selection_extra",
+            True,
+            1,
+            ["class_counts=[100, 2, 2, 2]", "test_size=0.7", "'selection': 0"],
+        )
+
     @mock.patch.dict("os.environ", mocked_env_variables, clear=True)
     def test_user_provided_test_data_happy_path(self, tmp_path):
         """User-provided test data is written to sampled_test_dataset."""
@@ -1494,6 +1645,125 @@ class TestUserProvidedTestData:
 
 class TestDataLoaderSplitLogic:
     """Tests for the train/test split logic integrated into the data loader."""
+
+    @pytest.mark.parametrize(
+        ("filename", "source_counts", "options", "stage", "after_allocation", "split_calls", "failure_details"),
+        [
+            pytest.param(
+                "fail_holdout_singleton_binary.csv",
+                {0: 199, 1: 1},
+                {},
+                "holdout",
+                False,
+                0,
+                ["minimum_per_class=2", "failing_class_counts=[1]"],
+                id="binary-singleton-before-split",
+            ),
+            pytest.param(
+                "fail_holdout_singleton_multiclass.csv",
+                {0: 150, 1: 49, 2: 1},
+                {"task_type": "multiclass"},
+                "holdout",
+                False,
+                0,
+                ["minimum_per_class=2", "failing_class_counts=[1]"],
+                id="multiclass-singleton-before-split",
+            ),
+            pytest.param(
+                "fail_holdout_two_rows.csv",
+                {0: 198, 1: 2},
+                {"allocations": [{0: 158, 1: 2}]},
+                "holdout",
+                True,
+                1,
+                ["'class_count': 2", "'train': 2", "'test': 0"],
+                id="holdout-missing-rare-class",
+            ),
+            pytest.param(
+                "fail_selection_extra.csv",
+                {0: 195, 1: 5},
+                {"selection_train_size": 0.1, "allocations": [{0: 156, 1: 4}, {0: 16}]},
+                "selection_extra",
+                True,
+                2,
+                ["class_counts=[156, 4]", "test_size=0.9", "'selection': 0", "'extra': 4"],
+                id="selection-missing-rare-class",
+            ),
+        ],
+    )
+    def test_csv_rejects_nonviable_stratified_splits(
+        self, csv_split_loader, filename, source_counts, options, stage, after_allocation, split_calls, failure_details
+    ):
+        """Report singleton and missing-class failures for the supplied CSV fixtures."""
+        _assert_csv_split_failure(
+            csv_split_loader, filename, source_counts, options, stage, after_allocation, split_calls, failure_details
+        )
+
+    @pytest.mark.parametrize(
+        ("filename", "task_type", "allocations", "expected_counts"),
+        [
+            pytest.param(
+                "valid_binary.csv",
+                "binary",
+                [{0: 720, 1: 80}, {0: 216, 1: 24}],
+                {"test": {0: 180, 1: 20}, "selection": {0: 216, 1: 24}, "extra": {0: 504, 1: 56}},
+                id="viable-binary",
+            ),
+            pytest.param(
+                "valid_multiclass.csv",
+                "multiclass",
+                [{0: 480, 1: 240, 2: 80}, {0: 144, 1: 72, 2: 24}],
+                {
+                    "test": {0: 120, 1: 60, 2: 20},
+                    "selection": {0: 144, 1: 72, 2: 24},
+                    "extra": {0: 336, 1: 168, 2: 56},
+                },
+                id="viable-multiclass",
+            ),
+            pytest.param(
+                "boundary_four_rows.csv",
+                "binary",
+                [{0: 157, 1: 3}, {0: 47, 1: 1}],
+                {"test": {0: 39, 1: 1}, "selection": {0: 47, 1: 1}, "extra": {0: 110, 1: 2}},
+                id="four-rare-rows-retain-all-classes",
+            ),
+        ],
+    )
+    def test_csv_viable_stratified_splits_preserve_rows(
+        self, csv_split_loader, filename, task_type, allocations, expected_counts
+    ):
+        """Preserve rows and every class when the split mock returns viable allocations."""
+        source = _read_fixture_records(DATA_DIR / filename)
+        output = csv_split_loader.run(filename, task_type=task_type, allocations=allocations)
+        splits = _read_csv_split_exports(csv_split_loader, output)
+
+        assert csv_split_loader.split_spy.call_count == 2
+        assert all(call.kwargs["stratify"] is not None for call in csv_split_loader.split_spy.call_args_list)
+        assert output.split_config["stratify"] is True
+        assert output.sample_config["n_samples"] == len(source)
+        assert {name: _fixture_class_counts(rows) for name, rows in splits.items()} == expected_counts
+        _assert_csv_rows_preserved(source, splits)
+        _assert_csv_split_status(csv_split_loader, "completed")
+
+    @pytest.mark.parametrize(
+        ("task_type", "stratify"),
+        [
+            pytest.param("binary", False, id="explicit-stratify-false"),
+            pytest.param("regression", True, id="regression"),
+        ],
+    )
+    def test_csv_regression_or_override_skips_rare_class_checks(self, csv_split_loader, task_type, stratify):
+        """Regression and an explicit override bypass rare-class checks in both splits."""
+        filename = "fail_holdout_singleton_binary.csv"
+        output = csv_split_loader.run(filename, task_type=task_type, stratify=stratify)
+
+        assert csv_split_loader.split_spy.call_count == 2
+        assert all(call.kwargs["stratify"] is None for call in csv_split_loader.split_spy.call_args_list)
+        assert output.split_config["stratify"] is False
+        _assert_csv_rows_preserved(
+            _read_fixture_records(DATA_DIR / filename), _read_csv_split_exports(csv_split_loader, output)
+        )
+        _assert_csv_split_status(csv_split_loader, "completed")
 
     @pytest.mark.parametrize("task_type", ["binary", "regression"])
     @mock.patch.dict("os.environ", mocked_env_variables)

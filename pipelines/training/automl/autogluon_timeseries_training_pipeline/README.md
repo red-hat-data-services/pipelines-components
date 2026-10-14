@@ -1,7 +1,5 @@
 # Autogluon Timeseries Training Pipeline ✨
 
-> ⚠️ **Stability: beta** — This asset is not yet stable and may change.
-
 ## Overview 🧾
 
 AutoGluon time series training pipeline.
@@ -53,14 +51,14 @@ to a single combined ``models_artifact``.
 | `prediction_length` | `int` | `1` | Number of time steps to forecast (horizon length). Positive integer (default: 1). |
 | `top_n` | `int` | `3` | Number of top models to select for the leaderboard and output (default: 3). |
 | `eval_metric` | `str` | `mean_absolute_scaled_error` | Metric for model ranking in snake_case (e.g. ``"mean_absolute_scaled_error"``, ``"weighted_quantile_loss"``) or legacy uppercase acronym form. Defaults to ``"mean_absolute_scaled_error"``. |
-| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB), ``"balanced"`` (8 vCPU / 32 GiB), or ``"quality"`` (two-hour selection budget, 16 vCPU / 64 GiB, AutoGluon ``best_quality``). |
+| `preset` | `str` | `speed` | Training quality tier. ``"speed"`` (default, 4 vCPU / 16 GiB, AutoGluon ``medium_quality``), ``"balanced"`` (8 vCPU / 32 GiB, AutoGluon ``high_quality``), or ``"quality"`` (two-hour selection budget, 16 vCPU / 64 GiB, AutoGluon ``best_quality``). |
 | `test_data_bucket_name` | `str` | `""` | Optional S3-compatible bucket name for a user-provided test dataset. Default: empty string (use the per-series holdout split from training data). |
 | `test_data_file_key` | `str` | `""` | Optional S3 object key for a user-provided test CSV file. Default: empty string (use the per-series holdout split from training data). |
 
 ## Metadata 🗂️
 
 - **Name**: autogluon-timeseries-training-pipeline
-- **Stability**: beta
+- **Stability**: stable
 - **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
@@ -71,7 +69,7 @@ to a single combined ``models_artifact``.
   - pipeline
   - automl
   - autogluon-timeseries-training-pipeline
-- **Last Verified**: 2026-07-08 12:00:00+00:00
+- **Last Verified**: 2026-10-13 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

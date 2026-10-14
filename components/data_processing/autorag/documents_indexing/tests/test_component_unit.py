@@ -471,8 +471,10 @@ class TestDocumentsIndexingProcessing:
             filenames=["a.json"],
             foundation_model_id="fm-0",
             foundation_model_params={"temperature": 0.3, "max_completion_tokens": 1024},
-            kg_extraction_config={"mode": "constrained"},
+            graph_extraction_config={"mode": "constrained"},
         )
+
+        assert mocks["get_vector_store"].call_args.kwargs["kg_extraction_config"] == {"mode": "constrained"}
 
         mocks["OpenAIFoundationModel"].assert_called_once_with(
             client=mocks["create_maas_client"].return_value,
@@ -498,13 +500,13 @@ class TestDocumentsIndexingProcessing:
         """Configured Neo4j graph extraction cannot silently run without an LLM."""
         modules, mocks = _make_ai4rag_mocks()
 
-        with pytest.raises(ValueError, match="foundation_model_id is required"):
+        with pytest.raises(ValueError, match="foundation_model_id is required.*graph_extraction_config"):
             _call_component(
                 tmp_path,
                 modules,
                 mocks,
                 filenames=["a.json"],
-                kg_extraction_config={"mode": "constrained"},
+                graph_extraction_config={"mode": "constrained"},
             )
 
         mocks["OpenAIFoundationModel"].assert_not_called()

@@ -114,6 +114,22 @@ class TestDocumentsRagOptimizationPipelineUnit:
         finally:
             Path(tmp_path).unlink(missing_ok=True)
 
+    def test_compiled_pipeline_wires_neo4j_ca_cert_to_ai4rag_tasks(self):
+        """The optional private CA reaches both tasks that initialize Neo4j."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            compiler.Compiler().compile(
+                pipeline_func=documents_rag_optimization_pipeline,
+                package_path=tmp_path,
+            )
+            content = Path(tmp_path).read_text(encoding="utf-8")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
+
+        assert content.count("envVar: NEO4J_CA_CERT") == 2
+        assert content.count("secretKey: NEO4J_CA_CERT") == 2
+
     def test_compiled_pipeline_declares_component_resource_tiers(self):
         """Every AutoRAG optimization step declares the expected CPU/memory tier."""
         from kfp_components.utils.pipeline_task_resources import (

@@ -98,7 +98,7 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
 - **Tags**:
   - data-processing
-- **Last Verified**: 2026-10-05 00:00:00+00:00
+- **Last Verified**: 2026-10-12 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

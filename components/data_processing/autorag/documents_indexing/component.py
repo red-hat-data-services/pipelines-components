@@ -26,7 +26,7 @@ def documents_indexing(
     chunk_overlap: int = 0,
     batch_size: int = 20,
     collection_name: Optional[str] = None,
-    kg_extraction_config: Optional[dict] = None,
+    graph_extraction_config: Optional[dict] = None,
 ):
     """Chunk, embed, and index extracted documents into a vector store.
 
@@ -77,7 +77,7 @@ def documents_indexing(
         collection_name: Vector store collection to reuse (matches
             ``pattern.json`` ``settings.store_binding.collection_name``).
             Omit to create a new collection.
-        kg_extraction_config: Neo4j graph-extraction settings from an optimized
+        graph_extraction_config: Neo4j graph-extraction settings from an optimized
             pattern. Requires ``foundation_model_id`` when indexing into Neo4j;
             ignored by other vector stores.
 
@@ -156,10 +156,10 @@ def documents_indexing(
 
     if (
         provider == "neo4j"
-        and kg_extraction_config is not None
+        and graph_extraction_config is not None
         and not (isinstance(foundation_model_id, str) and foundation_model_id.strip())
     ):
-        raise ValueError("foundation_model_id is required for Neo4j indexing when kg_extraction_config is supplied.")
+        raise ValueError("foundation_model_id is required for Neo4j indexing when graph_extraction_config is supplied.")
 
     params = OpenAIEmbeddingParams(**(embedding_params or {}))
 
@@ -359,7 +359,8 @@ def documents_indexing(
         config=vector_store_config,
         collection_name=collection_name,
         foundation_model=foundation_model,
-        kg_extraction_config=kg_extraction_config,
+        # Translate the public input to ai4rag's internal keyword.
+        kg_extraction_config=graph_extraction_config,
     ) as vector_store:
         settings = {
             "store_binding": {

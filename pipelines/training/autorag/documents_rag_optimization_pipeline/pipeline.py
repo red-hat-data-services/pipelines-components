@@ -87,6 +87,7 @@ def documents_rag_optimization_pipeline(
             configuration. The env-var prefix selects the backend: ``MILVUS_*`` keys (at least
             ``MILVUS_URI``) select Milvus, ``PGVECTOR_*`` keys select PGVector,
             ``NEO4J_*`` keys (at least ``NEO4J_URI`` and ``NEO4J_PASSWORD``) select Neo4j.
+            ``NEO4J_CA_CERT`` optionally supplies a private CA certificate for Neo4j TLS.
         embedding_models: List of embedding model identifiers to use in the search space.
             Required: MaaS exposes no metadata to distinguish model types, so embedding
             models can no longer be inferred and must be declared explicitly.
@@ -255,6 +256,7 @@ def documents_rag_optimization_pipeline(
         "NEO4J_USERNAME": "NEO4J_USERNAME",
         "NEO4J_PASSWORD": "NEO4J_PASSWORD",
         "NEO4J_DATABASE": "NEO4J_DATABASE",
+        "NEO4J_CA_CERT": "NEO4J_CA_CERT",
     }
     use_secret_as_env(search_space_preparation_task, db_secret_name, _VECTOR_DB_SECRET_KEYS, optional=True)
     use_secret_as_env(rag_optimization_task, db_secret_name, _VECTOR_DB_SECRET_KEYS, optional=True)

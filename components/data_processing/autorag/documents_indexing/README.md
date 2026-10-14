@@ -29,7 +29,7 @@ Individual document failures (corrupt JSON, chunking errors) are recorded in the
 | `chunk_overlap` | `int` | `0` | Token overlap between consecutive chunks (recursive method only). |
 | `batch_size` | `int` | `20` | Number of documents loaded and processed per batch. Controls peak memory usage, not API payload sizes. Defaults to ``20``; ``0`` processes all documents in a single batch. |
 | `collection_name` | `Optional[str]` | `None` | Vector store collection to reuse (matches ``pattern.json`` ``settings.store_binding.collection_name``). Omit to create a new collection. |
-| `kg_extraction_config` | `Optional[dict]` | `None` | Neo4j graph-extraction settings from an optimized pattern. Requires ``foundation_model_id`` when indexing into Neo4j; ignored by other vector stores. |
+| `graph_extraction_config` | `Optional[dict]` | `None` | Neo4j graph-extraction settings from an optimized pattern. Requires ``foundation_model_id`` when indexing into Neo4j; ignored by other vector stores. |
 
 ## Usage Examples 🧪
 
@@ -84,14 +84,14 @@ def example_pipeline(
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: RHOAI Connections API, Version: >=1.0.0
-    - Name: ai4rag, Version: ~=0.21.0
+    - Name: ai4rag, Version: ~=0.22.0
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
     - Name: PGVector, Version: >=0.5.0
 - **Tags**:
   - data-indexing
   - autorag
-- **Last Verified**: 2026-09-08 00:00:00+00:00
+- **Last Verified**: 2026-10-14 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
