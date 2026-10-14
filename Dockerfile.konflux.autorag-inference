@@ -11,6 +11,10 @@ COPY pipelines/training/autorag/documents_rag_optimization_pipeline/inference/re
 ## TODO: Ensure build isolation
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
+# uv and uvx are only needed while building the image.
+USER root
+RUN rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
+USER default
 
 LABEL com.redhat.component="odh-autorag-inference-container" \
       name="managed-open-data-hub/odh-autorag-inference-rhel9" \

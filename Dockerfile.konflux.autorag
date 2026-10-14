@@ -39,6 +39,8 @@ COPY --from=whisper-modelcar \
      /opt/app-root/models/whisper-tiny/
 RUN chown -R 1001:0 /opt/app-root/docling-artifacts /opt/app-root/models && \
     chmod -R g+rX /opt/app-root/docling-artifacts /opt/app-root/models
+# uv and uvx are only needed while building the image.
+RUN rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
 USER default
 
 LABEL com.redhat.component="odh-autorag-container" \
