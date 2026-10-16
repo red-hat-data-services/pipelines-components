@@ -1,16 +1,16 @@
 --index-url https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8-test/simple
 
-ai4rag==0.22.0 \
-    --hash=sha256:0657e87c2e12011ed3d5806b6b8d072f6de374889258aedfedc59fdffeef8b94
+ai4rag==0.23.0 \
+    --hash=sha256:99be9c65af9e2c90854a48f7f51c788f1fbd832063de5b2b3a611a6169e8ea4f
     # via -r requirements.in
 aiohappyeyeballs==2.7.1 \
     --hash=sha256:6c06961fde24f3f847939e288b8e6398973752c358a58cdc067115f8fe87a35d
     # via aiohttp
-aiohttp==3.14.4 \
-    --hash=sha256:22bb1a903db1c56f44f9c8e8bc675fdd2df33042ca4f001f5629118d58e221ac \
-    --hash=sha256:98368adfcab79625260a80c36c5a6c650772e66243a53d88e46d355250d4021b \
-    --hash=sha256:e584ffb347f67fe5b8d8ae761dd86e2ba149e1b6f8dde4b00d78922bb336b5f7 \
-    --hash=sha256:eb7ca987b87517c968877bc78e72c131077798fbeb029bcf3fbb8f73b8c4e765
+aiohttp==3.14.5 \
+    --hash=sha256:29a202546033449413394eec897b7c5d78c3d2a1f8f04eefe7ef0a612541b2db \
+    --hash=sha256:4ab516f59c99f77b64159925a070e08952b919aef99d8ead02755639f2a6de7b \
+    --hash=sha256:95553d712c656ca0764d77fe09cd4a19da99dcc9f3c4209e0fc3093c8a7a7075 \
+    --hash=sha256:acdbb632b7d57d1882e12fe2a0ddc9bc021a2dee01e3c1163a75e495c175298c
     # via
     #   fsspec
     #   instructor
@@ -125,8 +125,8 @@ faiss-cpu==1.12.0 \
     --hash=sha256:7490104b1ee98f85e199ff664454fca13d187f27e62820cb51962737c686ae21 \
     --hash=sha256:fc81bc35bb075adb2de9b45fa5052413c1c3e7c0f223912a89e6d91ec1f5a44c
     # via milvus-lite
-filelock==4.1.0 \
-    --hash=sha256:6f72772542cb0b729abe046a4b5b444d0514f1d475c5f2eb735b719bc3f8033e
+filelock==4.1.1 \
+    --hash=sha256:7e255ba3e40934fd94abbed6809d6067ebbc7f7ff5e2521684558b66b403578d
     # via
     #   datasets
     #   huggingface-hub
@@ -228,11 +228,11 @@ joblib==1.6.0 \
 json-repair==0.64.0 \
     --hash=sha256:3f9f8bd6609413fa6350985c01ff74d3215144472e7dba39da1a88675c3266bc
     # via neo4j-graphrag
-jsonpatch==1.34 \
-    --hash=sha256:4bd2fea7c9c9b2f2d74e1379676f357b17aaadf6dfaeb5b11770ff620890fb3f
+jsonpatch==1.35 \
+    --hash=sha256:84bf67e0dfd18d930f1d10b7b0b904fec87ff528804bc1e9e2e1009bfec3a910
     # via langchain-core
-jsonpointer==3.2.0 \
-    --hash=sha256:1e8c23374d25f1158240250b2d6a0ce09f9a423b160efbac5ce70ec4de1953f4
+jsonpointer==3.2.1 \
+    --hash=sha256:e08372d975f636d96346dabe4d9df63e321636da31d23e0bd0b1a3f6c4cfa5a6
     # via jsonpatch
 jsonref==1.1.0 \
     --hash=sha256:0083f53bae4b8961c2e588d08db77dc20fc43513886c645c8cd5fb6ff433d579
@@ -334,11 +334,11 @@ milvus-lite==3.2.1 \
 mpire==2.10.2 \
     --hash=sha256:7e4cd3d5ce92d5eddc4326fe73b6e74ae8f55c2d46ad5f74e79efbf7e7c9b26b
     # via semchunk
-multidict==6.9.1 \
-    --hash=sha256:811f7fb036a1c7dfab8fa066f22280eccb8085b5eb91be2e043952f366052b9d \
-    --hash=sha256:a2f64fcf40e3b6380615942a46c4157e8891974f3223552653dee329bc160442 \
-    --hash=sha256:a606fd6ff810ffe0103fc5b3de1a3ae4dbcca0f871c986e72454eb7d0599c79a \
-    --hash=sha256:f7d0497c4604cf6ca2cc2afecad9ba8bbf6c311a35f2a374b743b599e0a8c891
+multidict==7.1.0 \
+    --hash=sha256:0f67d16d681cea28beafaf43aecca938dd62a7cd055346dfeb1d7c41da26c55e \
+    --hash=sha256:356c0be815e51133727b894c2df62506897772252603c906480352181a54081c \
+    --hash=sha256:bfcb4b862fd6950f5bb0cb87bc5029ce4d809bc0f8fa01caaefc911ad93aeb75 \
+    --hash=sha256:f93932a918fee969d9c4039895a569f8b3a12a9b54280f7715caa91347ac67d8
     # via
     #   aiohttp
     #   yarl
@@ -368,11 +368,11 @@ nest-asyncio==1.6.0 \
 networkx==3.7 \
     --hash=sha256:5b06f4e25ff08aca746965dca04ee81f4573b6e975cb361e91780728522d0766
     # via ragas
-numpy==2.5.3 \
-    --hash=sha256:621e7c057b287c33e1de4987d69ff3754715174d34b2810a2281f2c75094df3e \
-    --hash=sha256:70355353c35551c2fce553eb2d94bbca95312aaf77549a0aa964f0d3f0d9708c \
-    --hash=sha256:9104f1b4bc584e7295c657ae05ae13220090fb1e200d06bb9b443e690867b5df \
-    --hash=sha256:94e128003adedab7dceb9268763936985ef55963a37f4dbb9e6574e83bf5aa2a
+numpy==2.5.4 \
+    --hash=sha256:1bd31d9750050ea27f63805aaab1b7d7b307b4d79d23b369302b2b18f9120a44 \
+    --hash=sha256:21caef82c4423dd3a3520207d0bdd227e77575893380c391f17020e1ad64fec3 \
+    --hash=sha256:610e6e13c175bf446e03f0ce8035c72fe95848414eb4016594ec3bcfab26f284 \
+    --hash=sha256:c079a0e49c7cde6e696d6c2a936070d02caea5c5059cd2ed6f512994c1b05cdc
     # via
     #   datasets
     #   evaluate
@@ -524,8 +524,8 @@ python-dotenv==1.2.4 \
     # via
     #   pydantic-settings
     #   pymilvus
-python-utils==4.1.0 \
-    --hash=sha256:e4faec87cc0fd5d165e6aaedfd898215d114352879ba81ea55577b46234d0928
+python-utils==4.1.1 \
+    --hash=sha256:f863afb7150f12fbc7498d785c671092f058d04818f960f25a99584358b56981
     # via progressbar2
 pytz==2026.5 \
     --hash=sha256:16fd4b52bac878d0e56e23092876cbfb78de5b85394f9de9143d7bf1c1fe8e64

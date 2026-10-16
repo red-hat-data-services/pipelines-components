@@ -45,7 +45,10 @@ asttokens==3.0.2 \
     # via stack-data
 attrs==26.1.0 \
     --hash=sha256:f2ac9d9129b0cef2fdf5859ac82adab26cc17475ea99701bf8934afa4db157d8
-    # via aiohttp
+    # via
+    #   aiohttp
+    #   jsonschema
+    #   referencing
 autogluon-common==1.6.3+rhaiv.2 \
     --hash=sha256:ab6760870c23a7e11646e4475c71f2deddfec880b9a4bee7d32db07d5485ed5f
     # via
@@ -130,6 +133,7 @@ click==8.5.0 \
     #   huggingface-hub
     #   kfp
     #   mlflow-skinny
+    #   ray
     #   spacy
     #   uvicorn
 click-option-group==0.5.7 \
@@ -146,6 +150,9 @@ cloudpickle==3.1.2 \
     #   mlflow-skinny
     #   mlforecast
     #   statsforecast
+colorama==0.4.6 \
+    --hash=sha256:bde866cb771ec23ed0415c915adc359fc57577b7b07821a71f621aed7fc222bb
+    # via -r requirements.in
 colorlog==6.12.0 \
     --hash=sha256:fb1979669bb239872bd4b091012be12e0183534675317b686ff6f867a7958ae4
     # via optuna
@@ -234,6 +241,7 @@ filelock==4.0.11 \
     --hash=sha256:d4dc8fe1ddabcf52dd3e7b0f8d5a0e7dc5c9cd62e518cee213444ea6c8ea1c59
     # via
     #   huggingface-hub
+    #   ray
     #   torch
 fonttools==4.66.1 \
     --hash=sha256:ae5ee994e1fd5c54d87e71e16bd7a69e7b79d2f63c3e27ecad15efeb63111400
@@ -385,6 +393,12 @@ joblib==1.6.0 \
     #   autogluon-common
     #   autogluon-timeseries
     #   scikit-learn
+jsonschema==4.26.0 \
+    --hash=sha256:75147fff44127f10012be008a9e16e857d3ac7671aa8a80c61e8995cd149e811
+    # via ray
+jsonschema-specifications==2025.9.1 \
+    --hash=sha256:b7e8d9e31ac4eb1d0534fc8f53ea4688bee48820dfc9d07b7ad71ef0c274cfae
+    # via jsonschema
 kfp==2.17.0 \
     --hash=sha256:347b04df10fd9987faea18f1523d6045ec907454e088be05070b422e2fedd758
     # via
@@ -466,6 +480,12 @@ mlforecast==0.14.0 \
 mpmath==1.3.0 \
     --hash=sha256:6b77d46449d40fe3686e4638e599412b20ba2fc91f1a3eff008b15f233b464b4
     # via sympy
+msgpack==1.2.3 \
+    --hash=sha256:1918b1e78e3c46cafc5d65da3dd4315b5eb3af16e878302c7c38cf4ad92ea1cd \
+    --hash=sha256:57d984575e6723c7181fd5c4b2f57096e4db449741aa99c0e44121609edcda5e \
+    --hash=sha256:784dc3a76eb387a27e3e9a0b33710098989dc483e0e473d4bffe7bd4835ff67d \
+    --hash=sha256:be1835e56839e8a7386c9073a5af08c6163eadb7046dd56308e6e8f2180f14a0
+    # via ray
 multidict==6.9.1 \
     --hash=sha256:811f7fb036a1c7dfab8fa066f22280eccb8085b5eb91be2e043952f366052b9d \
     --hash=sha256:a2f64fcf40e3b6380615942a46c4157e8891974f3223552653dee329bc160442 \
@@ -591,6 +611,7 @@ packaging==26.3 \
     #   patsy
     #   peft
     #   pytorch-lightning
+    #   ray
     #   spacy
     #   statsmodels
     #   thinc
@@ -683,6 +704,7 @@ protobuf==6.33.6 \
     #   mlflow-skinny
     #   opentelemetry-proto
     #   proto-plus
+    #   ray
     #   transformers
 psutil==7.2.2 \
     --hash=sha256:24342b272b6e40d92484003175946e40a5bdc815ccba0e5736ec519e7e8eb551 \
@@ -784,8 +806,18 @@ pyyaml==6.0.3 \
     #   optuna
     #   peft
     #   pytorch-lightning
+    #   ray
     #   transformers
     #   uvicorn
+ray==2.58.0 ; platform_machine == "x86_64" or platform_machine == "aarch64" \
+    --hash=sha256:7a1355c2a04a039f9476be3123e114e6606af89c0f42c8ef3797a9b558d6c43c \
+    --hash=sha256:b68a267d6c5f4c44c89a67f40d9e54b0cec1dc5af5b569728506fdcd1db11f07
+    # via -r requirements.in
+referencing==0.37.0 \
+    --hash=sha256:4685ef55bf2b588041511c2da78baf592391aabbc86a4b58d60f9891b2c7a113
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
 regex==2026.9.29 \
     --hash=sha256:1f419422ad82912a48b938a46666fd3a0bae5c82afeda1124842436b87f64feb \
     --hash=sha256:973c3093ee9b5d6a4557103ccb4ea708a8219b81d31a5fc8284965aa43ebf5a8 \
@@ -805,6 +837,7 @@ requests==2.33.0 \
     #   kfp-kubernetes
     #   kubernetes
     #   mlflow-skinny
+    #   ray
     #   requests-oauthlib
     #   requests-toolbelt
     #   spacy
@@ -819,6 +852,14 @@ rich==15.0.0 \
     # via
     #   plum-dispatch
     #   typer
+rpds-py==2026.9.1 \
+    --hash=sha256:5b831dd8841a3fbe043267d3e39e36f000383a8a3389361c5b7fc998bd00e231 \
+    --hash=sha256:5bab0bbd4cc2fdb9a698d5295aad48dc988e1607b5fbbf3e9090208d3a995044 \
+    --hash=sha256:a5a7ba76c6c0b6e2cb5090fcfe5e6a01dff0c275a53386f474563457867bdf1f \
+    --hash=sha256:f7cfec7304886cab35bbcec6539eaefd8a84af1b1e4bb97e387fe947116009aa
+    # via
+    #   jsonschema
+    #   referencing
 s3transfer==0.19.2 \
     --hash=sha256:4616a09fbe2d4c80fec9ab4556c09950d491fd201772c8ee70591f30ff53ba68
     # via boto3
@@ -1078,6 +1119,7 @@ typing-extensions==4.16.0 \
     #   pydantic
     #   pydantic-core
     #   pytorch-lightning
+    #   referencing
     #   sqlalchemy
     #   starlette
     #   torch

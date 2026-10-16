@@ -165,6 +165,51 @@ class TestLoRAGRPOComponentUnitTests:
         assert params["training_resource_memory_per_worker"].default == "64Gi"
         assert params["training_resource_cpu_per_worker"].default == "4"
         assert params["training_resource_gpu_per_worker"].default == 1
+        assert "training_resource_ephemeral_storage_per_worker" not in params
+        assert "training_job_timeout_seconds" not in params
+
+    def test_worker_caches_are_pvc_backed(self):
+        """The worker cache paths and PVC mount must not use node-local storage."""
+        import inspect
+
+        source = inspect.getsource(train_model.python_func)
+
+        assert "worker_home = pvc_path" in source
+        assert '"HOME": worker_home' in source
+        assert '"HF_TOKEN_PATH": "/var/run/secrets/huggingface/token"' in source
+        assert '"HF_HUB_CACHE": os.path.join(cache, "hub")' in source
+        assert '"VLLM_CACHE_ROOT": os.path.join(worker_cache, "vllm")' in source
+        assert '"TRITON_CACHE_DIR": os.path.join(worker_cache, "triton")' in source
+        assert '"TORCHINDUCTOR_CACHE_DIR": os.path.join(worker_cache, "torchinductor")' in source
+        assert '"name": "hf-token"' in source
+        assert '"mountPath": "/var/run/secrets/huggingface"' in source
+        assert '"TMPDIR": worker_tmp' in source
+        assert 'trainer_env = {key: value for key, value in merged_env.items() if key != "HF_TOKEN"}' in source
+        assert '"ephemeral-storage"' not in source
+
+    def test_grpo_completion_wait_defaults_to_two_hours(self):
+        """GRPO uses a two-hour internal wait without changing the pipeline API."""
+        import inspect
+
+        source = inspect.getsource(train_model.python_func)
+        assert "grpo_default_training_completion_timeout_seconds = 7200" in source
+
+    def test_component_archive_contains_runtime_modules_only(self):
+        """The lightweight component must not embed tests or bytecode caches."""
+        import base64
+        import gzip
+        import io
+        import re
+        import tarfile
+
+        command = train_model.component_spec.implementation.container.command[-1]
+        match = re.search(r"__KFP_EMBEDDED_ARCHIVE_B64 = '([^']+)'", command)
+        assert match is not None
+
+        archive = tarfile.open(fileobj=io.BytesIO(gzip.decompress(base64.b64decode(match.group(1)))))
+        members = {member.name for member in archive.getmembers()}
+
+        assert members == {".", "./data.py", "./output.py", "./setup.py", "./training.py"}
 
     def test_component_return_type(self):
         """Test that the component is annotated to return a string."""

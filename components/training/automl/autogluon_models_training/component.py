@@ -725,6 +725,7 @@ def autogluon_models_training(
                     "model": model_name_full,
                     "subsample_size": subsample_size,
                     "num_shuffle_sets": FEATURE_IMPORTANCE_SHUFFLE_SETS,
+                    "include_confidence_band": FEATURE_IMPORTANCE_SHUFFLE_SETS > 1,
                     "max_memory_ratio": FEATURE_IMPORTANCE_MAX_MEMORY_RATIO,
                 }
                 logger.info(
@@ -738,8 +739,12 @@ def autogluon_models_training(
                     FEATURE_IMPORTANCE_MAX_MEMORY_RATIO,
                 )
                 feature_importance = predictor_clone.feature_importance(test_data_df, **importance_kwargs)
+                feature_importance_payload = _json_safe_value(feature_importance.to_dict())
+                if FEATURE_IMPORTANCE_SHUFFLE_SETS == 1:
+                    importance = feature_importance_payload.get("importance", feature_importance_payload)
+                    feature_importance_payload = {"importance": importance}
                 with (metrics_path / "feature_importance.json").open("w") as f:
-                    json.dump(_json_safe_value(feature_importance.to_dict()), f, allow_nan=False)
+                    json.dump(feature_importance_payload, f, allow_nan=False)
 
             def _process_model(model_name_full: str) -> tuple[str, dict]:
                 """Compute metrics and write metric files + notebook for one refitted model.

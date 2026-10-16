@@ -20,6 +20,7 @@ Validates dataset format based on the dataset_format parameter: - "chat": Chat t
 | `subset_count` | `int` | `0` | Number of examples to use (0 = use all) |
 | `dataset_format` | `str` | `chat` | Validation format - "chat" (default) or "tool_call" |
 | `shared_log_file` | `str` | `pipeline_log.txt` | Name of the shared log file |
+| `write_kfp_artifacts` | `bool` | `True` | Whether to write full dataset files to the KFP artifact paths. Set to False when downstream tasks consume the PVC path directly; the KFP outputs then contain only a small manifest. |
 
 ## Metadata 🗂️
 
