@@ -1,7 +1,9 @@
 approvers:
+  - mateusz-szewczyk-dev
   - LukaszCmielowski
   - DorotaDR
   - Mateusz-Switala
 reviewers:
+  - mateusz-szewczyk-dev
   - Mateusz-Switala
   - DorotaDR

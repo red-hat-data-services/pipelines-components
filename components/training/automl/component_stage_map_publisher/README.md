@@ -36,10 +36,12 @@ Reads the static JSON template from the package (``run_status_templates/pipeline
 - **Last Verified**: 2026-10-05 00:00:00+00:00
 - **Owners**:
   - Approvers:
+    - mateusz-szewczyk-dev
     - LukaszCmielowski
     - DorotaDR
     - Mateusz-Switala
   - Reviewers:
+    - mateusz-szewczyk-dev
     - Mateusz-Switala
     - DorotaDR
 

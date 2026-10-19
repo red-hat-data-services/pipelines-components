@@ -98,10 +98,12 @@ def example_pipeline(
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
+    - mateusz-szewczyk-dev
     - LukaszCmielowski
     - DorotaDR
     - Mateusz-Switala
   - Reviewers:
+    - mateusz-szewczyk-dev
     - Mateusz-Switala
     - DorotaDR
 

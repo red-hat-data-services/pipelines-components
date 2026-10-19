@@ -1,6 +1,8 @@
 no_parent_owners: true
 approvers:
+  - mateusz-szewczyk-dev
   - DorotaDR
   - Mateusz-Switala
 reviewers:
+  - mateusz-szewczyk-dev
   - DorotaDR

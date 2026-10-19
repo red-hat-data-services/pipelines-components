@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir setuptools==80.10.2 && \
 
 FROM ${BASE_IMAGE}
 
+# Prevent FastAI exports from capturing Ray's safe_print as their logger.
+ENV RAY_TQDM_PATCH_PRINT=0
+
 COPY --from=builder /tmp/dist/kfp_components-*.whl /tmp/
 RUN pip install --no-cache-dir --no-deps /tmp/kfp_components-*.whl
 
