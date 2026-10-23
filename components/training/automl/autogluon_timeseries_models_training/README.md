@@ -120,7 +120,7 @@ def example_pipeline(
   - timeseries
   - automl
   - model-selection
-- **Last Verified**: 2026-07-08 12:00:00+00:00
+- **Last Verified**: 2026-10-22 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

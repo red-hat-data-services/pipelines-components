@@ -2229,24 +2229,60 @@ class TestDataLoaderSplitLogic:
                     sampling_method="invalid",
                 )
 
-    @mock.patch.dict("os.environ", mocked_env_variables)
-    def test_ssl_error_retries_with_verify_false(self, tmp_path):
-        """SSLError on get_object triggers a retry with verify=False."""
-        csv_content = "a,b,c\n1,2,3\n4,5,6\n7,8,9\n"
-
-        call_count = 0
+    @pytest.mark.parametrize(
+        ("ssl_cert_path", "aws_ca_bundle", "expected_verify"),
+        [
+            ("", "", True),
+            ("", "/env/ca-bundle.pem", "/env/ca-bundle.pem"),
+            ("/component/ca-bundle.crt", "/env/ca-bundle.pem", "/component/ca-bundle.crt"),
+        ],
+    )
+    def test_ssl_error_fails_closed_with_actionable_error(
+        self, tmp_path, monkeypatch, ssl_cert_path, aws_ca_bundle, expected_verify
+    ):
+        """SSLError on get_object fails closed with an actionable error instead of an unverified retry."""
+        for key, value in {**mocked_env_variables, "AWS_CA_BUNDLE": aws_ca_bundle}.items():
+            monkeypatch.setenv(key, value)
 
         def get_object_side_effect(**kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise _MockSSLError("SSL validation failed")
-            return {"Body": _csv_body(csv_content)}
+            raise _MockSSLError("SSL validation failed")
 
         sampled_test = _make_test_artifact(tmp_path)
 
-        with _mock_boto3_and_pandas(get_object_side_effect=get_object_side_effect):
-            # Access the mocked boto3 to inspect client calls
+        with _mock_boto3_and_pandas(get_object_side_effect=get_object_side_effect) as mock_s3:
+            import boto3 as mocked_boto3
+
+            component_kwargs = {"ssl_cert_path": ssl_cert_path} if ssl_cert_path else {}
+            with pytest.raises(RuntimeError, match="S3 TLS certificate validation failed") as exc_info:
+                automl_data_loader.python_func(
+                    file_key="data/file.csv",
+                    bucket_name="my-bucket",
+                    workspace_path=str(tmp_path),
+                    label_column="c",
+                    sampled_test_dataset=sampled_test,
+                    **component_kwargs,
+                )
+
+            message = str(exc_info.value)
+            assert "Do not disable certificate verification" in message
+            expected_source = expected_verify if isinstance(expected_verify, str) else "the system trust bundle"
+            assert f"ssl_cert_path='{expected_source}'" in message
+            assert "s3://my-bucket/data/file.csv" in message
+            assert isinstance(exc_info.value.__cause__, _MockSSLError)
+
+            # No unverified retry: the object is requested once, with one verified client.
+            mock_s3.get_object.assert_called_once()
+            client_calls = mocked_boto3.client.call_args_list
+            assert len(client_calls) == 1
+            assert client_calls[0][1]["verify"] == expected_verify
+
+    @mock.patch.dict("os.environ", {**mocked_env_variables, "AWS_CA_BUNDLE": "/etc/pki/tls/custom-ca.crt"})
+    def test_aws_ca_bundle_selects_s3_verification_bundle(self, tmp_path):
+        """AWS_CA_BUNDLE is passed to the S3 client so verification uses the configured bundle."""
+        body_stream = _csv_body("a,b,c\n1,2,3\n4,5,6\n7,8,9\n")
+        sampled_test = _make_test_artifact(tmp_path)
+
+        with _mock_boto3_and_pandas(get_object_return={"Body": body_stream}) as mock_s3:
             import boto3 as mocked_boto3
 
             result = automl_data_loader.python_func(
@@ -2259,10 +2295,7 @@ class TestDataLoaderSplitLogic:
 
             assert result is not None
             assert result.sample_config["n_samples"] >= MIN_VALID_RECORDS
-
-            # First call: default (verify not passed or verify=True)
-            # Second call after SSL error: verify=False
+            mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="data/file.csv")
             client_calls = mocked_boto3.client.call_args_list
-            assert len(client_calls) == 2
-            second_call_kwargs = client_calls[1][1]
-            assert second_call_kwargs["verify"] is False
+            assert len(client_calls) == 1
+            assert client_calls[0][1]["verify"] == "/etc/pki/tls/custom-ca.crt"

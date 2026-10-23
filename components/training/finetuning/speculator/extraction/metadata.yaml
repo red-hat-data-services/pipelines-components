@@ -15,6 +15,6 @@ tags:
   - speculator
   - speculative_decoding
   - hidden_state_extraction
-lastVerified: 2026-09-10T00:00:00Z
+lastVerified: 2026-10-20T00:00:00Z
 links:
   documentation: https://github.com/kubeflow/trainer

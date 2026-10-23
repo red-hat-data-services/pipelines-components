@@ -14,8 +14,16 @@ from ..component import autogluon_timeseries_models_training
 
 @pytest.fixture(autouse=True, scope="module")
 def isolated_sys_modules():
-    """Patch pandas/autogluon modules for decorator patching stability."""
-    with mock.patch.dict(sys.modules, clear=False) as mocked_modules:
+    """Mock component dependencies while keeping notebook helpers on real pandas."""
+    import pandas as pd
+    from kfp_components.components.training.automl.shared import timeseries_notebook_utils
+
+    # A cached helper retains its own pandas reference. Exercise it with real
+    # pandas even when this suite runs before the loader or shared tests.
+    with (
+        mock.patch.object(timeseries_notebook_utils, "pd", pd),
+        mock.patch.dict(sys.modules, clear=False) as mocked_modules,
+    ):
         mocked_modules["pandas"] = mock.MagicMock()
         _ag = mock.MagicMock()
         _ag.__path__ = []

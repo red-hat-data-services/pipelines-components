@@ -26,6 +26,7 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
 | `batch_size` | `int` | `20` | Number of documents per batch. Defaults to ``20``; ``0`` processes all documents in a single batch. |
 | `ocr_lang` | `Optional[str]` | `None` | Language used to pick the RapidOCR model bundle. Pass ``pattern.json`` ``settings.generation.language.code`` from the optimization run so indexing OCRs the corpus the same way the experiment did. Note that AutoRAG derives that code from the benchmark questions, not from the documents themselves, so override it when the corpus is in a different language. Chinese selects the Chinese bundle; omitting it selects the English bundle, which covers all Latin-script languages. |
 | `graph_extraction_config` | `Optional[dict]` | `None` | Neo4j graph-extraction settings from an optimized pattern. Ignored by other vector stores. |
+| `preset` | `str` | `speed` | Text extraction quality tier from the optimization run. "speed" (default) disables table structure parsing; "balanced" enables TableFormer table reconstruction. |
 
 ## Metadata 🗂️
 
@@ -37,7 +38,7 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
     - Name: boto3, Version: >=1.42.34
-    - Name: ai4rag, Version: ~=0.23.0
+    - Name: ai4rag, Version: ~=0.24.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
@@ -48,7 +49,7 @@ Discovers documents from object storage, extracts text, and indexes chunks into 
   - documents_discovery
   - data_indexing
   - autorag
-- **Last Verified**: 2026-10-15 00:00:00+00:00
+- **Last Verified**: 2026-10-22 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

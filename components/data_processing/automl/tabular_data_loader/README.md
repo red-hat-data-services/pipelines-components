@@ -43,6 +43,7 @@ Authentication uses AWS-style credentials provided via environment variables (e.
 | `test_data_bucket_name` | `str` | `""` | S3 bucket name for user-provided test dataset (default: empty string). |
 | `test_data_file_key` | `str` | `""` | S3 object key of the user-provided test CSV (default: empty string). |
 | `preset` | `str` | `speed` | Training quality tier controlling the sampling size budget. ``"speed"`` (default) samples up to 100 MiB; ``"balanced"`` samples up to 1 GiB; and ``"quality"`` samples up to 10 GiB. User-provided test datasets are capped at 50 MiB, 100 MiB, and 1 GiB respectively. |
+| `ssl_cert_path` | `Optional[str]` | `None` | Optional path to a PEM-encoded CA bundle used to verify the S3 endpoint. The filename extension is not significant; ``.pem`` and ``.crt`` are both common. It overrides ``AWS_CA_BUNDLE`` for this component; when neither is set, the system trust bundle is used. TLS verification is never disabled. |
 
 ## Outputs 📤
 

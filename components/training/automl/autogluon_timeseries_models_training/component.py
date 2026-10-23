@@ -485,7 +485,13 @@ def autogluon_timeseries_models_training(
                         excluded_model_types=EXCLUDED_MODEL_TYPES,
                     )
                     total_fit_time_seconds += time.perf_counter() - refit_start_time
+                    evaluation_started = time.perf_counter()
                     metrics = predictor_refit.evaluate(test_ts, metrics=list(AVAILABLE_METRICS.keys()))
+                    logger.info(
+                        "Test evaluation for %s took %.3f seconds",
+                        model_name_full,
+                        time.perf_counter() - evaluation_started,
+                    )
                     # Keep raw AutoGluon evaluate() signs for metrics.json (higher-is-better / negated errors)
                     # so Phase C leaderboard sorting (ascending=False) stays correct.
                     # back_testing.json normalizes separately.
@@ -543,8 +549,14 @@ def autogluon_timeseries_models_training(
                             prediction_length=prediction_length,
                             metrics=list(AVAILABLE_METRICS.keys()),
                         )
+                        serialization_started = time.perf_counter()
                         with (metrics_path / "back_testing.json").open("w", encoding="utf-8") as f:
                             json.dump(back_testing_payload, f, indent=2)
+                        logger.info(
+                            "Backtest serialization for %s took %.3f seconds",
+                            model_name_full,
+                            time.perf_counter() - serialization_started,
+                        )
                         back_testing_available = True
                     except Exception as backtest_exc:
                         logger.warning(
