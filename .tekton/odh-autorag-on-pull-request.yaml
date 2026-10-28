@@ -65,6 +65,11 @@ spec:
       value: true
     - name: enable-slack-failure-notification
       value: "false"
+    # Diagnostic: bypass Konflux package-registry proxy to confirm stale-cache lag
+    # (botocore pin missing on proxy but present on RH index). Do not merge long-term;
+    # .tekton is normally owned by konflux-central sync.
+    - name: enable-package-registry-proxy
+      value: "false"
   pipelineRef:
     resolver: git
     params:
