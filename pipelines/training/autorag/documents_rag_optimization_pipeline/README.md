@@ -171,7 +171,7 @@ A **RAG Configuration** is a specific set of parameter values that define how a
 Retrieval-Augmented Generation system operates. It includes settings for:
 
 - **Chunking**: Method and parameters for splitting documents (e.g., recursive method with
-  chunk_size=2048, chunk_overlap=256)
+  chunk_size=1024, chunk_overlap=256)
 - **Embeddings**: The embedding model used (e.g., `intfloat/multilingual-e5-large`)
 - **Generation**: The language model used (e.g., `ibm/granite-13b-instruct-v2`) along with its
   parameters

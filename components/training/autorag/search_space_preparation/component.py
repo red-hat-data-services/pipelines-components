@@ -66,7 +66,7 @@ def search_space_preparation(
 
     VALID_PRESETS = {"speed", "balanced"}
     PRESET_CHUNKING_METHODS = {"speed": ["recursive"], "balanced": ["recursive", "hybrid"]}
-    PRESET_CHUNK_SIZES = {"speed": [128, 256, 512], "balanced": [512, 1024, 2048]}
+    PRESET_CHUNK_SIZES = {"speed": [128, 256, 512], "balanced": [512, 1024]}
     PRESET_CHUNK_OVERLAPS = {"speed": [32, 64], "balanced": [0, 128, 256]}
 
     if preset not in VALID_PRESETS:
