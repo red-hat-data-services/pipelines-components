@@ -35,9 +35,9 @@ deployment settings), executable notebooks, and evaluation results.
 - **Managed**: Yes
 - **Dependencies**:
   - Kubeflow:
-    - Name: Pipelines, Version: 2.17.0
+    - Name: Pipelines, Version: ==2.17.0
   - External Services:
-    - Name: ai4rag, Version: ~=0.23.0
+    - Name: ai4rag, Version: ~=0.25.3
     - Name: MaaS, Version: >=1.0.0
     - Name: RHOAI Connections API, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
@@ -48,19 +48,17 @@ deployment settings), executable notebooks, and evaluation results.
   - pipeline
   - autorag
   - rag-optimization
-- **Last Verified**: 2026-10-15 00:00:00+00:00
+- **Last Verified**: 2026-10-29 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
-    - DorotaDR
     - Mateusz-Switala
-    - filip-komarzyniec
     - jakub-walaszczyk
   - Reviewers:
-    - filip-komarzyniec
     - jakub-walaszczyk
-    - MichalSteczko
+    - Wojciech-Rebisz
+    - Mateusz-Switala
 
 <!-- custom-content -->
 
@@ -107,7 +105,10 @@ Use `component_id` (and stage `id` fields inside each file) to correlate artifac
 
 Canonical component ids are defined in the pipeline JSON templates under
 [`run_status_templates/pipelines/`](../../../components/training/autorag/shared/run_status_templates/pipelines/)
-(e.g. `documents-rag-optimization-pipeline.json`).
+(`documents-rag-optimization-pipeline.json` for Milvus/PGVector and
+`documents-rag-optimization-pipeline-graph.json` for Neo4j). The publisher selects the
+template using the database connection, preserving the same component and stage IDs.
+Only the Neo4j template includes `graph_extraction` and knowledge-graph descriptions.
 
 ## Breaking Changes (ai4rag 0.8.0)
 
@@ -168,7 +169,7 @@ A **RAG Configuration** is a specific set of parameter values that define how a
 Retrieval-Augmented Generation system operates. It includes settings for:
 
 - **Chunking**: Method and parameters for splitting documents (e.g., recursive method with
-  chunk_size=2048, chunk_overlap=256)
+  chunk_size=1024, chunk_overlap=256)
 - **Embeddings**: The embedding model used (e.g., `intfloat/multilingual-e5-large`)
 - **Generation**: The language model used (e.g., `ibm/granite-13b-instruct-v2`) along with its
   parameters

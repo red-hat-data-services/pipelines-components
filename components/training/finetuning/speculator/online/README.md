@@ -55,15 +55,10 @@ Extract and train a draft model with a managed vLLM sidecar.
 | `pip_index_urls` | `Optional[str]` | `None` |  |
 | `training_envs` | `str` | `""` |  |
 | `training_runtime` | `str` | `vllm-extract-cuda` |  |
+| `download_model` | `bool` | `False` |  |
 | `output_model` | `dsl.Output[dsl.Model]` | `None` |  |
 | `output_metrics` | `dsl.Output[dsl.Metrics]` | `None` |  |
 | `kubernetes_config` | `dsl.TaskConfig` | `None` |  |
-
-## Outputs 📤
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| Output | `str` |  |
 
 ## Metadata 🗂️
 
@@ -86,6 +81,11 @@ Extract and train a draft model with a managed vLLM sidecar.
   - Approvers:
     - ChughShilpa
     - efazal
+    - hrathina
+    - JaZeeGH
+    - Sridhar1030
+  - Reviewers:
+    - ChughShilpa
     - hrathina
 
 ## Additional Resources 📚

@@ -43,6 +43,9 @@ def rag_templates_optimization(
     ``AI4RAGExperiment``, and the ``ragas``/``unitxt`` evaluators), since
     ``ai4rag`` no longer ships a single orchestration entry point for this flow.
 
+    Generated indexing specs forward ``settings.generation.language.code`` as
+    ``ocr_lang`` so production extraction uses the optimization run's OCR language.
+
     Args:
         extracted_text: Path to extracted text documents.
         test_data: Path to benchmark test data JSON.
@@ -220,9 +223,11 @@ def rag_templates_optimization(
 
             pattern_data = pattern.get("payload")
             settings = pattern_data["settings"]
+            # Retry with excerpts after a context-window overflow so a large
+            # retrieval result does not make the deployed agent unusable.
+            settings.setdefault("agentic", {})["enable_context_compression"] = True
             store_binding = settings["store_binding"]
             is_graph_pattern = store_binding["provider_type"] == "neo4j"
-            pattern_data["template_id"] = "agentic_graph_rag" if is_graph_pattern else "agentic_rag"
             if indexing_pipeline_params:
                 pattern_data["indexing"] = {
                     "pipeline_spec": {
@@ -234,6 +239,8 @@ def rag_templates_optimization(
                             "input_data_bucket_name": indexing_pipeline_params.get("input_data_bucket_name"),
                             "input_data_keys": indexing_pipeline_params.get("input_data_keys"),
                             "batch_size": indexing_pipeline_params.get("batch_size"),
+                            "preset": indexing_pipeline_params["preset"],
+                            "ocr_lang": (settings["generation"].get("language") or {}).get("code"),
                             "provider_type": store_binding["provider_type"],
                             "collection_name": store_binding["collection_name"],
                             "embedding_model_id": settings["embedding"]["model_id"],
@@ -502,6 +509,7 @@ def rag_templates_optimization(
                 "input_data_bucket_name": input_data_bucket_name,
                 "input_data_keys": input_data_keys or [],
                 "batch_size": 20,
+                "preset": preset,
             }
 
             if (
@@ -536,7 +544,7 @@ def rag_templates_optimization(
                     values = embedding_models
                 params.append(Parameter(param_name, "C", values=values))
 
-            search_space = AI4RAGSearchSpace(params=params)
+            search_space = AI4RAGSearchSpace(params=params, vector_store_type=provider)
 
             evaluators = _build_evaluators(
                 foundation_models=foundation_models,

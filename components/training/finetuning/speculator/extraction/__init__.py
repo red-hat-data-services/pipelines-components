@@ -1,5 +1,5 @@
-"""Speculator extraction component."""
+"""Speculator hidden-state extraction component."""
 
-from .component import extract_speculator
+from .component import extract_hidden_states
 
-__all__ = ["extract_speculator"]
+__all__ = ["extract_hidden_states"]

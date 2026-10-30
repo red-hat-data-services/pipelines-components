@@ -8,6 +8,8 @@ RAG Templates Optimization component.
 
 Runs search-space construction, evaluator setup, and the optimization experiment directly against ``ai4rag`` primitives (``AI4RAGSearchSpace``, ``AI4RAGExperiment``, and the ``ragas``/``unitxt`` evaluators), since ``ai4rag`` no longer ships a single orchestration entry point for this flow.
 
+Generated indexing specs forward ``settings.generation.language.code`` as ``ocr_lang`` so production extraction uses the optimization run's OCR language.
+
 ## Inputs 📥
 
 | Parameter | Type | Default | Description |
@@ -99,7 +101,7 @@ def example_pipeline(
   - Kubeflow:
     - Name: Pipelines, Version: >=2.15.2
   - External Services:
-    - Name: ai4rag, Version: ~=0.23.0
+    - Name: ai4rag, Version: ~=0.25.3
     - Name: MaaS, Version: >=1.0.0
     - Name: Milvus, Version: >=2.0.0
     - Name: PGVector, Version: >=0.5.0
@@ -108,16 +110,14 @@ def example_pipeline(
   - autorag
   - optimization
   - rag-patterns
-- **Last Verified**: 2026-10-15 00:00:00+00:00
+- **Last Verified**: 2026-10-29 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:
     - LukaszCmielowski
-    - DorotaDR
     - Mateusz-Switala
-    - filip-komarzyniec
     - jakub-walaszczyk
   - Reviewers:
-    - filip-komarzyniec
     - jakub-walaszczyk
-    - MichalSteczko
+    - Wojciech-Rebisz
+    - Mateusz-Switala

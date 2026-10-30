@@ -36,6 +36,7 @@ def documents_indexing_pipeline(
     batch_size: int = 20,
     ocr_lang: Optional[str] = None,
     graph_extraction_config: Optional[dict] = None,
+    preset: str = "speed",
 ):
     """Build a production vector index from documents for AutoRAG.
 
@@ -68,7 +69,7 @@ def documents_indexing_pipeline(
             and ``max_completion_tokens``) for Neo4j graph extraction. Supplied by an
             optimized graph-mode pattern; ignored by non-Neo4j stores.
         chunking_method: Chunking method (e.g. "recursive").
-        chunk_size: Maximum chunk size in tokens (128--2048).
+        chunk_size: Maximum chunk size in tokens (128--1024).
         chunk_overlap: Token overlap between consecutive chunks (recursive method only).
         batch_size: Number of documents per batch. Defaults to ``20``; ``0`` processes all
             documents in a single batch.
@@ -81,10 +82,14 @@ def documents_indexing_pipeline(
             Latin-script languages.
         graph_extraction_config: Neo4j graph-extraction settings from an optimized
             pattern. Ignored by other vector stores.
+        preset: Text extraction quality tier from the optimization run. "speed"
+            (default) disables table structure parsing; "balanced" enables
+            TableFormer table reconstruction.
     """
     documents_discovery_task = documents_discovery(
         input_data_bucket_name=input_data_bucket_name,
         input_data_keys=input_data_keys,
+        sampling_enabled=False,
     )
     documents_discovery_task.set_caching_options(False)
     documents_discovery_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
@@ -94,6 +99,7 @@ def documents_indexing_pipeline(
     text_extraction_task = text_extraction(
         documents_descriptor=documents_discovery_task.outputs["discovered_documents"],
         ocr_lang=ocr_lang,
+        preset=preset,
     )
     text_extraction_task.set_caching_options(False)
     text_extraction_task.set_cpu_request("2").set_memory_request("8Gi").set_cpu_limit(MAX_CPUS).set_memory_limit(
