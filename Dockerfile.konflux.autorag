@@ -1,6 +1,6 @@
 # This container is used to run the AutoRAG components of the training pipeline.
 
-ARG BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.3-1790276807
+ARG BASE_IMAGE=quay.io/aipcc/base-images/cpu:3.4.6-1793042088
 FROM ${BASE_IMAGE}
 
 COPY pipelines/training/autorag/documents_rag_optimization_pipeline/requirements.txt \
