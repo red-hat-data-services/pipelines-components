@@ -32,7 +32,7 @@ for _shared_module in ("data.py", "output.py", "setup.py", "training.py"):
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-th-torch-cpu-py312:odh-3.6-ea.2",
+    base_image="registry.redhat.io/rhoai/odh-th-torch-cuda-py312-rhel9@sha256:edd92fa1b4759ad93ef3e93d221a9817e0582ed9391d56763f9e30e619679e31",
     install_kfp_package=False,
     packages_to_install=[
         "kfp==2.17.0",
