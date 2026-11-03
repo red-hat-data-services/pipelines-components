@@ -14,3 +14,9 @@ triton==3.6.0; platform_machine != 's390x'
 aiohttp==3.14.4
 urllib3==2.8.0
 filelock==4.2.4
+# Security pin for the eMudhra CA distrust (RHAI-18418, odh-autorag-rhel9):
+# botocore >= 1.43.117 removes the Comodo AAA Certificate Services root CA from
+# its bundled trust store to distrust compromised eMudhra intermediate CAs;
+# 1.43.122 is the available index build (boto3 bumped in lockstep)
+boto3==1.43.122
+botocore==1.43.122
