@@ -65,8 +65,8 @@ botocore==1.43.50 \
 build==1.5.1 \
     --hash=sha256:cf22bb403b80a3f893e2f343eae9cdf64b481955ce248b7e6d0aeb4039741423
     # via chromadb
-certifi==2026.6.17 \
-    --hash=sha256:36a32caf926900a4f112e18621636a19ce6474c5b2aeb148588147d2633ec530
+certifi==2026.10.19 \
+    --hash=sha256:a47d0355ba4428a265002bd50960230cae2b0f61cc49c93c0617f5778df1d304
     # via
     #   docling-slim
     #   httpcore
