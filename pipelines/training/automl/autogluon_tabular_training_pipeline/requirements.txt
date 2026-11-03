@@ -94,15 +94,16 @@ blis==1.3.3 \
     --hash=sha256:80c8d5f0e51831694734105d9a047193aebf7918c05c865923abe52b56785910 \
     --hash=sha256:c1ae9d426e7345eb936fda81639a7dddcaaf479bffc948da7c0c4018fe18103b
     # via thinc
-boto3==1.43.50 \
-    --hash=sha256:00c080260af44da1faaed39ed97e3d37762e9414426eed89cc9137e7e8ae96a9
+boto3==1.43.122 \
+    --hash=sha256:6b7c23b6239f25cb36763567eccbe5d764ce9492da8abc3fea70b2a86401349a
     # via
     #   -r requirements.in
     #   autogluon-common
     #   autogluon-core
-botocore==1.43.50 \
-    --hash=sha256:a202e00c75172a292d6cd3f5d217b7c27333c496ef854ead607ea6b3d7b6bb2d
+botocore==1.43.122 \
+    --hash=sha256:c93126155826c2942b1ba2a482423cc70e79a987ad9607a1bf2d9a5348e83759
     # via
+    #   -r requirements.in
     #   boto3
     #   s3transfer
 catalogue==2.0.10 \

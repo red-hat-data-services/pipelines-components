@@ -54,12 +54,15 @@ bcrypt==5.0.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:79d127e40edb07f252fb2c5e802665c5a28a26a49eaf9c5f1be7b9af93b4d61e
     # via docling-slim
-boto3==1.43.50 \
-    --hash=sha256:00c080260af44da1faaed39ed97e3d37762e9414426eed89cc9137e7e8ae96a9
-    # via ai4rag
-botocore==1.43.50 \
-    --hash=sha256:a202e00c75172a292d6cd3f5d217b7c27333c496ef854ead607ea6b3d7b6bb2d
+boto3==1.43.122 \
+    --hash=sha256:6b7c23b6239f25cb36763567eccbe5d764ce9492da8abc3fea70b2a86401349a
     # via
+    #   -r requirements.in
+    #   ai4rag
+botocore==1.43.122 \
+    --hash=sha256:c93126155826c2942b1ba2a482423cc70e79a987ad9607a1bf2d9a5348e83759
+    # via
+    #   -r requirements.in
     #   boto3
     #   s3transfer
 build==1.5.1 \
