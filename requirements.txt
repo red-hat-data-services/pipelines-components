@@ -1,4 +1,4 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8-test/simple
+--index-url https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/
 
 certifi==2026.10.19 \
     --hash=sha256:2a02938297c395b7a3c77cb1399d3e5e6305536ae7dd7a3db9f8ace1ac77f155

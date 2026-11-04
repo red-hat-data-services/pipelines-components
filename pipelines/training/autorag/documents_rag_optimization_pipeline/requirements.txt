@@ -1,4 +1,4 @@
---index-url https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8-test/simple
+--index-url https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/
 
 accelerate==1.15.0 \
     --hash=sha256:403a7d6f851e7f05e80840d3cc65f793cb9c397d073be7ce8a7e1dc0d3776494
@@ -65,11 +65,11 @@ av==13.1.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:77680c0dcb3dcd496c20ced477582e2f9c307ec5b9b73dcc8e5acc7e8f65d8ee
     # via docling-slim
-boto3==1.43.122 \
-    --hash=sha256:dc85c44e339686714e493a461e22ab39573e62918a9da39fbd90aaec85a15732
+boto3==1.43.123 \
+    --hash=sha256:46239c35f490f83cb9135f450a159cba896917120cc82fec2426e5828e36918e
     # via ai4rag
-botocore==1.43.122 \
-    --hash=sha256:45707ec5051ccbae30f24f94f383cac296f3b4b612f4ed6fb698fff16cdd3df2
+botocore==1.43.123 \
+    --hash=sha256:35337341d7e96bacb963a80c801e0e4c16f13341d55b65652708d530bb12a344
     # via
     #   boto3
     #   s3transfer
@@ -213,8 +213,8 @@ faker==40.44.0 \
 fastapi==0.162.0 \
     --hash=sha256:dce14dc0a2b58c77dddd03c489581c197f33241b80b6bfd2295e8093c30808a4
     # via mlflow-skinny
-filelock==4.2.4 \
-    --hash=sha256:3d723ed8b277d7f85b3c581d40b5a0a1b168ce93a200899ef2885ab68a39e9f4
+filelock==4.2.5 \
+    --hash=sha256:b28bcc0fb8f103420cccd2bd91ba4bc71f8be5451d716d3bd46e8a8b9fa99bd1
     # via
     #   datasets
     #   huggingface-hub
@@ -278,11 +278,11 @@ google-resumable-media==2.11.0 \
 googleapis-common-protos==1.76.0 \
     --hash=sha256:6486c1374148ca704e166f4e25044c2d6af4bcf50914f361bbe154db613d8615
     # via google-api-core
-grpcio==1.85.0 \
-    --hash=sha256:40f3ac776fd5781a2b63a9c055aa36e85b87f503fa1e510859044fabd8d74b0e \
-    --hash=sha256:61035ca2897b22a1080362bc1c788296a6c6a70082075f84a577fea6a9f34c26 \
-    --hash=sha256:bc0f772c090dda2986a0ee91d7ea4320ab52a17d4eebd28ce31e7c1da3e9499e \
-    --hash=sha256:df5cf9ae86b975697aeeffc942dfcf238d7fa709754fbca57b0aa1c164e699e8
+grpcio==1.85.1 \
+    --hash=sha256:7569d78a2bd19563be0f0776c66319b924b507ea072c4be2b5d1dd247ca0dfa6 \
+    --hash=sha256:a39e07c6596a9ea2af5db0c0c8319dbc69064d290ba0ae89a7d16ffc0f738ad9 \
+    --hash=sha256:a54cda55af23afdbc923550ae7bbb4965e8dba713cb3dbb2b07cd053446fd0ae \
+    --hash=sha256:be9304d431809f361e8463db406715a81f9b58089f7bb1dc5746583ef17721a1
     # via
     #   milvus-lite
     #   pymilvus
@@ -442,8 +442,8 @@ langchain-text-splitters==1.1.3 \
     # via
     #   ai4rag
     #   langchain-classic
-langgraph==1.2.18 \
-    --hash=sha256:14952efb14a1c3fca1284b93f182196c39174c777ddb7c5e5386528e78d6135b
+langgraph==1.2.19 \
+    --hash=sha256:e6c3cd1f52874427a0bf537e8902697dd782fd59d97c7b13709909b1b36b77e4
     # via langchain
 langgraph-checkpoint==4.3.1 \
     --hash=sha256:fe20d4984cbc76e43d4085dfcb0c1bdd39d41de3c06d126bfc04efd311c87536
@@ -453,8 +453,8 @@ langgraph-checkpoint==4.3.1 \
 langgraph-prebuilt==1.1.1 \
     --hash=sha256:dde7e193ff2944ccbeee688773afceb9b9a092b3183c9a49609ad51163ee0b1c
     # via langgraph
-langgraph-sdk==0.4.10 \
-    --hash=sha256:ff596f44eeca2f9bc7ba4b12df0ef42be6edc0b361c7bbab6233813e67ef4744
+langgraph-sdk==0.4.11 \
+    --hash=sha256:d31102af87db7f259d8e26fb1f2330708182bd1edf3f6fda91206db433f68484
     # via langgraph
 langsmith==0.14.16 \
     --hash=sha256:eedeb8aaab55c2482a692e14680dd0d7a119426ebd383f749743fa21be389e3e
@@ -481,8 +481,8 @@ lxml==6.1.3 \
     #   odfdo
     #   python-docx
     #   python-pptx
-mail-parser==4.9.0 \
-    --hash=sha256:9e21255ea7839d504b2c92b404095848c1263332e517795db3453a5004eb4151
+mail-parser==4.10.0 \
+    --hash=sha256:1641d98e6a917f1a9c17bbee7deef3da833adc1b8829077d58dbea3ae7008ed5
     # via docling-slim
 markdown-it-py==4.2.0 \
     --hash=sha256:1534e7fddd5e71cbeaa7daf3650abf8922447e96aea60b1485eb7a088b73bd02
@@ -593,8 +593,8 @@ numpy==2.5.4 \
     #   torchvision
     #   transformers
     #   whisper-s2t-reborn
-oauthlib==4.0.0 \
-    --hash=sha256:f2c8de845577d608844a0b282946e04acbd8a89a9e96cf756dab31226a3c2a45
+oauthlib==4.0.1 \
+    --hash=sha256:93106d125c0e7a433b9f36c6079362b80cc906905860274f4434eb10f56f4556
     # via requests-oauthlib
 odfdo==3.27.3 \
     --hash=sha256:46e059d5735f60fa5741e270a54e1889c938514d8e182172804a1d4bdca5c32b
@@ -609,7 +609,11 @@ onnxruntime==1.25.0 \
     --hash=sha256:38787539fdb27406f9189ed06d5f6d35a56ad01d1676056ae4839ccb3ef5e1da \
     --hash=sha256:3c9ee87f6024581bf18adb339b41de8d8fa92006d34fdd6124ea832bfb41d4a1 \
     --hash=sha256:64b70369f68de818f618a05c6c76fa045053199541189edcf341babafe1f4fa1 \
-    --hash=sha256:d61ca53ad8ec3ba5d3c2e4acf7ee62f611b59003cd4c61da5402b42fc8271b84
+    --hash=sha256:8396917c4c03478229d6919fbba8d5eac530ae2fc41befb5bfc6a28a2fa953e5 \
+    --hash=sha256:9e6b75499d5b5a25237a3c3ef5dc514fc741d7b44f0058fbbeb5f7d400ca6815 \
+    --hash=sha256:d10230f4ce84692a1cd8ce2eb32e5a9e0229e20c355a739f4d9c35672771f50e \
+    --hash=sha256:d61ca53ad8ec3ba5d3c2e4acf7ee62f611b59003cd4c61da5402b42fc8271b84 \
+    --hash=sha256:e8d2b875f4a870e6055759eaba39da8bb12465e5ea51b73cd82799b9880b9553
     # via ai4rag
 openai==2.53.0 \
     --hash=sha256:781ee0a067abb323ba473a4d9d872583919b960d6f4fc37e59d6efd9074868b2
@@ -638,8 +642,8 @@ opentelemetry-api==1.45.2 \
     #   mlflow-skinny
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-opentelemetry-proto==1.45.2 \
-    --hash=sha256:350c1602053284202632cb0e4b87a63b65ecaf1ac34b49c250987e8ed066c4a7
+opentelemetry-proto==1.45.1 \
+    --hash=sha256:93d5f34035a1a5fd2a0c1a27c20aabef07839a87d04daad76eea1ac22d986e45
     # via mlflow-skinny
 opentelemetry-sdk==1.45.2 \
     --hash=sha256:91e4d5375d733df3fa7cdc1382c38cef577da2baff4bb8a48a35b44490fdc5ad

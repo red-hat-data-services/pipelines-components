@@ -339,7 +339,7 @@ class TestAutogluonModelsTrainingUnitTests:
             and "The AutoGluon version used in this notebook" in "".join(cell["source"])
             and "PIP_INDEX_URL" in "".join(cell["source"])
             and "Red Hat package index" in "".join(cell["source"])
-            and "%env PIP_INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8-test/simple"
+            and "%env PIP_INDEX_URL=https://packages.redhat.com/api/pypi/public-rhai/cpu-torch2.13-el9.8/simple/"
             in "".join(cell["source"])
             and "If your notebook environment does not already provide it" in "".join(cell["source"])
             and "PIP_EXTRA_INDEX_URL" not in "".join(cell["source"])
