@@ -52,7 +52,7 @@ Uses the upstream model artifact (input_model) produced by training, or falls ba
   - model_registry
   - registration
   - kubeflow
-- **Last Verified**: 2026-01-15 00:00:00+00:00
+- **Last Verified**: 2026-10-20 00:00:00+00:00
 - **Owners**:
   - No Parent Owners: Yes
   - Approvers:

@@ -1,4 +1,4 @@
-FROM registry.redhat.io/ubi9/python-312@sha256:f793a102147ffa00b45ccb88ae91d726c17ac2f7e70214eef0cbfdc32816ec01
+FROM registry.redhat.io/ubi9/python-312@sha256:19e1e927138b40454858f297884c2c4e2f13f5ba95b3f55faea174d3cbb57067
 
 USER root
 

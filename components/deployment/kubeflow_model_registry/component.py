@@ -8,7 +8,7 @@ from kfp import dsl
 
 @dsl.component(
     base_image="quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4",
-    packages_to_install=["model-registry==0.3.4"],
+    packages_to_install=["model-registry==0.3.9"],
 )
 def kubeflow_model_registry(
     pvc_mount_path: str,
@@ -82,7 +82,11 @@ def kubeflow_model_registry(
         if model_name == "fine-tuned-model" and base_model_name:
             resolved_model_name = base_model_name
         if model_pvc_name:
-            model_uri = f"pvc://{model_pvc_name}/final_model"
+            model_subpath = meta.get("pvc_model_subpath", "")
+            if not isinstance(model_subpath, str):
+                model_subpath = ""
+            model_subpath = model_subpath.strip("/") or "final_model"
+            model_uri = f"pvc://{model_pvc_name}/{model_subpath}"
         else:
             model_uri = meta.get("artifact_path") or getattr(input_model, "path", "") or model_uri
             if not model_uri:

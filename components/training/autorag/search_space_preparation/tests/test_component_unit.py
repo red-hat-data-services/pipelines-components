@@ -255,7 +255,7 @@ class TestSearchSpacePreparationUnitTests:
         ("preset_value", "expected_chunking", "expected_chunk_sizes", "expected_chunk_overlaps"),
         [
             ("speed", ["recursive"], [128, 256, 512], [32, 64]),
-            ("balanced", ["recursive", "hybrid"], [512, 1024, 2048], [0, 128, 256]),
+            ("balanced", ["recursive", "hybrid"], [512, 1024], [0, 128, 256]),
         ],
     )
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
