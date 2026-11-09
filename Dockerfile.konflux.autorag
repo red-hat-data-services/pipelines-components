@@ -36,6 +36,11 @@ RUN if [ -d "${HERMETO_GENERIC_DEPS}" ] && [ -n "$(ls -A "${HERMETO_GENERIC_DEPS
       python3 /tmp/seed_docling_models.py --dest /opt/app-root/docling-artifacts/models --download; \
     fi
 
+# uv and uvx are only needed while building the image.
+USER root
+RUN rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
+USER default
+
 LABEL com.redhat.component="odh-autorag-container" \
       name="managed-open-data-hub/odh-autorag-rhel9" \
       description="odh-autorag" \
