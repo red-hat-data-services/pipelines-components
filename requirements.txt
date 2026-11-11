@@ -1,7 +1,7 @@
 --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.5/cpu-ubi9/simple
 
-certifi==2026.6.17 \
-    --hash=sha256:36a32caf926900a4f112e18621636a19ce6474c5b2aeb148588147d2633ec530
+certifi==2026.10.23 \
+    --hash=sha256:4654ed7e29e14f0a35d465a7a79e901f5f145dee3ec9b7703129a0f79aec3202
 cffi==2.1.0 \
     --hash=sha256:4cb547fde61ec9e28fc046ea5b67c831179be045edd0cdec97e01897ba441d0d \
     --hash=sha256:5ec366c2be9b0caedc5686fff68f0fb70af4338a30bf8ab2b56aa639b4586e32 \
@@ -13,11 +13,11 @@ click==8.4.2 \
     --hash=sha256:368d4af9976de9fc5efc4d8a26c64d23c187c21a2eba9336254832d466dd6198
 click-option-group==0.5.7 \
     --hash=sha256:da5ba168330faf26958b52e807290d609ea9c66a1ed96db7d5a82be0db2becf7
-cryptography==49.0.0 \
-    --hash=sha256:272f6cf35bd11146fb7182ed94b7123b9547174e944a0ec41fb547d1ad363982 \
-    --hash=sha256:44e7dda87cce4e64a4eada2469ade616471772ee8203d7331967ef7ba2fee2bd \
-    --hash=sha256:542c5b1fe720d9d3b012f50dc1cbd7946e482fd03a1c3215ef6dcb899be7989e \
-    --hash=sha256:8e320bcb06edbda1999f4f992caf8d1af2a9f6b846d5d4acc8584c120779308a
+cryptography==50.0.1 \
+    --hash=sha256:213953b7dbd5bbc9b309d930b687e7e5157d36f31c5b2d4d4ebd84cb2d7cab1a \
+    --hash=sha256:3e29639a33400721f710beeba7741e275bdb4c5bc53107c9dfef240d251c0590 \
+    --hash=sha256:7a115ac6dd9930b7893e530dce680d55afdfad6939da19b398fd15f850327743 \
+    --hash=sha256:8ae962f84e7f36290feca5f8ba7bfc01fea9cd9a48f446bca52ef115657cca3d
 docstring-parser==0.18.0 \
     --hash=sha256:99af886f2018766522dbfcfbd80dde97b776b4b407d7d298d5d17dcd502a4f7a
 durationpy==0.10 \
@@ -48,8 +48,8 @@ kfp-server-api==2.17.0 \
     --hash=sha256:97a52d31d5fbe533c1beb2f6bfd5060bf1494893c7cce4a88af8510b57baba97
 kubernetes==36.0.3 \
     --hash=sha256:8fa78b23a212533a45eda88b56515f4a5d953df468ac759f1a34574d7e53cc3d
-oauthlib==3.3.1 \
-    --hash=sha256:c6fbab4f1a77a539f01175e2ea74b9552806bd0a849c70e744fda4ab801031c0
+oauthlib==4.0.1 \
+    --hash=sha256:34b43745c5ea92dfc2e35bee015080ed1d16d4249b5d84d025d2b6949c531458
 proto-plus==1.28.1 \
     --hash=sha256:01d18da3e804517b9225e384d596db5c1147f7e1a02778dd5048ac0f4130b324
 protobuf==6.31.1 \
@@ -57,14 +57,14 @@ protobuf==6.31.1 \
     --hash=sha256:57a53a751ddd9a2244bedf1fd4d088c84ff6c0b5a5b85de7e83fc02b91ce860d \
     --hash=sha256:ae54a616f2cb4547ed13b4dbbeb26db2377401274ce35da4d192159533bc4b9c \
     --hash=sha256:be22c171a69c5120bd6fca0538ff3ac663c22f0a0b516ed5856fc02eac4aae48
-pyasn1==0.6.4 \
-    --hash=sha256:aa4baf3e3b2b894b21127fc4769773650d15543dec5a3756daaa19c0f3763b7f
+pyasn1==0.6.5 \
+    --hash=sha256:fdaff1dbf2cf5bb53eace764b0eef67f0a0e8a9b18aa1bf8503ad25199575e6f
 pyasn1-modules==0.4.2 \
     --hash=sha256:6b1010138365a6fc22f4efd32edd504ec3f538e1ac3d1947ba9f7821ef15ef6c
-pycparser==3.0 \
-    --hash=sha256:c2e6198bf8dc97ba19b5f42d9d0e08d5842ffb775e0e208b150080dcf423396e
-python-dateutil==2.9.0.post0 \
-    --hash=sha256:48d0381d3876a6f959d2731ffddb508ea44e2f55212e48c3eea2c9b187c15712
+pycparser==3.12 \
+    --hash=sha256:4fe0ea0581f87d8c87392db9eb99198f69383af28959d3f35fe9d05b5229bd23
+python-dateutil==3.0.0 \
+    --hash=sha256:eee5a952225407f39f2ac290b2ddfa1fad915d291be0e7bc4245b5420e9d1401
 pyyaml==6.0.3 \
     --hash=sha256:2bd6846091e45ed85468748b300a374d5b3724bf49b59a2773d15b72fd25cf09 \
     --hash=sha256:2e1123ff9917c251043614409b1660a891837de28b9d2c1210dbca78c52822e5 \
@@ -80,6 +80,8 @@ six==1.17.0 \
     --hash=sha256:6388b9db719664e1ccea84c166718ff3d2bbf56490cbf14fb7478b3b782eb0e5
 tabulate==0.10.0 \
     --hash=sha256:ab130f2db33194496db41f780bb6723620399a36b30dde286264d80b5505a60f
+tzdata==2026.6 \
+    --hash=sha256:0ab977062c45c874bfcb06462205ad1d747117356fb0eda44f5f7fd589c3a5b7
 urllib3==2.7.0 \
     --hash=sha256:8c0d942cee38135eb54435268fa34bceed0d0a7dff31d8aaee06c06ef8637942
 websocket-client==1.9.0 \
