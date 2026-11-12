@@ -1,4 +1,4 @@
-FROM registry.redhat.io/ubi9/python-312@sha256:f72227ffc4f3faa3772a6ae91ffc03bcf3c507d6b7a525d2bfe90b3579dcb8af
+FROM registry.redhat.io/ubi9/python-312:9.8@sha256:f72227ffc4f3faa3772a6ae91ffc03bcf3c507d6b7a525d2bfe90b3579dcb8af
 
 WORKDIR /app
 
