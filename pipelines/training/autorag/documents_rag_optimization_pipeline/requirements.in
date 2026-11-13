@@ -20,3 +20,9 @@ filelock==4.2.4
 # 1.43.122 is the available index build (boto3 bumped in lockstep)
 boto3==1.43.122
 botocore==1.43.122
+# Security pins for rhoai-3.5 CVE fixes (odh-autorag-rhel9):
+# oauthlib 4.0.1 fixes CVE-2026-118669 (RHAI-17262); major bump from 3.3.1, the only consumer
+# (requests-oauthlib 2.0.0 via kubernetes/kfp) accepts oauthlib >= 3.0.0
+# pyasn1 0.6.5 fixes CVE-2026-119194, -119195, -119196, -119197 (RHAI-18125, -18084, -17987, -18696)
+oauthlib==4.0.1
+pyasn1==0.6.5
