@@ -10,6 +10,11 @@ COPY pipelines/training/automl/autogluon_tabular_training_pipeline/requirements.
 RUN pip install --index-url https://console.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/ --no-cache-dir -r /tmp/requirements.txt
 RUN pip install --index-url https://pypi.org/simple --no-cache-dir -r /tmp/requirements-pypi.txt
 
+# uv and uvx are only needed while building the image.
+USER root
+RUN rm -f /opt/app-root/bin/uv /opt/app-root/bin/uvx
+USER default
+
 LABEL com.redhat.component="odh-automl-container" \
       name="managed-open-data-hub/odh-automl-rhel9" \
       description="odh-automl" \
