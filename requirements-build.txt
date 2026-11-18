@@ -1,3 +1,5 @@
+# pip 26.1.2 includes script entry point path validation.
+pip==26.1.2
 setuptools==82.0.1
 wheel==0.44.0
 Cython==3.2.4
