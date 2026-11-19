@@ -38,14 +38,14 @@ googleapis-common-protos==1.75.0 \
     --hash=sha256:371cd0ca347d6b331c0f70fbbf7aa5cbbba6092d91d27c9bbfab7701a1b6612d
 idna==3.18 \
     --hash=sha256:8a16d5d6db808e4640e6bad7349f52e09b10eba58914fb7d366902ec4fc226a8
-kfp==2.17.0 \
-    --hash=sha256:440ba61a951702b8d8d962c5c830e03bdf436ba0ae9ee44414cfa31cdbff8c0e
+kfp==2.17.3 \
+    --hash=sha256:2d89e5016ed6c91aacffe6d616438aee63866c8d43be8ab916342e56d27f494e
 kfp-kubernetes==2.16.1 \
     --hash=sha256:e453678a125517a8e55b67c9d83016372a7ed37bd8b6d955959c3f1675984027
-kfp-pipeline-spec==2.17.0 \
-    --hash=sha256:39605f781aa48527ddb59c84f37240135970c117305d44131d76fd68ccb448e4
-kfp-server-api==2.17.0 \
-    --hash=sha256:97a52d31d5fbe533c1beb2f6bfd5060bf1494893c7cce4a88af8510b57baba97
+kfp-pipeline-spec==2.17.3 \
+    --hash=sha256:79d9f65c1d20c2bb0d84c36ebedc43daf7186873e5425caebbffcda31a83072b
+kfp-server-api==2.17.3 \
+    --hash=sha256:a1c0d3f7f2f950992ee44b7f75340f02f53a7c59be8fbdc7306f24a051aabfc4
 kubernetes==36.0.3 \
     --hash=sha256:8fa78b23a212533a45eda88b56515f4a5d953df468ac759f1a34574d7e53cc3d
 oauthlib==4.0.1 \
@@ -63,8 +63,8 @@ pyasn1-modules==0.4.2 \
     --hash=sha256:6b1010138365a6fc22f4efd32edd504ec3f538e1ac3d1947ba9f7821ef15ef6c
 pycparser==3.12 \
     --hash=sha256:4fe0ea0581f87d8c87392db9eb99198f69383af28959d3f35fe9d05b5229bd23
-python-dateutil==3.0.0 \
-    --hash=sha256:eee5a952225407f39f2ac290b2ddfa1fad915d291be0e7bc4245b5420e9d1401
+python-dateutil==4.0.0 \
+    --hash=sha256:d15d24fecc9b747053246c953bf7402573266524e95ccc5d1ba271f0bd945332
 pyyaml==6.0.3 \
     --hash=sha256:2bd6846091e45ed85468748b300a374d5b3724bf49b59a2773d15b72fd25cf09 \
     --hash=sha256:2e1123ff9917c251043614409b1660a891837de28b9d2c1210dbca78c52822e5 \
@@ -82,7 +82,7 @@ tabulate==0.10.0 \
     --hash=sha256:ab130f2db33194496db41f780bb6723620399a36b30dde286264d80b5505a60f
 tzdata==2026.6 \
     --hash=sha256:0ab977062c45c874bfcb06462205ad1d747117356fb0eda44f5f7fd589c3a5b7
-urllib3==2.7.0 \
-    --hash=sha256:8c0d942cee38135eb54435268fa34bceed0d0a7dff31d8aaee06c06ef8637942
+urllib3==2.8.0 \
+    --hash=sha256:cf189e13e706ae0f5465262fe46be26aeddd638328f239825c67496621c68627
 websocket-client==1.9.0 \
     --hash=sha256:5edaafdaa419fd1e24bf182d0ac731c2ddc8d3ab7c3fe1f21237a62ea6cb3bc7
