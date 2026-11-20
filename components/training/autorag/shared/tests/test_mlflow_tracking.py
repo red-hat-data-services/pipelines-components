@@ -35,6 +35,22 @@ from kfp_components.components.training.autorag.shared.mlflow_tracking import (
 TRACKING_URI = "https://mlflow.example.com"
 
 
+@pytest.mark.parametrize(
+    "image", [None, "", "   ", "quay.io/example/autorag:custom", "quay.io/example/autorag@sha256:" + "b" * 64]
+)
+def test_runtime_image_uses_only_explicit_environment(monkeypatch, image):
+    """Installed package defaults must not become runtime image provenance."""
+    from kfp_components.components.training.autorag.shared import mlflow_tracking
+    from kfp_components.utils import consts
+
+    monkeypatch.setattr(consts, "AUTORAG_IMAGE", "quay.io/example/unrelated:default")
+    if image is None:
+        monkeypatch.delenv("RELATED_IMAGE_ODH_AUTORAG_IMAGE", raising=False)
+    else:
+        monkeypatch.setenv("RELATED_IMAGE_ODH_AUTORAG_IMAGE", image)
+    assert mlflow_tracking._resolve_image() == (image or "").strip()
+
+
 def _kfp_config(**overrides) -> str:
     """Serialize a platform KFP_MLFLOW_CONFIG blob with the given overrides."""
     payload = {
@@ -108,7 +124,7 @@ class TestConfigureMlflowClient:
         token_file = tmp_path / "token"
         token_file.write_text("tok-123\n", encoding="utf-8")
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
             str(token_file),
         )
         # Register both variables before the implementation writes to os.environ so
@@ -128,7 +144,7 @@ class TestConfigureMlflowClient:
     def test_missing_token_clears_inherited_token(self, monkeypatch, tmp_path):
         """An unreadable token clears inherited credentials rather than reusing them."""
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
             str(tmp_path / "absent"),
         )
         monkeypatch.setenv("MLFLOW_TRACKING_TOKEN", "inherited-token")
@@ -142,7 +158,7 @@ class TestConfigureMlflowClient:
         token_file = tmp_path / "token"
         token_file.write_text("\n", encoding="utf-8")
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
             str(token_file),
         )
         monkeypatch.setenv("MLFLOW_TRACKING_TOKEN", "inherited-token")
@@ -502,7 +518,7 @@ class TestExperimentRunLogger:
         fake = FakeMlflow()
         monkeypatch.setitem(__import__("sys").modules, "mlflow", fake)
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
             "/nonexistent/token",
         )
         with experiment_run_logger(run_name="job-x") as run_logger:
@@ -519,7 +535,7 @@ class TestExperimentRunLogger:
         fake = FakeMlflow()
         monkeypatch.setitem(__import__("sys").modules, "mlflow", fake)
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.SERVICE_ACCOUNT_TOKEN_PATH",
             "/nonexistent/token",
         )
         with pytest.raises(RuntimeError, match="search failed"):
@@ -543,7 +559,7 @@ class TestExperimentRunLogger:
                 raise RuntimeError("MLflow close failed")
 
         monkeypatch.setattr(
-            "kfp_components.components.training.autorag.shared.runtime_embed.mlflow_tracking.parent_mlflow_run",
+            "kfp_components.components.training.autorag.shared.mlflow_tracking.parent_mlflow_run",
             lambda *_args, **_kwargs: FailingParentRun(),
         )
 

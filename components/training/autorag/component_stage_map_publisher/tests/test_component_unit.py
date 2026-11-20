@@ -122,7 +122,7 @@ class TestPublishComponentStageMap:
                 component_stage_map=component_stage_map_artifact,
             )
 
-    def test_rejects_empty_components_list(self, component_stage_map_artifact, tmp_path):
+    def test_rejects_empty_components_list(self, component_stage_map_artifact, tmp_path, monkeypatch):
         """Reject templates whose components list is empty."""
         templates_root = tmp_path / "run_status_templates"
         pipelines_dir = templates_root / "pipelines"
@@ -131,13 +131,15 @@ class TestPublishComponentStageMap:
             json.dumps({"pipeline_id": "empty-pipeline", "components": []}),
             encoding="utf-8",
         )
+        from kfp_components.components.training.autorag.shared import run_status
+
+        monkeypatch.setattr(run_status, "resolve_templates_dir", lambda: templates_root)
 
         with pytest.raises(FileNotFoundError, match="empty-pipeline"):
             publish_component_stage_map.python_func(
                 pipeline_id="empty-pipeline",
                 run_id="run-1",
                 component_stage_map=component_stage_map_artifact,
-                embedded_artifact=type("Embedded", (), {"path": str(templates_root)})(),
             )
 
     def test_unknown_pipeline_id_raises(self, component_stage_map_artifact):
@@ -221,3 +223,18 @@ class TestPublishComponentStageMapMlflow:
         document = self._publish(component_stage_map_artifact)
         optimization = next(c for c in document["components"] if c["id"] == "rag_templates_optimization")
         assert "log_mlflow_results" not in {stage["id"] for stage in optimization["stages"]}
+
+
+@pytest.mark.parametrize("provider", ["postgres", "milvus", "neo4j"])
+@mock.patch.dict("os.environ", {}, clear=True)
+def test_explicit_provider_selects_template_without_credentials(provider, component_stage_map_artifact):
+    """A DCH provider selects the graph template without exposing credentials to the publisher."""
+    publish_component_stage_map.python_func(
+        pipeline_id=PIPELINE_RAG_OPTIMIZATION,
+        run_id="run-dch",
+        db_provider=provider,
+        component_stage_map=component_stage_map_artifact,
+    )
+    document = json.loads((Path(component_stage_map_artifact.path) / "component_stage_map.json").read_text())
+    steps = document["components"][-1]["stages"][0]["steps"]
+    assert ("graph_extraction" in steps) == (provider == "neo4j")

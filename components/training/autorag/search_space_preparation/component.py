@@ -1,16 +1,12 @@
-from pathlib import Path
 from typing import List, NamedTuple
 
 from kfp import dsl
 from kfp.compiler import Compiler
 from kfp_components.utils.consts import AUTORAG_IMAGE  # pyright: ignore[reportMissingImports]
 
-_AUTORAG_SHARED = Path(__file__).parents[1] / "shared"
-
 
 @dsl.component(
     base_image=AUTORAG_IMAGE,  # noqa: E501
-    embedded_artifact_path=str(_AUTORAG_SHARED / "runtime_embed" / "component_status.py"),
     install_kfp_package=False,
 )
 def search_space_preparation(
@@ -18,9 +14,9 @@ def search_space_preparation(
     search_space_report: dsl.Output[dsl.Artifact],
     embedding_models: List[str],
     generation_models: List[str],
-    embedded_artifact: dsl.EmbeddedInput[dsl.Dataset] = None,
     component_status: dsl.Output[dsl.Artifact] = None,
     preset: str = "speed",
+    db_provider: str = "",
 ) -> NamedTuple("SearchSpacePreparationOutputs", [("detected_ocr_lang", str)]):
     """Search space preparation and validation for AutoRAG experiments.
 
@@ -38,11 +34,12 @@ def search_space_preparation(
         search_space_report: Output artifact for the JSON search space report.
         embedding_models: List of embedding model identifiers to try.
         generation_models: List of generation model identifiers to try.
-        embedded_artifact: Embedded ``autorag.shared`` helpers injected by KFP at runtime.
         component_status: Output artifact containing stage-level progress tracking.
         preset: Pipeline quality tier. "speed" (default) uses recursive chunking
             without contextual enrichment. "balanced" uses hybrid chunking with
             LLM contextual enrichment in the search space.
+        db_provider: DCH provider: postgres (PGVector), milvus, or neo4j. Omit only
+            for legacy provider-prefixed secrets.
 
     Returns:
         detected_ocr_lang: ISO 639-1 code of the language AutoRAG detected from the
@@ -52,11 +49,10 @@ def search_space_preparation(
     Environment variables (required):
         MAAS_BASE_URL, MAAS_API_KEY.
     """
-    import importlib.util
     import logging
     import os
+    import ssl
     from collections import namedtuple
-    from pathlib import Path
 
     import pandas as pd
     from ai4rag.search_space.prepare import build_search_space_report, prepare_search_space_with_maas
@@ -78,44 +74,37 @@ def search_space_preparation(
 
     chunking_methods = PRESET_CHUNKING_METHODS[preset]
 
-    if component_status is None:
-        from kfp_components.components.training.autorag.shared.component_status import (  # pyright: ignore[reportMissingImports]
-            null_component_status_tracker,
-        )
+    from kfp_components.components.training.autorag.shared.component_status import component_status_tracker
+    from kfp_components.components.training.autorag.shared.database_connection import normalize_connection
 
-        status = null_component_status_tracker()
-    else:
-        _embedded_path = Path(embedded_artifact.path)
-        _module_path = _embedded_path if _embedded_path.is_file() else _embedded_path / "component_status.py"
-        _spec = importlib.util.spec_from_file_location("_autorag_component_status", _module_path)
-        if _spec is None or _spec.loader is None:
-            raise ValueError(f"Cannot load embedded module from {_module_path}")
-        _status_module = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_status_module)
-        status = _status_module.bootstrap_status_tracker(
-            embedded_artifact, component_status, "search_space_preparation"
-        )
+    status = component_status_tracker(component_status, "search_space_preparation")
     with status:
         if component_status is not None:
             status.set_metadata(display_name="Search Space Preparation Status")
             component_status.metadata["display_name"] = "Search Space Preparation Status"
         with status.stage("prepare_search_space"):
-            maas_client = create_maas_client(
-                base_url=os.environ["MAAS_BASE_URL"],
-                api_key=os.environ["MAAS_API_KEY"],
-            )
-
-            if "MILVUS_URI" in os.environ:
-                vector_store_type = "milvus"
-            elif "PGVECTOR_HOST" in os.environ:
-                vector_store_type = "pgvector"
-            elif "NEO4J_URI" in os.environ:
-                vector_store_type = "neo4j"
-            else:
-                vector_store_type = "milvus"
-                logging.warning(
-                    "No MILVUS_URI, PGVECTOR_HOST, or NEO4J_URI environment variable found; defaulting to milvus."
+            vector_store_type = normalize_connection(db_provider, allow_missing=True)
+            try:
+                maas_client = create_maas_client(
+                    base_url=os.environ["MAAS_BASE_URL"],
+                    api_key=os.environ["MAAS_API_KEY"],
                 )
+            except Exception as exc:
+                error = exc
+                seen = set()
+                while error is not None and id(error) not in seen:
+                    seen.add(id(error))
+                    if (
+                        isinstance(error, ssl.SSLCertVerificationError)
+                        or "CERTIFICATE_VERIFY_FAILED" in str(error).upper()
+                    ):
+                        raise RuntimeError(
+                            "MaaS TLS certificate verification failed. Configure the CA ConfigMap in DSPA via "
+                            "spec.apiServer.cABundle.configMapName and spec.apiServer.cABundle.configMapKey."
+                        ) from exc
+                    error = error.__cause__ or error.__context__
+                raise
+
             logging.info("Detected vector store type: %s", vector_store_type)
 
             payload = {
