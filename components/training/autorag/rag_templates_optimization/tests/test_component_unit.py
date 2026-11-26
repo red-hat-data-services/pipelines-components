@@ -19,17 +19,14 @@ import pytest
 from ..component import rag_templates_optimization
 
 
-def test_kfp_embed_uses_shared_runtime_embed():
-    """Executor embed path is the shared runtime_embed directory (no local copies)."""
+def test_runtime_uses_installed_kfp_components():
+    """Executor imports helpers from the image-installed package."""
     component_dir = Path(__file__).parents[1]
-    runtime_embed_dir = component_dir.parent / "shared" / "runtime_embed"
     source = (component_dir / "component.py").read_text(encoding="utf-8")
 
-    assert 'embedded_artifact_path=str(_AUTORAG_SHARED / "runtime_embed")' in source
-    assert (runtime_embed_dir / "component_status.py").is_file()
-    assert (runtime_embed_dir / "mlflow_tracking.py").is_file()
-    assert "_stage_kfp_embed" not in source
-    assert ".kfp_embed" not in source
+    assert "embedded_artifact_path" not in source
+    assert "dsl.EmbeddedInput" not in source
+    assert "kfp_components.components.training.autorag.shared" in source
 
 
 MOCKED_ENV_VARIABLES = {
@@ -175,7 +172,7 @@ def _make_ai4rag_mocks() -> SimpleNamespace:
         "ai4rag.search_space.src.parameter": parameter_module,
         "ai4rag.search_space.src.search_space": search_space_module,
         "ai4rag.utils": mock.MagicMock(),
-        "ai4rag.assets_generator": assets_generator_module,
+        "kfp_components.components.training.autorag.shared.assets_generator": assets_generator_module,
         "ai4rag.utils.clients": mock.MagicMock(),
         "ai4rag.utils.clients.maas_client": maas_client_module,
         "ai4rag.utils.docling_io": docling_io_module,
@@ -281,7 +278,6 @@ class TestRagTemplatesOptimizationInterface:
             "input_data_secret_name",
             "input_data_bucket_name",
             "leaderboard",
-            "embedded_artifact",
             "optimization_settings",
             "input_data_keys",
             "component_status",
@@ -293,6 +289,8 @@ class TestRagTemplatesOptimizationInterface:
             assert sig.parameters[name].default is inspect.Parameter.empty
         assert sig.parameters["preset"].default == "speed"
         assert sig.parameters["component_status"].default is None
+        assert sig.parameters["db_provider"].default == ""
+        assert "provider" not in params
 
 
 class TestRagTemplatesOptimizationValidation:
@@ -498,22 +496,96 @@ class TestRagTemplatesOptimizationMetricResolution:
 class TestRagTemplatesOptimizationRun:
     """End-to-end orchestration: evaluator wiring, artifact generation, leaderboard."""
 
-    @pytest.mark.parametrize("template_id", ["agentic_rag", "sequential_rag"])
+    @pytest.mark.parametrize("invalid_score", [float("nan"), float("inf"), float("-inf")])
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
-    def test_full_run_speed_wires_unitxt_and_writes_patterns(self, tmp_path, template_id):
-        """The speed preset runs Unitxt only and persists pattern artifacts."""
+    def test_nonfinite_scores_rank_last_and_do_not_select_starter_kit(self, tmp_path, invalid_score):
+        """Non-finite evaluations cannot outrank valid patterns in any exported output."""
+        from kfp_components.components.training.autorag.shared.assets_generator.leaderboard import (
+            build_leaderboard_html,
+        )
+
         mocks = _make_ai4rag_mocks()
+        mocks.build_leaderboard_html.side_effect = build_leaderboard_html
+        mocks.KFPEventHandler.return_value.patterns = [
+            {"payload": _pattern_payload(name, optimization_score=score)}
+            for name, score in [("pattern_weak", 0.1), ("pattern_invalid", invalid_score), ("pattern_best", 0.9)]
+        ]
+        search_space_path = _write_search_space_report(tmp_path)
+        rag_patterns, leaderboard_html = _artifacts(tmp_path)
+        starter_kit = mock.MagicMock()
+        starter_kit.path = str(tmp_path / "starter_kit" / "starter_kit.zip")
+        starter_kit.uri = "gs://bucket/starter_kit"
+        starter_kit.metadata = {}
+
+        def reject_constant(value):
+            raise ValueError(f"Non-standard JSON constant: {value}")
+
+        with mock.patch.dict("sys.modules", mocks.modules):
+            rag_templates_optimization.python_func(
+                extracted_text=str(tmp_path / "extracted"),
+                test_data=str(tmp_path / "test_data.json"),
+                search_space_mps_report=search_space_path,
+                rag_patterns=rag_patterns,
+                test_data_key="data/test.json",
+                maas_secret_name="maas-connection",
+                db_secret_name="vector-db-connection",
+                input_data_secret_name="s3-input-connection",
+                input_data_bucket_name="customer-docs",
+                leaderboard=leaderboard_html,
+                starter_kit=starter_kit,
+            )
+
+        expected_order = ["pattern_best", "pattern_weak", "pattern_invalid"]
+        patterns = rag_patterns.metadata["metadata"]["patterns"]
+        assert [pattern["name"] for pattern in patterns] == expected_order
+        for rank, pattern in enumerate(patterns, start=1):
+            assert pattern["rank"] == rank
+            pattern_path = Path(rag_patterns.path) / pattern["name"] / "pattern.json"
+            exported = json.loads(pattern_path.read_text(encoding="utf-8"), parse_constant=reject_constant)
+            assert exported["rank"] == rank
+            mean = exported["evaluation"]["metrics"][0]["scores"]["mean"]
+            assert mean == {"pattern_best": 0.9, "pattern_weak": 0.1, "pattern_invalid": None}[pattern["name"]]
+            assert exported == pattern
+
+        mocks.generate_starter_kit.assert_called_once()
+        assert mocks.generate_starter_kit.call_args.args[0]["name"] == "pattern_best"
+        html = Path(leaderboard_html.path).read_text(encoding="utf-8")
+        positions = [html.index(name) for name in expected_order]
+        assert positions == sorted(positions)
+
+    @pytest.mark.parametrize("template_id", ["agentic_rag", "sequential_rag"])
+    @pytest.mark.parametrize(
+        ("score_a", "score_b", "expected_order"),
+        [
+            (0.9, 0.95, ["pattern_b", "pattern_a"]),
+            (0.90002, 0.90001, ["pattern_a", "pattern_b"]),
+            (0.9, 0.9, ["pattern_b", "pattern_a"]),
+            (None, 0.95, ["pattern_b", "pattern_a"]),
+            (0.9, None, ["pattern_a", "pattern_b"]),
+        ],
+    )
+    @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
+    def test_full_run_speed_wires_unitxt_and_writes_patterns(
+        self, tmp_path, template_id, score_a, score_b, expected_order
+    ):
+        """Exported ranks agree with the HTML leaderboard and selected starter kit."""
+        from kfp_components.components.training.autorag.shared.assets_generator.leaderboard import (
+            build_leaderboard_html,
+        )
+
+        mocks = _make_ai4rag_mocks()
+        mocks.build_leaderboard_html.side_effect = build_leaderboard_html
         mocks.get_vector_store_config.return_value = mock.MagicMock(name="vector_store_config")
         search_space_path = _write_search_space_report(tmp_path)
         mocks.KFPEventHandler.return_value.patterns = [
             {
-                "payload": _pattern_payload("pattern_a", optimization_score=0.9),
-                "evaluation_results": [{"metric": "faithfulness", "score": 0.9}],
-                "conversations": [{"conversation_id": "case-0000", "question": "What is RAG?"}],
+                "payload": _pattern_payload("pattern_b", optimization_score=score_b),
+                "evaluation_results": [{"metric": "faithfulness", "score": score_b}],
             },
             {
-                "payload": _pattern_payload("pattern_b", optimization_score=0.95),
-                "evaluation_results": [{"metric": "faithfulness", "score": 0.95}],
+                "payload": _pattern_payload("pattern_a", optimization_score=score_a),
+                "evaluation_results": [{"metric": "faithfulness", "score": score_a}],
+                "conversations": [{"conversation_id": "case-0000", "question": "What is RAG?"}],
             },
         ]
         for pattern in mocks.KFPEventHandler.return_value.patterns:
@@ -565,7 +637,8 @@ class TestRagTemplatesOptimizationRun:
         assert not (Path(rag_patterns.path) / "pattern_b" / "conversations.json").exists()
         mocks.generate_starter_kit.assert_called_once()
         selected_pattern, generated_dir = mocks.generate_starter_kit.call_args.args
-        assert selected_pattern["name"] == "pattern_b"
+        assert selected_pattern["name"] == expected_order[0]
+        assert selected_pattern["rank"] == 1
         assert selected_pattern["template_id"] == template_id
         assert generated_dir != str(rag_patterns.path)
         assert Path(starter_kit.path).read_bytes() == b"generated zip"
@@ -597,10 +670,17 @@ class TestRagTemplatesOptimizationRun:
         assert indexing_notebook_call.kwargs["test_data_key"] == "data/test.json"
         assert rag_patterns.metadata["name"] == "rag_patterns_artifact"
         assert rag_patterns.metadata["uri"] == "gs://bucket/rag_patterns"
-        assert rag_patterns.metadata["metadata"]["patterns"][0]["name"] == "pattern_a"
+        exported_patterns = rag_patterns.metadata["metadata"]["patterns"]
+        assert [pattern["name"] for pattern in exported_patterns] == expected_order
+        for expected_rank, pattern in enumerate(exported_patterns, start=1):
+            assert type(pattern["rank"]) is int
+            assert pattern["rank"] == expected_rank
+            pattern_path = Path(rag_patterns.path) / pattern["name"] / "pattern.json"
+            assert json.loads(pattern_path.read_text(encoding="utf-8")) == pattern
 
         mocks.build_leaderboard_html.assert_called_once()
-        assert Path(leaderboard_html.path).read_text(encoding="utf-8") == "<html></html>"
+        html = Path(leaderboard_html.path).read_text(encoding="utf-8")
+        assert html.index(expected_order[0]) < html.index(expected_order[1])
         assert leaderboard_html.metadata["display_name"] == "autorag_leaderboard"
 
     @mock.patch.dict("os.environ", MOCKED_ENV_VARIABLES, clear=True)
@@ -978,3 +1058,102 @@ class TestPresetWarmStartConfiguration:
         assert gam_call_kwargs["max_iterations"] == limit
         assert len(rag_patterns.metadata["metadata"]["patterns"]) == limit + 1
         assert len(list(Path(rag_patterns.path).glob("*/pattern.json"))) == limit + 1
+
+
+@pytest.mark.parametrize(
+    ("provider", "database_env", "backend"),
+    [
+        (
+            "postgres",
+            {"AUTORAG_DB_URI": "postgresql://rag:private-password@database:5432/documents"},
+            "pgvector",
+        ),
+        ("", {"MILVUS_URI": "https://milvus:19530", "PGVECTOR_HOST": "database"}, "milvus"),
+        ("", {"PGVECTOR_HOST": "database", "NEO4J_URI": "neo4j://graph:7687"}, "pgvector"),
+    ],
+)
+def test_connection_provider_survives_optimization_and_indexing(tmp_path, provider, database_env, backend):
+    """Generated indexing inputs preserve explicit selection and legacy precedence."""
+    mocks = _make_ai4rag_mocks()
+    pattern = _pattern_payload("pattern_a")
+    pattern["settings"]["store_binding"]["provider_type"] = backend
+    mocks.KFPEventHandler.return_value.patterns = [{"payload": pattern, "evaluation_results": []}]
+    report = _write_search_space_report(tmp_path)
+    rag_patterns, leaderboard = _artifacts(tmp_path)
+    with (
+        mock.patch.dict(
+            "os.environ",
+            {key: value for key, value in MOCKED_ENV_VARIABLES.items() if key.startswith("MAAS_")} | database_env,
+            clear=True,
+        ),
+        mock.patch.dict("sys.modules", mocks.modules),
+    ):
+        rag_templates_optimization.python_func(
+            extracted_text=str(tmp_path / "ext"),
+            test_data=str(tmp_path / "test.json"),
+            search_space_mps_report=report,
+            rag_patterns=rag_patterns,
+            test_data_key="test.json",
+            maas_secret_name="maas",
+            db_secret_name="dch-db",
+            input_data_secret_name="s3",
+            input_data_bucket_name="docs",
+            leaderboard=leaderboard,
+            db_provider=provider,
+        )
+    mocks.get_vector_store_config.assert_called_once_with(backend)
+    assert mocks.AI4RAGSearchSpace.call_args.kwargs["vector_store_type"] == backend
+    payload = json.loads((Path(rag_patterns.path) / "pattern_a" / "pattern.json").read_text())
+    params = payload["indexing"]["pipeline_spec"]["parameters"]
+    assert params["db_provider"] == provider
+    assert "provider" not in params
+    assert params["db_secret_name"] == "dch-db"
+    assert "provider_type" not in params
+    assert "private-password" not in json.dumps(payload)
+    mocks.generate_starter_kit.assert_called_once()
+    assert (Path(rag_patterns.path).parent / "starter_kit" / "starter_kit.zip").read_bytes() == b"generated zip"
+
+    from ...shared.database_connection import normalize_connection
+
+    assert normalize_connection(params["db_provider"], database_env.copy()) == backend
+
+
+@pytest.mark.parametrize(
+    ("database_env", "message"),
+    [
+        ({"AUTORAG_DB_URI": "postgres://user:password@db:invalid/docs"}, "Invalid PostgreSQL URI"),
+        ({"MILVUS_URI": "https://milvus:19530"}, "db_provider does not match"),
+    ],
+)
+def test_connection_validation_publishes_failed_stage_before_api_calls(tmp_path, database_env, message):
+    """Optimization reports invalid secrets through stage tracking without contacting services."""
+    mocks = _make_ai4rag_mocks()
+    rag_patterns, leaderboard = _artifacts(tmp_path)
+    status = SimpleNamespace(path=str(tmp_path / "status"), metadata={})
+    maas_env = {"MAAS_BASE_URL": "https://maas.example.com/v1", "MAAS_API_KEY": "key"}
+    with (
+        mock.patch.dict("os.environ", maas_env | database_env, clear=True),
+        mock.patch.dict("sys.modules", mocks.modules),
+        pytest.raises(ValueError, match=message),
+    ):
+        rag_templates_optimization.python_func(
+            extracted_text=str(tmp_path / "extracted"),
+            test_data=str(tmp_path / "test.json"),
+            search_space_mps_report=str(tmp_path / "search-space.json"),
+            rag_patterns=rag_patterns,
+            test_data_key="test.json",
+            maas_secret_name="maas",
+            db_secret_name="db",
+            input_data_secret_name="s3",
+            input_data_bucket_name="documents",
+            leaderboard=leaderboard,
+            db_provider="postgres",
+            component_status=status,
+        )
+    report = json.loads((Path(status.path) / "component_status.json").read_text())
+    stage = next(stage for stage in report["stages"] if stage["id"] == "optimize_templates")
+    assert stage["status"]["state"] == "failed"
+    assert message in stage["error"]
+    assert "user:password" not in json.dumps(report)
+    mocks.create_maas_client.assert_not_called()
+    mocks.AI4RAGExperiment.assert_not_called()
